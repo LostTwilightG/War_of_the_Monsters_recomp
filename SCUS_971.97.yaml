@@ -68,6 +68,7 @@ segments:
     vram: 0x00100000
     bss_size: 0x1883CC
     subalign: null
+    align: 0x80
     subsegments:
       - [0x000000, asm, cod/000000] # .text
       - [0x151020, textbin, cod/151020] # .vutext

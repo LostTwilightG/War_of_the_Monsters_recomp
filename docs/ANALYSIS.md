@@ -32,5 +32,6 @@
 ## PendÃªncias
 - [ ] Identificar a versÃ£o exata do compilador (testar ee-gcc 2.95.x / 2.96 no decomp.me com uma funÃ§Ã£o simples).
 - [ ] Dividir o `.text` em TUs (subsegments no yaml), separando libs da SCE e newlib (podem ser linkadas como blobs).
-- [ ] Ambiente Linux/WSL com binutils MIPS para montar e linkar (rebuild matching do asm puro).
+- [x] Ambiente Linux/WSL com binutils MIPS; rebuild do asm puro faz match do SHA1.
+  Observações: `-mabi=o64` no GAS (o spimdisasm usa nomes de registradores o32) e seções alinhadas a 0x80 (`align: 0x80` no yaml).
 - [ ] Exportar tipos de `hieri.cpp` para headers.

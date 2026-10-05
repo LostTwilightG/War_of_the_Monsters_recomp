@@ -18,3 +18,5 @@ undefined_syms_auto.txt
 __pycache__/
 *.pyc
 .vscode/
+build.ninja
+.ninja_*
