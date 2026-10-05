@@ -1,0 +1,20 @@
+# Arquivos do jogo: NUNCA commitar
+ISO/
+disc/
+*.iso
+*.rom
+*.elf
+
+# Saída gerada pelo splat (contém código do jogo)
+asm/
+assets/
+build/
+SCUS_971.97.ld
+SCUS_971.97.d
+undefined_funcs_auto.txt
+undefined_syms_auto.txt
+
+# Python / editor
+__pycache__/
+*.pyc
+.vscode/
