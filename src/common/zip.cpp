@@ -27,6 +27,25 @@ void free(void *);
 }
 void fileReads(char *name, void *buf, unsigned int block);
 
+unsigned long zipCrc32(unsigned long crc, const unsigned char *buf, long len);
+int zipFlush(unsigned long w);
+int zipCheckHeader(void);
+int zipInflateCodes(struct huft *tl, struct huft *td, int bl, int bd);
+int zipFreeHuffmanTable(struct huft *t);
+int zipBuildHuffmanTable(const unsigned int *b, unsigned int n, unsigned int s, const unsigned short *d,
+                         const unsigned short *e, struct huft **t, int *m);
+int zipInflateBlockStored(void);
+int zipInflateBlockFixed(void);
+int zipInflateBlockDynamic(void);
+int zipInflateBlock(int *e);
+int zipInflateAll(char *name, void *dest);
+unsigned char zipGetChar(void);
+
+/* gzip inflate.c bit buffer macros */
+#define NEXTBYTE() ((unsigned char)zipGetChar())
+#define NEEDBITS(n) { while (k < (n)) { b |= ((unsigned long)NEXTBYTE()) << k; k += 8; } }
+#define DUMPBITS(n) { b >>= (n); k -= (n); }
+
 #define ZIP_BUF ((unsigned char *)0x01F7F840) /* 512 KB read window at the top of RAM */
 #define ZIP_BUF_END (ZIP_BUF + 0x80000)
 
@@ -77,7 +96,32 @@ int zipFlush(unsigned long w)
     return 0;
 }
 
+#ifdef NON_MATCHING
+/* scheduling/register allocation of the size bytes differs */
+/* Parses the zip local file header at the start of the read window (signature "IE" instead of "PK").
+ * Leaves zipFileBuf at the compressed data and returns the uncompressed size. */
+int zipCheckHeader(void)
+{
+    int sig;
+    int ret;
+
+    zipFileBuf = ZIP_BUF;
+    sig = *(int *)zipFileBuf;
+    if (sig == 0x04034549) {
+        unsigned char *size = ZIP_BUF + 22;
+        unsigned short *nameLen = (unsigned short *)(ZIP_BUF + 26);
+        ret = size[0] + (size[1] << 8) + (size[2] << 16) + (size[3] << 24);
+        zipFileBuf = (unsigned char *)nameLen + (*nameLen + 4);
+    } else {
+        printf("File signature = 0x%X, should be 0x04034549 (\"IE..\")
+", sig);
+        ret = 0;
+    }
+    return ret;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipCheckHeader__Fv);
+#endif
 
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateCodes__FP4huftT0ii);
 
@@ -102,7 +146,35 @@ INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateBlockFixed__Fv);
 
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateBlockDynamic__Fv);
 
-INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateBlock__FPi);
+/* decompress one block; *e is set on the last block */
+int zipInflateBlock(int *e)
+{
+    unsigned t;
+    unsigned long b;
+    unsigned k;
+
+    b = G_bitBucket;
+    k = G_bitCount;
+
+    NEEDBITS(1)
+    *e = (int)b & mask_bits[1];
+    DUMPBITS(1)
+
+    NEEDBITS(2)
+    t = (unsigned)b & mask_bits[2];
+    DUMPBITS(2)
+
+    G_bitBucket = b;
+    G_bitCount = k;
+
+    if (t == 0)
+        return zipInflateBlockStored();
+    if (t == 1)
+        return zipInflateBlockFixed();
+    if (t == 2)
+        return zipInflateBlockDynamic();
+    return 2;
+}
 
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateAll__FPcPv);
 

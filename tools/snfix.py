@@ -137,16 +137,28 @@ def insn_count(op, args):
     return 1
 
 
+JUMPS = BRANCHES | {'b', 'j', 'jal', 'jalr', 'jr', 'bal'}
+
+
 def pad_short_loops(lines):
-    """Insert nops before backward conditional branches that close loops shorter than SHORT_LOOP."""
+    """Insert nops before backward conditional branches that close loops shorter than SHORT_LOOP.
+
+    In `.set reorder` mode the assembler adds the delay-slot nop of a jump/branch itself, so those count 2.
+    """
     labels = {}   # label -> instruction index
     count = 0     # instructions emitted so far
+    reorder = True
     out = []
     for line in lines:
+        stripped = line.strip()
+        if stripped.startswith('.set'):
+            arg = stripped.split()[-1]
+            if arg in ('reorder', 'noreorder'):
+                reorder = arg == 'reorder'
         lm = LABEL.match(line)
         if lm:
             labels[lm.group(1)] = count
-        m = INSN.match(line) if not line.lstrip().startswith('.') and not lm else None
+        m = INSN.match(line) if not stripped.startswith('.') and not lm else None
         if m:
             op, args = m.group(2), m.group(3)
             target = args.split(',')[-1].strip() if args else ''
@@ -156,7 +168,7 @@ def pad_short_loops(lines):
                     for _ in range(SHORT_LOOP - length):
                         out.append('	nop')
                         count += 1
-            count += insn_count(op, args or '')
+            count += insn_count(op, args or '') + (1 if reorder and op in JUMPS else 0)
         out.append(line)
     return out
 
