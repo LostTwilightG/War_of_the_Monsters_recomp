@@ -8,6 +8,8 @@ struct Mat4 {
 extern _hierSkelBone **skelStack;
 extern float (*skelMatStack)[4][4];
 extern int g_cameraLosPointsPerView[5];
+extern _fvector g_cameraLosPoints[5][2];
+extern "C" float sqrtf(float);
 extern unsigned *lastGsCtx;
 typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
@@ -275,7 +277,49 @@ void hierSetSwitch(_hierswitch *sw, int which)
     if (sw && sw->head.opcode == 6 && which < sw->numKids)
         sw->whichChild = which;
 }
+#ifdef NON_MATCHING
+/* 27/40 words: 1.0f is materialized via $v0 (not $at) and store scheduling differs */
+void hierSetCameraLosPoint(_fvector *pos, int view, int idx)
+{
+    _fvector *dst = &g_cameraLosPoints[view][idx];
+    _fvector *t = viewGetTrans(view);
+    register float x __asm__("$f2");
+    register float y __asm__("$f3");
+    register float z __asm__("$f0");
+    register float len __asm__("$f4");
+    float inv;
+
+    __asm__ volatile("lqc2 $vf11, 0x0(%1)
+	"
+                     "lqc2 $vf12, 0x0(%2)
+	"
+                     "vsub.xyz $vf11, $vf11, $vf12
+	"
+                     "sqc2 $vf11, 0x0(%0)"
+                     : : "r"(dst), "r"(pos), "r"(t) : "memory");
+    __asm__ volatile("lwc1 %0, 0x0(%4)
+	"
+                     "lwc1 %1, 0x4(%4)
+	"
+                     "lwc1 %2, 0x8(%4)
+	"
+                     "mula.s %0, %0
+	"
+                     "madda.s %1, %1
+	"
+                     "madd.s %3, %2, %2
+	"
+                     ".word 0x46040104"
+                     : "=f"(x), "=f"(y), "=f"(z), "=f"(len) : "r"(dst) : "memory");
+    inv = 1.0f / len;
+    dst->z = z * inv;
+    dst->x = x * inv;
+    dst->y = y * inv;
+    dst->w = len;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierSetCameraLosPoint__FP8_fvectorii);
+#endif
 void hierSetLosPointsPerView(int idx, int points)
 {
     g_cameraLosPointsPerView[idx] = points;
