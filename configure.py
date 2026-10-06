@@ -29,6 +29,20 @@ def run_splat():
         subprocess.run([sys.executable, 'tools/elf2bin.py', RETAIL_ELF, TARGET_ROM], check=True, cwd=ROOT)
     subprocess.run([sys.executable, 'tools/gen_symbol_addrs.py'], check=True, cwd=ROOT)
     subprocess.run([sys.executable, '-m', 'splat', 'split', YAML], check=True, cwd=ROOT)
+    fix_splat_quirks()
+
+
+def fix_splat_quirks():
+    """Per-function .s files differ from the whole-file ones in two ways that change the assembled bytes:
+    the VU0 accumulator is written as bare `ACC` (gas needs `$ACC`), and `%lo(sym + 0x44000)` comes out as
+    `%lo(sym + (0x44000 & 0xFFFF))`, which loses the carry that the matching `%hi` needs."""
+    acc = re.compile(r'(?<![$\w])ACC(?!\w)')
+    lo = re.compile(r'(%lo\([^()]*?\+\s*)\((0x[0-9A-Fa-f]+) & 0xFFFF\)\)')
+    for f in (ROOT / 'asm/nonmatchings').rglob('*.s'):
+        text = f.read_text()
+        fixed = lo.sub(r'\g<1>\g<2>)', acc.sub('$ACC', text))
+        if fixed != text:
+            f.write_text(fixed)
 
 
 def main():

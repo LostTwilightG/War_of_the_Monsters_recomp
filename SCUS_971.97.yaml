@@ -220,7 +220,7 @@ segments:
       - [0x100970, asm, common/hdPrim]  # c++, 14 funcs, name: manual
       - [0x1017B0, asm, common/hdSphere]  # c++, 3 funcs, name: manual
       - [0x101D60, asm, common/hdTraverse]  # c++, 4 funcs, name: manual
-      - [0x102910, asm, common/hier]  # c++, 51 funcs, name: guess
+      - [0x102910, cpp, common/hier]  # c++, 51 funcs, name: guess
       - [0x1052A0, asm, common/texm]  # c++, 30 funcs, name: guess
       - [0x108A20, asm, common/ps]  # c++, 37 funcs, name: guess
       - [0x109D88, asm, common/hieri]  # c++, 3 funcs, name: manual

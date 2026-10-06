@@ -2,3 +2,4 @@
 # Append "+data" when all of the TU's data sections are defined in the C file.
 common/zip +data
 game/CrushLevel
+common/hier
