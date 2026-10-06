@@ -343,9 +343,7 @@ int zipBuildHuffmanTable(const unsigned int *b, unsigned int n, unsigned int s, 
                 w += l[h++]; /* add bits already decoded */
 
                 /* compute minimum size table less than or equal to *m bits */
-                z = g - w;
-                if (z > (unsigned)*m)
-                    z = *m; /* upper limit */
+                z = (z = g - w) > (unsigned)*m ? *m : z; /* upper limit */
                 if ((f = 1 << (j = k - w)) > a + 1) {   /* try a k-w bit table */
                     /* too few codes for k-w bit table */
                     f -= a + 1; /* deduct codes from patterns left */

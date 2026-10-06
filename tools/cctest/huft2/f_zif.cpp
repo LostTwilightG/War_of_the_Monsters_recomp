@@ -293,7 +293,7 @@ int zipBuildHuffmanTable(const unsigned int *b, unsigned int n, unsigned int s, 
         *m = i;
 
     /* Adjust last length count to fill out codes, if needed */
-    for (y = 1 << j; j < i; y <<= 1, j++)
+    for (y = 1 << j; j < i; j++, y <<= 1)
         if ((y -= c[j]) < 0) {
             printf("Too many codes, not enough bits., numDummies = %i, a_Counts[j] = %i\n", y, c[j]);
             return 2; /* bad input: more codes than bits */

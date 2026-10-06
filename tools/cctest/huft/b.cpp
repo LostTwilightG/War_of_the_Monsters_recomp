@@ -293,7 +293,7 @@ int zipBuildHuffmanTable(const unsigned int *b, unsigned int n, unsigned int s, 
         *m = i;
 
     /* Adjust last length count to fill out codes, if needed */
-    for (y = 1 << j; j < i; y <<= 1, j++)
+    for (y = 1 << j; j < i; j++, y <<= 1)
         if ((y -= c[j]) < 0) {
             printf("Too many codes, not enough bits., numDummies = %i, a_Counts[j] = %i\n", y, c[j]);
             return 2; /* bad input: more codes than bits */
@@ -343,18 +343,17 @@ int zipBuildHuffmanTable(const unsigned int *b, unsigned int n, unsigned int s, 
                 w += l[h++]; /* add bits already decoded */
 
                 /* compute minimum size table less than or equal to *m bits */
-                z = g - w;
-                if (z > (unsigned)*m)
-                    z = *m; /* upper limit */
+                z = (z = g - w) > (unsigned)*m ? *m : z; /* upper limit */
                 if ((f = 1 << (j = k - w)) > a + 1) {   /* try a k-w bit table */
                     /* too few codes for k-w bit table */
                     f -= a + 1; /* deduct codes from patterns left */
                     xp = c + k;
-                    while (++j < z) { /* try smaller tables up to z bits */
-                        if ((f <<= 1) <= *++xp)
-                            break; /* enough codes to use up j bits */
-                        f -= *xp;  /* else deduct codes from patterns */
-                    }
+                    if (j < z)
+                        while (++j < z) { /* try smaller tables up to z bits */
+                            if ((f <<= 1) <= *++xp)
+                                break; /* enough codes to use up j bits */
+                            f -= *xp;  /* else deduct codes from patterns */
+                        }
                 }
                 if ((unsigned)w + j > el && (unsigned)w < el)
                     j = el - w; /* make EOB code end at table */
