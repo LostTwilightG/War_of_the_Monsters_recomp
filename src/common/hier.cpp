@@ -13,6 +13,8 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+void vu0GetEoAsm(QwData *);
+_fvector *viewGetTrans(int);
 _lightenv *lightGetEnv(int);
 void mathfUnitMatrix(float (*m)[4]);
 extern _worldctx *world;
@@ -153,10 +155,55 @@ INCLUDE_ASM("asm/nonmatchings/common/hier", hierRotateSkel);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierAnimTransNode);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierStartRotMatPRH);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierGetRotMatPRH);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierAttachPtNode);
+__asm__("#SNFIX_SMALL gTraversalCallback");
+extern "C" void hierAttachPtNode(_hierhead *node, int view, _cs *cs, int idx)
+{
+    QwData eo;
+    _fvector out;
+    float (*m)[4];
+
+    vu0GetEoAsm(&eo);
+    m = (float (*)[4])((char *)(idx * 64) + (unsigned)matStack);
+    __asm__ volatile("lqc2 $vf11, %1
+	"
+                     "lqc2 $vf12, 0x0(%2)
+	"
+                     "lqc2 $vf13, 0x10(%2)
+	"
+                     "lqc2 $vf14, 0x20(%2)
+	"
+                     "vmulax.xyz $ACC, $vf12, $vf11x
+	"
+                     "vmadday.xyz $ACC, $vf13, $vf11y
+	"
+                     "vmaddz.xyz $vf11, $vf14, $vf11z
+	"
+                     "sqc2 $vf11, %0"
+                     : "=m"(out) : "m"(eo), "r"(m));
+    _fvector *t = viewGetTrans(view);
+    __asm__ volatile("lqc2 $vf11, 0x0(%1)
+	"
+                     "lqc2 $vf12, 0x0(%2)
+	"
+                     "vadd.xyz $vf11, $vf11, $vf12
+	"
+                     "sqc2 $vf11, %0"
+                     : "=m"(out) : "r"(&out), "r"(t));
+    gTraversalCallback(cs, node->id1, node->id2, *(float (*)[4][4])((char *)matStack + idx * 64), &out);
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierScaleNode);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierAnimScaleNode);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierSkelBoneNode);
+extern "C" void hierSkelBoneNode(_hierSkelBone *bone, unsigned short *boneIdx, short *matIdx)
+{
+    Mat4 m;
+
+    addSkeleton(bone, (short)++*boneIdx);
+    if (bone->isRootNode) {
+        ++*matIdx;
+        mathfUnitMatrix(m.m);
+        addSkelMat((float (*)[4][4])&m, *matIdx);
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierLightNode);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierParticleNode);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierShadow__Fii);

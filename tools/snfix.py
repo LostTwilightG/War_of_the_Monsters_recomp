@@ -14,6 +14,8 @@ Rules reproduced:
     `lui`/`%lo` (loads into a GPR use the destination as the temporary, everything else uses $at).
     Inside `.set nomacro` (gcc's filled delay slots) the access must be one instruction, so $gp is used.
     GNU as instead decides at the end of the file, which would make these differ.
+  * `__asm__("#SNFIX_SMALL sym")` in the source marks `sym` as already defined in .sbss at that point, for TUs whose
+    original defined the variable earlier in the file (we only declare it, the linker script places it).
   * R5900 short-loop errata: a backward conditional branch closing a loop of fewer than 6 instructions
     (label through branch) gets nops inserted before the branch until the loop is 6 long.
 
@@ -103,6 +105,11 @@ class Fixer:
         after_asm = self.after_asm
         if line.strip():
             self.after_asm = line.strip() == '#NO_APP'
+        sm = re.match(r'^\s*#SNFIX_SMALL\s+(\S+)', line)
+        if sm:
+            # source marker: pretend the symbol was defined in .sbss at this point (see hier.cpp)
+            self.small.add(sm.group(1))
+            return [line]
         lm = LABEL.match(line)
         if lm and self.section in ('.sdata', '.sbss'):
             self.small.add(lm.group(1))
