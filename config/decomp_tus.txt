@@ -1,2 +1,3 @@
 # TUs that are (partially) decompiled: built from src/<name>.c(pp) with INCLUDE_ASM for the rest.
-common/zip
+# Append "+data" when all of the TU's data sections are defined in the C file.
+common/zip +data

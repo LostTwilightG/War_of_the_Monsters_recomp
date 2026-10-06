@@ -784,7 +784,7 @@ segments:
       - [0x5F8A70, sdata, common/blit]
       - [0x5F8A80, sdata, common/videodec]
       - [0x5F8A88, sdata, common/view]
-      - [0x5F8AF0, sdata, common/zip]
+      - [0x5F8AF0, .sdata, common/zip]
       - [0x5F8B40, sdata, common/bsp]
       - { type: sbss, vram: 0x006F8B80, name: crt0 }
       - { type: sbss, vram: 0x006F8B84, name: game/Ai_2 }

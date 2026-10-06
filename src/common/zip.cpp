@@ -10,6 +10,44 @@ extern const unsigned short c_pdist[30];
 extern const unsigned short c_pdext[30];
 extern const unsigned long crc_32_tab[256];
 
+/* gzip inflate.c Huffman table entry */
+struct huft {
+    unsigned char e; /* number of extra bits or operation */
+    unsigned char b; /* number of bits in this code or subcode */
+    union {
+        unsigned short n;  /* literal, length base, or distance base */
+        struct huft *t;    /* pointer to next level of table */
+    } v;
+};
+
+extern "C" {
+int printf(const char *, ...);
+void *malloc(unsigned int);
+void free(void *);
+}
+void fileReads(char *name, void *buf, unsigned int block);
+
+#define ZIP_BUF ((unsigned char *)0x01F7F840) /* 512 KB read window at the top of RAM */
+#define ZIP_BUF_END (ZIP_BUF + 0x80000)
+
+int whichHalfMeg = 0;
+unsigned int G_windowPos = 0;
+unsigned int G_bitCount = 0;
+unsigned int G_bitBucket = 0;
+unsigned long G_crc32val = 0;
+struct huft *G_fixedTlen = 0;
+char *G_FileName = 0;
+void *G_FileAddr = 0;
+extern unsigned char *outFileWindow;
+int tmpLong;
+unsigned long G_outSize;
+struct huft *G_fixedTdist;
+int G_fixedBlen;
+int G_fixedBdist;
+int howManyBlocks;
+unsigned char *zipFileBuf;
+unsigned char *outFileBuf;
+
 /* zlib crc32 */
 #define DO1(buf) crc = tab[((int)crc ^ (*buf++)) & 0xff] ^ (crc >> 8);
 #define DO2(buf) DO1(buf); DO1(buf);
@@ -31,13 +69,30 @@ unsigned long zipCrc32(unsigned long crc, const unsigned char *buf, long len)
     return crc ^ 0xffffffffL;
 }
 
-INCLUDE_ASM("asm/nonmatchings/common/zip", zipFlush__FUl);
+int zipFlush(unsigned long w)
+{
+    G_crc32val = zipCrc32(G_crc32val, outFileBuf, w);
+    outFileBuf += (int)w;
+    G_outSize -= w;
+    return 0;
+}
 
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipCheckHeader__Fv);
 
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateCodes__FP4huftT0ii);
 
-INCLUDE_ASM("asm/nonmatchings/common/zip", zipFreeHuffmanTable__FP4huft);
+int zipFreeHuffmanTable(struct huft *t)
+{
+    struct huft *p, *q;
+
+    p = t;
+    while (p != NULL) {
+        q = (--p)->v.t;
+        free(p);
+        p = q;
+    }
+    return 0;
+}
 
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipBuildHuffmanTable__FPCUiUiUiPCUsT3PP4huftPi);
 
@@ -51,11 +106,20 @@ INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateBlock__FPi);
 
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateAll__FPcPv);
 
+#ifdef NON_MATCHING
+/* register allocation differs: the reload constant lands in $v0 instead of $v1 */
+unsigned char zipGetChar(void)
+{
+    if (zipFileBuf >= ZIP_BUF_END) {
+        fileReads(G_FileName, ZIP_BUF, whichHalfMeg++);
+        zipFileBuf = ZIP_BUF;
+    }
+    return *zipFileBuf++;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipGetChar__Fv);
+#endif
 
-INCLUDE_ASM("asm/nonmatchings/common/zip", __static_initialization_and_destruction_0_0022B7A0);
-
-INCLUDE_ASM("asm/nonmatchings/common/zip", _GLOBAL_$I$whichHalfMeg);
 
 const unsigned short mask_bits[17] = {
     0x0000,
@@ -147,3 +211,5 @@ const unsigned long crc_32_tab[256] = {
     0xb3667a2eL, 0xc4614ab8L, 0x5d681b02L, 0x2a6f2b94L,
     0xb40bbe37L, 0xc30c8ea1L, 0x5a05df1bL, 0x2d02ef8dL,
 };
+
+unsigned char *outFileWindow = outFileBuf;

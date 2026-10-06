@@ -7,10 +7,17 @@ BEGIN, END = '      # BEGIN text TUs (tools/apply_tus.py)', '      # END text TU
 
 rows = list(csv.DictReader(open('config/tus.csv')))
 # TUs being decompiled: config/decomp_tus.txt lists one TU name per line (splat type c or cpp by language)
+# A trailing "+data" means every data section of the TU also comes from the C file.
+decomp, decomp_data = set(), set()
 try:
-    decomp = {l.strip() for l in open('config/decomp_tus.txt') if l.strip() and not l.startswith('#')}
+    for l in open('config/decomp_tus.txt'):
+        parts = l.split('#')[0].split()
+        if parts:
+            decomp.add(parts[0])
+            if '+data' in parts[1:]:
+                decomp_data.add(parts[0])
 except FileNotFoundError:
-    decomp = set()
+    pass
 lines = [BEGIN]
 for r in rows:
     start = int(r['start'], 16) - TEXT_VRAM
@@ -35,8 +42,8 @@ drows = list(csv.DictReader(open('config/data_tus.csv')))
 dlines = [DBEGIN]
 for r in drows:
     vram, typ = int(r['start'], 16), SPLAT_TYPE[r['section']]
-    if typ == 'rodata' and r['tu'] in decomp:
-        typ = '.rodata'  # C TU: rodata migrates into each function's INCLUDE_ASM file / comes from the C object
+    if (typ == 'rodata' and r['tu'] in decomp) or r['tu'] in decomp_data:
+        typ = '.' + typ  # comes from the C object (rodata used by one INCLUDE_ASM'd function migrates into it)
     if typ in ('sbss', 'bss'):
         dlines.append(f"      - {{ type: {typ}, vram: 0x{vram:08X}, name: {r['tu']} }}")
     else:

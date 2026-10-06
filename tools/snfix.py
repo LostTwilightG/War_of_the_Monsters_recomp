@@ -14,6 +14,8 @@ Rules reproduced:
     `lui`/`%lo` (loads into a GPR use the destination as the temporary, everything else uses $at).
     Inside `.set nomacro` (gcc's filled delay slots) the access must be one instruction, so $gp is used.
     GNU as instead decides at the end of the file, which would make these differ.
+  * R5900 short-loop errata: a backward conditional branch closing a loop of fewer than 6 instructions
+    (label through branch) gets nops inserted before the branch until the loop is 6 long.
 
     python3 tools/snfix.py in.s out.s
 """
@@ -120,6 +122,45 @@ class Fixer:
         return [line]
 
 
+BRANCHES = {'beq', 'bne', 'beqz', 'bnez', 'blez', 'bgtz', 'bltz', 'bgez', 'beql', 'bnel', 'beqzl', 'bnezl',
+            'blezl', 'bgtzl', 'bltzl', 'bgezl', 'bc1t', 'bc1f', 'bc1tl', 'bc1fl', 'bc0t', 'bc0f'}
+SHORT_LOOP = 6
+
+
+def insn_count(op, args):
+    if op == 'li':
+        try:
+            v = parse_imm(args.split(',')[1])
+        except (ValueError, IndexError):
+            return 2
+        return 1 if -0x8000 <= v < 0x10000 else 2
+    return 1
+
+
+def pad_short_loops(lines):
+    """Insert nops before backward conditional branches that close loops shorter than SHORT_LOOP."""
+    labels = {}   # label -> instruction index
+    count = 0     # instructions emitted so far
+    out = []
+    for line in lines:
+        lm = LABEL.match(line)
+        if lm:
+            labels[lm.group(1)] = count
+        m = INSN.match(line) if not line.lstrip().startswith('.') and not lm else None
+        if m:
+            op, args = m.group(2), m.group(3)
+            target = args.split(',')[-1].strip() if args else ''
+            if op in BRANCHES and target in labels:
+                length = count - labels[target] + 1
+                if length < SHORT_LOOP:
+                    for _ in range(SHORT_LOOP - length):
+                        out.append('	nop')
+                        count += 1
+            count += insn_count(op, args or '')
+        out.append(line)
+    return out
+
+
 def main():
     src, dst = sys.argv[1], sys.argv[2]
     fixer = Fixer()
@@ -129,6 +170,7 @@ def main():
             out.extend(fixer.fix_line(line))
         except ValueError as e:
             sys.exit(f'{src}:{n}: {e}')
+    out = pad_short_loops(out)
     open(dst, 'w', encoding='latin1', newline='\n').write('\n'.join(out) + '\n')
 
 
