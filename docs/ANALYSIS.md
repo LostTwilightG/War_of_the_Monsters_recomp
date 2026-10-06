@@ -31,7 +31,26 @@
 
 ## Pendências
 - [ ] Identificar a versão exata do compilador (testar ee-gcc 2.95.x / 2.96 no decomp.me com uma função simples).
-- [ ] Dividir o `.text` em TUs (subsegments no yaml), separando libs da SCE e newlib (podem ser linkadas como blobs).
+- [x] Dividir o `.text` em TUs. São 336, e o rebuild continua fazendo match. Veja "Divisão em TUs" abaixo.
+- [ ] Dividir `.data`/`.rodata`/`.bss` por TU (hoje cada seção é um arquivo só).
 - [x] Ambiente Linux/WSL com binutils MIPS; rebuild do asm puro faz match do SHA1.
-  Observa��es: `-mabi=o64` no GAS (o spimdisasm usa nomes de registradores o32) e se��es alinhadas a 0x80 (`align: 0x80` no yaml).
+  Observações: `-mabi=o64` no GAS (o spimdisasm usa nomes de registradores o32) e seções alinhadas a 0x80 (`align: 0x80` no yaml).
 - [ ] Exportar tipos de `hieri.cpp` para headers.
+
+## Divisão em TUs
+- O gcc 2.x emite um label local `gcc2_compiled.` no início do `.text` de cada TU, seguido de
+  `__gnu_compiled_c` ou `__gnu_compiled_cplusplus`, o que dá limites exatos e a linguagem de cada TU.
+  As TUs de biblioteca têm o nome real no `.mdebug`.
+- `tools/find_tus.py` gera `config/tus.csv`, e `tools/apply_tus.py` reescreve os subsegments no yaml.
+- Distribuição: `game/` 112, `common/` 71 (engine, `C:\CLEAN\MONSTERRT\COMMON`), `lib989snd/` 1,
+  `gcc/` 21, `newlib/` 77, `sce/` 53 e `crt0`.
+- As TUs de `game/` são linkadas em **ordem alfabética, sem diferenciar maiúsculas** (wildcard do makefile).
+  Os nomes reais são desconhecidos: a coluna `source` do csv diz se o nome veio do `mdebug`,
+  de escolha `manual` (em `OVERRIDES`, guiada pela ordem alfabética) ou de `guess` (classe ou prefixo dominante).
+- Ajustes necessários para o match:
+  - `subalign: 4`, porque o GAS alinha o `.text` de cada objeto a 16, mas no original as TUs C ficam em 8
+    e os `.S` da newlib em 4.
+  - `reloc_addrs.txt` (gerado por `tools/gen_relocs.py`) força imediatos crus em 1.606 pares `%hi/%lo`
+    que o spimdisasm resolvia para o meio do `.text`. São offsets de struct grande (`lui 0x12`), como
+    `0x120380`, e não ponteiros.
+- `tools/symdiff.py` lista os símbolos que mudaram de endereço no ELF gerado, útil quando o checksum falha.
