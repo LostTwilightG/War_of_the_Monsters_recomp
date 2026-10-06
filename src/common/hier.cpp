@@ -13,6 +13,8 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+_lightenv *lightGetEnv(int);
+void mathfUnitMatrix(float (*m)[4]);
 extern _worldctx *world;
 extern _cs *gCs;
 extern float (*matStack)[4];
@@ -183,7 +185,44 @@ void hierSetTraversalCallback(TravCb cb)
 {
     gTraversalCallback = cb;
 }
+#ifdef NON_MATCHING
+/* 30/51 words: store scheduling and constant register choice differ */
+void hierInitCs(_cs *cs)
+{
+    cs->epNode = 0;
+    cs->lightEnv = lightGetEnv(0);
+    cs->drawMe = 0;
+    cs->testCollision = 0;
+    cs->inFov = 0;
+    cs->scaleMe = 0;
+    cs->next = 0;
+    cs->rot.x = 0;
+    cs->rot.y = 0;
+    cs->rot.z = 0;
+    cs->color.chan.a = 0x80;
+    cs->color.chan.r = 0x80;
+    cs->color.chan.g = 0x80;
+    cs->color.chan.b = 0x80;
+    mathfUnitMatrix((float (*)[4])&cs->mat);
+    cs->cloakWeight = 16.0f;
+    cs->minCellRow = 0x7FFFFFFF;
+    cs->maxCellRow = 0x80000001;
+    cs->colorQuad.fVec[3] = 1.0f;
+    cs->lightMe = 1;
+    cs->trans.x = 0;
+    cs->trans.y = 0;
+    cs->trans.z = 0;
+    cs->minCellCol = 0x7FFFFFFF;
+    cs->maxCellCol = 0x80000001;
+    cs->colorQuad.fVec[0] = 1.0f;
+    cs->colorQuad.fVec[1] = 1.0f;
+    cs->colorQuad.fVec[2] = 1.0f;
+    cs->ptLightMe = 0;
+    cs->cloakMe = 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierInitCs__FP3_cs);
+#endif
 void hierSetSwitch(_hierswitch *sw, int which)
 {
     if (sw && sw->head.opcode == 6 && which < sw->numKids)
