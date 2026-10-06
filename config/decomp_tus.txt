@@ -3,3 +3,18 @@
 common/zip +data
 game/CrushLevel
 common/hier
+common/ctx
+common/light
+common/MemoryStack
+common/readbuf
+common/CsColor
+common/bound
+common/ilnk
+common/td
+common/ColGrid
+common/chain
+common/GsPkt
+common/hdHat
+common/vu
+common/vo
+common/hdLos
