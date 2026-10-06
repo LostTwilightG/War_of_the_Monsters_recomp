@@ -15,6 +15,23 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+struct LensFlareEnt {
+    float pos[3];
+    unsigned id;
+    union {
+        int w10;
+        unsigned char b10;
+    };
+    float f14;
+    float f18;
+    float f1c;
+    float r;
+    float g;
+    float b;
+    float intensity;
+};
+extern int lensFlareListIndex;
+extern LensFlareEnt *lensFlareListPtr;
 extern float hierClipRange;
 void ctxSetUpGSCtx(void);
 int particleCreateModeledFx(_fvector *, HierParticleEmitter *);
@@ -348,7 +365,137 @@ extern "C" void hierSkelBoneNode(_hierSkelBone *bone, unsigned short *boneIdx, s
         addSkelMat((float (*)[4][4])&m, *matIdx);
     }
 }
+#ifdef NON_MATCHING
+/* 53/141 words: 1.0f/len is built via $at and divided into $f4; retail goes through $v0 and divides into $f1 */
+extern "C" void hierLightNode(HierLight *l, int view, int idx)
+{
+    QwData eo;
+    _fvector out;
+    _fvector nrm;
+    _fvector out2;
+    _fvector *t;
+    char *m;
+
+    if (l->flag.isOn && l->flag.hasLensFlare && lensFlareListIndex < 0x4A && lensFlareListPtr) {
+        vu0GetEoAsm(&eo);
+        __asm__ volatile("lqc2 $vf11, 0x0(%1)
+	"
+                         "lqc2 $vf12, 0x0(%2)
+	"
+                         "vadd.xyz $vf11, $vf11, $vf12
+	"
+                         "sqc2 $vf11, %0"
+                         : "=m"(eo) : "r"(&eo), "r"(&l->position));
+        m = (char *)(idx * 64) + (unsigned)matStack;
+        __asm__ volatile("lqc2 $vf11, %1
+	"
+                         "lqc2 $vf12, 0x0(%2)
+	"
+                         "lqc2 $vf13, 0x10(%2)
+	"
+                         "lqc2 $vf14, 0x20(%2)
+	"
+                         "vmulax.xyz $ACC, $vf12, $vf11x
+	"
+                         "vmadday.xyz $ACC, $vf13, $vf11y
+	"
+                         "vmaddz.xyz $vf11, $vf14, $vf11z
+	"
+                         "sqc2 $vf11, %0"
+                         : "=m"(out) : "m"(eo), "r"(m));
+        t = viewGetTrans(view);
+        __asm__ volatile("lqc2 $vf11, 0x0(%1)
+	"
+                         "lqc2 $vf12, 0x0(%2)
+	"
+                         "vadd.xyz $vf11, $vf11, $vf12
+	"
+                         "sqc2 $vf11, 0x0(%3)"
+                         : "=m"(*lensFlareListPtr) : "r"(&out), "r"(t), "r"(lensFlareListPtr));
+        register float x __asm__("$f2");
+        register float y __asm__("$f3");
+        register float z __asm__("$f0");
+        register float len __asm__("$f4");
+        __asm__ volatile("lwc1 %0, %4
+	"
+                         "lwc1 %1, %5
+	"
+                         "lwc1 %2, %6
+	"
+                         "mula.s %0, %0
+	"
+                         "madda.s %1, %1
+	"
+                         "madd.s %3, %2, %2
+	"
+                         ".word 0x46040104"
+                         : "=f"(x), "=f"(y), "=f"(z), "=f"(len) : "m"(out.x), "m"(out.y), "m"(out.z));
+        {
+            float inv = 1.0f / len;
+
+            nrm.z = z * inv;
+            nrm.x = x * inv;
+            nrm.y = y * inv;
+        }
+        if (!l->flag.lightAtInfinity) {
+            if (l->flag.isDirectional) {
+                register float nx __asm__("$f1");
+                register float ox __asm__("$f5");
+                register float ny __asm__("$f4");
+                register float oy __asm__("$f3");
+                register float nz __asm__("$f2");
+                register float oz __asm__("$f0");
+
+                m = (char *)(idx * 64) + (unsigned)matStack;
+                __asm__ volatile("lqc2 $vf11, 0x0(%1)
+	"
+                                 "lqc2 $vf12, 0x0(%2)
+	"
+                                 "lqc2 $vf13, 0x10(%2)
+	"
+                                 "lqc2 $vf14, 0x20(%2)
+	"
+                                 "vmulax.xyz $ACC, $vf12, $vf11x
+	"
+                                 "vmadday.xyz $ACC, $vf13, $vf11y
+	"
+                                 "vmaddz.xyz $vf11, $vf14, $vf11z
+	"
+                                 "sqc2 $vf11, %0"
+                                 : "=m"(out2) : "r"(&l->beamNormal), "r"(m));
+                __asm__ volatile("lwc1 %0, %1" : "=f"(nx) : "m"(nrm.x));
+                __asm__ volatile("lwc1 %0, %1" : "=f"(ox) : "m"(out2.x));
+                __asm__ volatile("lwc1 %0, %1" : "=f"(ny) : "m"(nrm.y));
+                __asm__ volatile("lwc1 %0, %1" : "=f"(oy) : "m"(out2.y));
+                __asm__ volatile("lwc1 %0, %1" : "=f"(nz) : "m"(nrm.z));
+                __asm__ volatile("lwc1 %0, %1" : "=f"(oz) : "m"(out2.z));
+                __asm__ volatile("mula.s %1, %2
+	"
+                                 "madda.s %3, %4
+	"
+                                 "madd.s %0, %5, %6"
+                                 : "=f"(nx) : "0"(nx), "f"(ox), "f"(ny), "f"(oy), "f"(nz), "f"(oz));
+                lensFlareListPtr->f18 = -nx;
+                lensFlareListPtr->f1c = l->beamWidth;
+            } else {
+                lensFlareListPtr->f1c = 0;
+                lensFlareListPtr->f18 = 1.0f;
+            }
+        }
+        lensFlareListPtr->w10 = 0;
+        lensFlareListPtr->r = l->lightRed;
+        lensFlareListPtr->g = l->lightGreen;
+        lensFlareListPtr->b = l->lightBlue;
+        lensFlareListPtr->id = l->head.id2;
+        lensFlareListPtr->intensity = l->intensity;
+        lensFlareListPtr->b10 = (unsigned char)l->flags;
+        lensFlareListPtr++;
+        lensFlareListIndex++;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierLightNode);
+#endif
 extern "C" void hierParticleNode(HierParticleEmitter *pe, int view, int idx)
 {
     QwData eo;
