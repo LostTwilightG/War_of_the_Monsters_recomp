@@ -15,6 +15,9 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+void mathfMulVec(float (*m)[4], _fvector *v, _fvector *out);
+void vu0MulMatrix3x3(float (*dst)[4], float (*a)[4], float (*b)[4]);
+void vu0MulMatrix3x3_1(float (*dst)[4], float (*a)[4], float (*b)[4]);
 void mathfMulMatrix(float (*dst)[4], float (*a)[4], float (*b)[4]);
 _hierSkelBone *skelGetRoot(int);
 float (*skelGetSkelMat(int))[4][4];
@@ -171,7 +174,19 @@ void hierLoadVu0Ucode(void)
     *(volatile unsigned *)0x1000E010 = 1;
     *(volatile unsigned *)0x10008000 = 0x145;
 }
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierCsUpdate__FP3_csP9_worldctxP9_lightenvP8_fvector);
+void hierCsUpdate(_cs *cs, _worldctx *wc, _lightenv *le, _fvector *out)
+{
+    _fvector v;
+
+    v.x = wc->eo.x + cs->trans.x;
+    v.y = wc->eo.y + cs->trans.y;
+    v.z = wc->eo.z + cs->trans.z;
+    mathfMulVec((float (*)[4])&cs->mat, &v, out);
+    vu0CopyMatrix(matStack, (float (*)[4])&cs->mat);
+    vu0MulMatrix3x3(fovNorms, (float (*)[4])&cs->mat, (float (*)[4])wc->fovNorms[0]);
+    vu0MulMatrix3x3(fovNorms1, (float (*)[4])&cs->mat, (float (*)[4])wc->fovNorms[1]);
+    vu0MulMatrix3x3_1(lightDir, (float (*)[4])&cs->mat, plightGetParaLight());
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", vu0MulMatrix3x3_1__FPA3_fN20);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierPush__FPP9_hierheadiUiUiPUifP17_animCharInstanceii);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierTranslateSkel);
