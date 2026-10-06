@@ -24,6 +24,7 @@ extern "C" {
 int printf(const char *, ...);
 void *malloc(unsigned int);
 void free(void *);
+void *memcpy(void *, const void *, unsigned int);
 }
 int fileReads(char *name, void *buf, unsigned int block);
 
@@ -58,7 +59,6 @@ unsigned long G_crc32val = 0;
 struct huft *G_fixedTlen = 0;
 char *G_FileName = 0;
 void *G_FileAddr = 0;
-extern unsigned char *outFileWindow;
 int tmpLong;
 unsigned long G_outSize;
 struct huft *G_fixedTdist;
@@ -67,6 +67,7 @@ int G_fixedBdist;
 int howManyBlocks;
 unsigned char *zipFileBuf;
 unsigned char *outFileBuf;
+unsigned char *outFileWindow = outFileBuf;
 
 /* zlib crc32 */
 #define DO1(buf) crc = tab[((int)crc ^ (*buf++)) & 0xff] ^ (crc >> 8);
@@ -124,7 +125,98 @@ int zipCheckHeader(void)
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipCheckHeader__Fv);
 #endif
 
-INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateCodes__FP4huftT0ii);
+/* inflate (decompress) the codes in a deflated (compressed) block until an end-of-block code */
+int zipInflateCodes(struct huft *tl, struct huft *td, int bl, int bd)
+{
+    unsigned e;      /* table entry flag/number of extra bits */
+    unsigned n, d;   /* length and index for copy */
+    unsigned w;      /* current window position */
+    struct huft *t;  /* pointer to table entry */
+    unsigned ml, md; /* masks for bl and bd bits */
+    unsigned long b; /* bit buffer */
+    unsigned k;      /* number of bits in bit buffer */
+    int r = 0;
+
+    b = G_bitBucket;
+    k = G_bitCount;
+    w = G_windowPos;
+
+    ml = mask_bits[bl];
+    md = mask_bits[bd];
+    for (;;) {
+        NEEDBITS((unsigned)bl)
+        if ((e = (t = tl + ((unsigned)b & ml))->e) > 16)
+            do {
+                if (e == 99)
+                    return 1;
+                DUMPBITS(t->b)
+                e -= 16;
+                NEEDBITS(e)
+            } while ((e = (t = t->v.t + ((unsigned)b & mask_bits[e]))->e) > 16);
+        DUMPBITS(t->b)
+        if (e == 16) { /* then it's a literal */
+            outFileBuf[w++] = (unsigned char)t->v.n;
+            if (w == WSIZE) {
+                r = zipFlush(w);
+                if (r != 0)
+                    return r;
+                w = 0;
+            }
+        } else { /* it's an EOB or a length */
+            if (e == 15)
+                break;
+
+            /* get length of block to copy */
+            NEEDBITS(e)
+            n = t->v.n + ((unsigned)b & mask_bits[e]);
+            DUMPBITS(e)
+
+            /* decode distance of block to copy */
+            NEEDBITS((unsigned)bd)
+            if ((e = (t = td + ((unsigned)b & md))->e) > 16)
+                do {
+                    if (e == 99)
+                        return 1;
+                    DUMPBITS(t->b)
+                    e -= 16;
+                    NEEDBITS(e)
+                } while ((e = (t = t->v.t + ((unsigned)b & mask_bits[e]))->e) > 16);
+            DUMPBITS(t->b)
+            NEEDBITS(e)
+            d = w - t->v.n - ((unsigned)b & mask_bits[e]);
+            DUMPBITS(e)
+
+            /* do the copy; the window before the current one sits right below outFileBuf */
+            do {
+                if ((d &= WSIZE - 1) >= w)
+                    outFileWindow = outFileBuf - WSIZE;
+                else
+                    outFileWindow = outFileBuf;
+                n -= (e = (e = WSIZE - (d > w ? d : w)) > n ? n : e);
+                if (w - d >= e) {
+                    memcpy(outFileBuf + w, outFileWindow + d, e);
+                    w += e;
+                    d += e;
+                } else {
+                    do {
+                        outFileBuf[w++] = outFileWindow[d++];
+                    } while (--e);
+                }
+                if (w == WSIZE) {
+                    r = zipFlush(w);
+                    if (r != 0)
+                        return r;
+                    w = 0;
+                }
+            } while (n);
+        }
+    }
+
+    G_windowPos = w;
+    G_bitBucket = b;
+    G_bitCount = k;
+    return r;
+}
 
 int zipFreeHuffmanTable(struct huft *t)
 {
@@ -400,5 +492,3 @@ const unsigned long crc_32_tab[256] = {
     0xb3667a2eL, 0xc4614ab8L, 0x5d681b02L, 0x2a6f2b94L,
     0xb40bbe37L, 0xc30c8ea1L, 0x5a05df1bL, 0x2d02ef8dL,
 };
-
-unsigned char *outFileWindow = outFileBuf;
