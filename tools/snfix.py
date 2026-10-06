@@ -55,6 +55,11 @@ def expand_dli(rd, value):
         return [f'li {rd},{signed:#x}']  # 32-bit li: same expansion in both assemblers
     if value == 0xFFFFFFFF:
         return [f'addiu {rd},$0,-1', f'dsrl32 {rd},{rd},0']
+    h = value.bit_length() - 1
+    if value > 0 and h >= 15 and value & ((1 << (h - 15)) - 1) == 0:
+        # a 16-bit constant (top bit set) shifted left: ps2eeas emits ori + dsll/dsll32, e.g. 1 << 36 -> 0x8000 << 21
+        k, n = value >> (h - 15), h - 15
+        return [f'ori {rd},$0,{k:#x}', f'dsll {rd},{rd},{n}' if n < 32 else f'dsll32 {rd},{rd},{n - 32}']
     raise ValueError(f'snfix: no known SN expansion for dli {rd},{value:#x}')
 
 

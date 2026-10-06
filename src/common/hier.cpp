@@ -15,6 +15,8 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+int particleCreateModeledFx(_fvector *, HierParticleEmitter *);
+void hierRegisterLocator(unsigned id, int fx);
 void hierPush(_hierhead **, int, unsigned, unsigned, unsigned *, float, _animCharInstance *, int, int);
 extern int eoCnt;
 extern int lastEoCnt;
@@ -344,7 +346,104 @@ extern "C" void hierSkelBoneNode(_hierSkelBone *bone, unsigned short *boneIdx, s
     }
 }
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierLightNode);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierParticleNode);
+extern "C" void hierParticleNode(HierParticleEmitter *pe, int view, int idx)
+{
+    QwData eo;
+    _fvector out;
+    _fvector *t;
+
+    if (pe->flag.isActivated) {
+        if (pe->flag.isMoving) {
+            char *m = (char *)(idx * 64) + (unsigned)matStack;
+            QwData *dst = (QwData *)&pe->cachedOrientation;
+
+            __asm__ volatile("lq $8, 0x0(%4)
+	"
+                             "lq $9, 0x10(%4)
+	"
+                             "lq $10, 0x20(%4)
+	"
+                             "lq $11, 0x30(%4)
+	"
+                             "sq $8, %0
+	"
+                             "sq $9, %1
+	"
+                             "sq $10, %2
+	"
+                             "sq $11, %3"
+                             : "=m"(dst[0]), "=m"(dst[1]), "=m"(dst[2]), "=m"(dst[3]) : "r"(m) : "$8", "$9", "$10", "$11");
+            vu0GetEoAsm(&eo);
+            idx = idx * 64 + (unsigned)matStack;
+            m = (char *)idx;
+            __asm__ volatile("lqc2 $vf11, %1
+	"
+                             "lqc2 $vf12, 0x0(%2)
+	"
+                             "lqc2 $vf13, 0x10(%2)
+	"
+                             "lqc2 $vf14, 0x20(%2)
+	"
+                             "vmulax.xyz $ACC, $vf12, $vf11x
+	"
+                             "vmadday.xyz $ACC, $vf13, $vf11y
+	"
+                             "vmaddz.xyz $vf11, $vf14, $vf11z
+	"
+                             "sqc2 $vf11, %0"
+                             : "=m"(out) : "m"(eo), "r"(m));
+            t = viewGetTrans(view);
+            __asm__ volatile("lqc2 $vf11, 0x0(%1)
+	"
+                             "lqc2 $vf12, 0x0(%2)
+	"
+                             "vadd.xyz $vf11, $vf11, $vf12
+	"
+                             "sqc2 $vf11, 0xA0(%3)"
+                             : "=m"(pe->cachedPosition) : "r"(&out), "r"(t), "r"(pe));
+            pe->cachedPosition.w = 1.0f;
+        }
+    } else {
+        vu0GetEoAsm(&eo);
+        __asm__ volatile("lqc2 $vf11, 0x0(%1)
+	"
+                         "lqc2 $vf12, 0x0(%2)
+	"
+                         "vadd.xyz $vf11, $vf11, $vf12
+	"
+                         "sqc2 $vf11, %0"
+                         : "=m"(eo) : "r"(&eo), "r"(&pe->position));
+        char *m = (char *)(idx * 64) + (unsigned)matStack;
+        __asm__ volatile("lqc2 $vf11, %1
+	"
+                         "lqc2 $vf12, 0x0(%2)
+	"
+                         "lqc2 $vf13, 0x10(%2)
+	"
+                         "lqc2 $vf14, 0x20(%2)
+	"
+                         "vmulax.xyz $ACC, $vf12, $vf11x
+	"
+                         "vmadday.xyz $ACC, $vf13, $vf11y
+	"
+                         "vmaddz.xyz $vf11, $vf14, $vf11z
+	"
+                         "sqc2 $vf11, %0"
+                         : "=m"(out) : "m"(eo), "r"(m));
+        t = viewGetTrans(view);
+        __asm__ volatile("lqc2 $vf11, 0x0(%1)
+	"
+                         "lqc2 $vf12, 0x0(%2)
+	"
+                         "vadd.xyz $vf11, $vf11, $vf12
+	"
+                         "sqc2 $vf11, %0"
+                         : "=m"(out) : "r"(&out), "r"(t));
+        int fx = particleCreateModeledFx(&out, pe);
+        hierRegisterLocator(pe->head.id1, fx);
+        pe->flag.isActivated = 1;
+    }
+}
 void hierShadow(int ctx, int arg)
 {
     _fvector eo;
