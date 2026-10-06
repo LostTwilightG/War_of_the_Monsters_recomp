@@ -186,7 +186,42 @@ int zipInflateBlockStored(void)
     return r;
 }
 
-INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateBlockFixed__Fv);
+/* decompress an inflated type 1 (fixed Huffman codes) block */
+int zipInflateBlockFixed(void)
+{
+    /* if first time, set up tables for fixed blocks */
+    if (G_fixedTlen == NULL) {
+        int i;
+        unsigned l[288]; /* length list for zipBuildHuffmanTable */
+
+        for (i = 0; i < 144; i++)
+            l[i] = 8;
+        for (; i < 256; i++)
+            l[i] = 9;
+        for (; i < 280; i++)
+            l[i] = 7;
+        for (; i < 288; i++) /* make a complete, but wrong code set */
+            l[i] = 8;
+        G_fixedBlen = 7;
+        if ((i = zipBuildHuffmanTable(l, 288, 257, c_plens, c_plext, &G_fixedTlen, &G_fixedBlen)) != 0) {
+            G_fixedTlen = NULL;
+            return i;
+        }
+
+        for (i = 0; i < 30; i++) /* make an incomplete code set */
+            l[i] = 5;
+        G_fixedBdist = 5;
+        if ((i = zipBuildHuffmanTable(l, 30, 0, c_pdist, c_pdext, &G_fixedTdist, &G_fixedBdist)) > 1) {
+            zipFreeHuffmanTable(G_fixedTlen);
+            G_fixedTlen = NULL;
+            G_fixedTdist = NULL;
+            return i;
+        }
+    }
+
+    /* decompress until an end-of-block code */
+    return zipInflateCodes(G_fixedTlen, G_fixedTdist, G_fixedBlen, G_fixedBdist);
+}
 
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateBlockDynamic__Fv);
 
