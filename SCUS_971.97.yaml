@@ -41,7 +41,7 @@ options:
   rodata_string_guesser_level: 2
   data_string_guesser_level: 2
 
-  named_regs_for_c_funcs: False
+  named_regs_for_c_funcs: True
 
   section_order:
     - .text
