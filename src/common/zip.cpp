@@ -25,7 +25,7 @@ int printf(const char *, ...);
 void *malloc(unsigned int);
 void free(void *);
 }
-void fileReads(char *name, void *buf, unsigned int block);
+int fileReads(char *name, void *buf, unsigned int block);
 
 unsigned long zipCrc32(unsigned long crc, const unsigned char *buf, long len);
 int zipFlush(unsigned long w);
@@ -176,7 +176,45 @@ int zipInflateBlock(int *e)
     return 2;
 }
 
-INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateAll__FPcPv);
+/* decompress the zip file `name` to `dest`; returns the uncompressed size, 0 on failure */
+int zipInflateAll(char *name, void *dest)
+{
+    int e = 0;
+    int r;
+    int size;
+
+    G_FileName = name;
+    G_FileAddr = dest;
+    G_bitBucket = 0;
+    G_bitCount = 0;
+    G_windowPos = 0;
+    whichHalfMeg = 0;
+    outFileBuf = (unsigned char *)dest;
+    outFileWindow = (unsigned char *)dest;
+    printf("ZIP:- I received a request to unzip %s to %p.
+", name, dest);
+
+    if (!fileReads(name, ZIP_BUF, whichHalfMeg++)) {
+        printf("Couldn't read the file, \"%s\" into 0x%p
+", name, ZIP_BUF);
+        return 0;
+    }
+    size = zipCheckHeader();
+    if (size == 0) {
+        printf("Header was screwed up, not a valid zip file.
+");
+        return 0;
+    }
+    howManyBlocks = 0;
+    do {
+        howManyBlocks++;
+        r = zipInflateBlock(&e);
+        if (r != 0)
+            return r;
+    } while (!e);
+    zipFlush(G_windowPos);
+    return size;
+}
 
 #ifdef NON_MATCHING
 /* register allocation differs: the reload constant lands in $v0 instead of $v1 */
