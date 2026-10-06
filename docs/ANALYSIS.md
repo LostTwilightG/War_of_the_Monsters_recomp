@@ -79,3 +79,22 @@
   intervalo possível. Não afetam o match, mas podem precisar de ajuste ao descompilar.
 - TUs em `config/decomp_tus.txt` usam `.rodata` (com ponto): a rodata usada por uma única função migra
   para o `.s` da função (INCLUDE_ASM), e a rodata compartilhada precisa ser definida no C/C++.
+
+## Piloto de descompilação (2026-10-05)
+| TU | Funções | Match | Tempo | Observação |
+|---|---|---|---|---|
+| `common/zip` | 14 (7.100 B) | 12 (6.840 B) | ~50 min | fonte de referência conhecida (gzip / Info-ZIP); inclui ~15-20 min de descobertas de toolchain |
+| `game/CrushLevel` | 5 (1.136 B) | 4 (+1 a ~95%) | ~20 min | sem fonte de referência; exigiu layouts parciais de `TheGame`/`Monster` |
+
+As 3 funções que não deram match esbarraram em **alocação de registradores/escalonamento**, não em lógica.
+Um decomp-permuter deve resolver boa parte desses casos.
+
+### Regras de codegen aprendidas
+- `ps2eeas` decide `$gp` vs `lui` numa passada só (veja Toolchain); por isso a **ordem de definição das globais** importa.
+- g++ 2.95: globais com inicializador (inclusive dinâmico) são emitidas na definição; as sem inicializador vão
+  para o fim do arquivo, em ordem de primeira declaração. `static const` de header só é emitido se usado, no fim.
+- Literais de string de até 8 bytes vão para `.sdata` (`-G8`).
+- R5900 short-loop: loops com menos de 6 instruções recebem `nop`s (o `snfix` faz isso; delay slots em `reorder` contam).
+- O escalonador tende a emitir instruções independentes na **ordem inversa** do fonte (ex.: stores consecutivos).
+- Store em campo `char` força recarregar globais (alias com tudo); campos `int` não.
+- O `zipCheckHeader` e o `zipGetChar` ficaram `NON_MATCHING` (registradores).

@@ -99,7 +99,7 @@ segments:
       - [0x022A80, asm, game/charreset]  # c++, 4 funcs, name: guess
       - [0x026620, asm, game/charreset_2]  # c++, 1 funcs, name: guess
       - [0x02B158, asm, game/collision]  # c++, 6 funcs, name: manual
-      - [0x02DFA8, asm, game/CrushLevel]  # c++, 5 funcs, name: guess
+      - [0x02DFA8, cpp, game/CrushLevel]  # c++, 5 funcs, name: guess
       - [0x02E418, asm, game/db]  # c++, 4 funcs, name: guess
       - [0x02EAC8, asm, game/DodgeBallLevel]  # c++, 5 funcs, name: guess
       - [0x02F1B8, asm, game/Debris]  # c++, 10 funcs, name: guess
@@ -530,7 +530,7 @@ segments:
       - [0x5E8B10, rodata, game/CarPickup]
       - [0x5E8B90, rodata, game/charreset]
       - [0x5E8C50, rodata, game/charreset_2]
-      - [0x5E8D70, rodata, game/CrushLevel]
+      - [0x5E8D70, .rodata, game/CrushLevel]
       - [0x5E8E60, rodata, game/db]
       - [0x5E8E90, rodata, game/Debris]
       - [0x5E8F60, rodata, game/Destructible]
