@@ -98,6 +98,12 @@ Um decomp-permuter deve resolver boa parte desses casos.
 - O escalonador tende a emitir instruções independentes na **ordem inversa** do fonte (ex.: stores consecutivos).
 - Store em campo `char` força recarregar globais (alias com tudo); campos `int` não.
 - O `zipCheckHeader` e o `zipGetChar` ficaram `NON_MATCHING` (registradores).
+- Corpo que termina em `asm` inline: o gcc deixa o delay slot para o assembler. O `ps2eeas` põe um `nop`; o GNU as puxa
+  a última instrução do `asm` para o slot. O `snfix` reproduz o `nop` (`.set noreorder` em volta do `j`).
+- Matrizes: `A3_A3_f` no nome mangled é `float[4][4]` (o gcc 2.x grava tamanho-1). Cópias de 64 B com `lq/sq t0..t3` são `asm` inline.
+- `ptr = (char *)(idx * 64) + (unsigned)base` produz `addu a1,a1,v0` (resultado no registrador de `idx`); `&base[idx]` não.
+- Os `.s` por função do splat divergem dos monolíticos (`ACC` sem `$`, `%lo(sym + (0x44000 & 0xFFFF))` sem o carry do `%hi`);
+  o `configure.py` corrige os dois depois do split.
 
 ## Fronteira com o hardware (primeira passada)
 `tools/hw_boundary.py` gera `config/hw_boundary.csv` com, por TU, chamadas ao SDK, acessos a registradores

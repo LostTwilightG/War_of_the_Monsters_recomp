@@ -61,6 +61,8 @@ class Fixer:
         self.section = '.text'
         self.nomacro = False
         self.small = set()  # symbols seen defined in .sdata/.sbss so far
+        self.reorder = True
+        self.after_asm = False  # previous line was #NO_APP
 
     def directive(self, line):
         s = line.strip()
@@ -75,6 +77,8 @@ class Fixer:
                 self.nomacro = True
             elif parts[1].strip() == 'macro':
                 self.nomacro = False
+            elif parts[1].strip() in ('reorder', 'noreorder'):
+                self.reorder = parts[1].strip() == 'reorder'
 
     def sym_access(self, indent, op, reg, expr):
         m = SYMEXPR.match(expr)
@@ -96,6 +100,9 @@ class Fixer:
         return out
 
     def fix_line(self, line):
+        after_asm = self.after_asm
+        if line.strip():
+            self.after_asm = line.strip() == '#NO_APP'
         lm = LABEL.match(line)
         if lm and self.section in ('.sdata', '.sbss'):
             self.small.add(lm.group(1))
@@ -106,6 +113,10 @@ class Fixer:
         if not m:
             return [line]
         indent, op, args, comment = m.groups()
+        if after_asm and self.reorder and op in JUMPS and op != 'jal':
+            # gcc leaves the delay slot to the assembler after an asm block; the SN assembler puts a nop there,
+            # GNU as would pull the last instruction of the asm into it
+            return [f'{indent}.set	noreorder', line, f'{indent}nop', f'{indent}.set	reorder']
         ops = [a.strip() for a in args.split(',')] if args else []
         if op == 'move' and len(ops) == 2:
             return [f'{indent}daddu\t{ops[0]},{ops[1]},$0']

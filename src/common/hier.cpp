@@ -1,9 +1,40 @@
 #include "common.h"
 #include "hieri_types.h"
 
+struct Mat4 {
+    float m[4][4];
+} __attribute__ ((aligned (16)));
+
+extern _hierSkelBone **skelStack;
+extern float (*skelMatStack)[4][4];
+extern int g_cameraLosPointsPerView[5];
+
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierGetLastGSCtx__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/hier", addSkeleton__FP13_hierSkelBonei);
-INCLUDE_ASM("asm/nonmatchings/common/hier", addSkelMat__FPA3_A3_fi);
+void addSkeleton(_hierSkelBone *bone, int idx)
+{
+    skelStack[idx] = bone;
+}
+void addSkelMat(float (*mat)[4][4], int idx)
+{
+    char *dst = (char *)(idx * 64) + (unsigned)skelMatStack;
+
+    __asm__ volatile("lq $8, 0x0(%0)
+	"
+                     "lq $9, 0x10(%0)
+	"
+                     "lq $10, 0x20(%0)
+	"
+                     "lq $11, 0x30(%0)
+	"
+                     "sq $8, 0x0(%1)
+	"
+                     "sq $9, 0x10(%1)
+	"
+                     "sq $10, 0x20(%1)
+	"
+                     "sq $11, 0x30(%1)"
+                     : : "r"(mat), "r"(dst) : "$8", "$9", "$10", "$11", "memory");
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", skelGetRoot__Fi);
 INCLUDE_ASM("asm/nonmatchings/common/hier", skelGetSkelMat__Fi);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hier__Fii);
@@ -37,14 +68,30 @@ INCLUDE_ASM("asm/nonmatchings/common/hier", vu0MulEoForObj__FPA3_f);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierLod__FP8_hierlodfPP9_hierheadP10_hierstack);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierCtrlNode);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierInit__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierDisableFov__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierSetCsEpNode__FP3_csP9_hierhead);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierSetCsDrawMe__FP3_csUc);
+void hierDisableFov(void)
+{
+}
+void hierSetCsEpNode(_cs *cs, _hierhead *ep)
+{
+    cs->epNode = ep;
+}
+void hierSetCsDrawMe(_cs *cs, unsigned char drawMe)
+{
+    if (cs)
+        cs->drawMe = drawMe;
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierSetTraversalCallback__FPFP3_csUiUiRA3_A3_fP8_fvector_v);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierInitCs__FP3_cs);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierSetSwitch__FP11_hierswitchi);
+void hierSetSwitch(_hierswitch *sw, int which)
+{
+    if (sw && sw->head.opcode == 6 && which < sw->numKids)
+        sw->whichChild = which;
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierSetCameraLosPoint__FP8_fvectorii);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierSetLosPointsPerView__Fii);
+void hierSetLosPointsPerView(int idx, int points)
+{
+    g_cameraLosPointsPerView[idx] = points;
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierSetCamera);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierKillLocator);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierRegisterLocator__FUii);
