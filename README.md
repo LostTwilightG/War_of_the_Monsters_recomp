@@ -1,4 +1,6 @@
-# WoTM decomp
+<img width="2113" height="744" alt="War of The Monsters recompiled LOGO" src="https://github.com/user-attachments/assets/6160bebd-48f0-47b5-bd28-f74d23c662fd" />
+
+# War of the Monsters Recompiled!
 
 Projeto de decompilação/recompilação de **War of the Monsters** (PS2, NTSC-U, SCUS-97197).
 
