@@ -20,3 +20,4 @@ __pycache__/
 .vscode/
 build.ninja
 .ninja_*
+tools/cc/

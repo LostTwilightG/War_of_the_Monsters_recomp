@@ -30,7 +30,7 @@
 | 0x22D140 – 0x251020 | newlib (libm/libc), libs da SCE (libpad, libmc, libmpeg, libipu, libcdvd, libkernl) |
 
 ## Pendências
-- [ ] Identificar a versão exata do compilador (testar ee-gcc 2.95.x / 2.96 no decomp.me com uma função simples).
+- [x] Identificar o compilador: **SN Systems ProDG ee-gcc 2.95.2 (v2.73a) + assembler SN `ps2eeas`**, `-O2` (`-G8` no jogo e na engine). Veja "Toolchain".
 - [x] Dividir o `.text` em TUs. São 336, e o rebuild continua fazendo match. Veja "Divisão em TUs" abaixo.
 - [ ] Dividir `.data`/`.rodata`/`.bss` por TU (hoje cada seção é um arquivo só).
 - [x] Ambiente Linux/WSL com binutils MIPS; rebuild do asm puro faz match do SHA1.
@@ -54,3 +54,18 @@
     que o spimdisasm resolvia para o meio do `.text`. São offsets de struct grande (`lui 0x12`), como
     `0x120380`, e não ponteiros.
 - `tools/symdiff.py` lista os símbolos que mudaram de endereço no ELF gerado, útil quando o checksum falha.
+
+## Toolchain
+- Teste de referência: `zipCrc32__FUlPCUcl` (`common/zip`) é o `crc32` do zlib e dá match exato
+  (fonte em `tools/cctest/crc32_variants/localptr2.cpp`; o original usa um ponteiro local `tab`
+  declarado depois do teste `buf == 0`).
+- Todas as builds Sony 2.95.x (273a/274/3-107/3-114/3-136) e a SN v2.73a geram o **mesmo** `.s` aqui.
+  O que decide é o **assembler**: o `ps2eeas` da SN expande `dli r,0xffffffff` como
+  `addiu r,$0,-1; dsrl32 r,r,0`, e o GNU as (antigo ou moderno) usa `lui 0xffff`. Os símbolos
+  `sn_reg_frame`/`sn_dereg_frame` (libsn) confirmam o ProDG.
+- O `ps2eeas` não entende a sintaxe GNU do splat. Por isso o build compila com `-S`, reescreve as macros
+  do jeito da SN com `tools/snfix.py` e monta com `mips-linux-gnu-as`. Isso permite `INCLUDE_ASM`.
+  Macros sem expansão conhecida fazem o build falhar, em vez de gerar mismatch silencioso.
+- `tools/cc.sh` é o pipeline de compilação, e `tools/setup_toolchain.sh` baixa o compilador para `tools/cc/`.
+- `tools/ccmatch.py <src> "<flags>" [compiladores|project]` compila e compara cada função com o original.
+  `tools/wsl/objdiff.sh <func> <obj>` mostra o diff lado a lado.
