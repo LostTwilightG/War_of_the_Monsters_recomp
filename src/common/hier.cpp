@@ -15,6 +15,17 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+extern int eoCnt;
+extern int lastEoCnt;
+extern float shadowLodRangeSq;
+void psInitBlockerDMA(void);
+_cs *psIsBlockerCsActive(int);
+float psGetBlockerLodRangeSq(int);
+void psSetBlkLitPos(_fvector *, int);
+void psBldBlockerPkt(_fvector *, int, int);
+_cs *psBlockerHas2ndCS(int);
+void psEndBlkObjs(int);
+void psEndBlkDma(void);
 extern _worldctx worldCtx[5];
 extern int g_doFOVGroups;
 extern int g_dontTraverseObjects;
@@ -333,7 +344,38 @@ extern "C" void hierSkelBoneNode(_hierSkelBone *bone, unsigned short *boneIdx, s
 }
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierLightNode);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierParticleNode);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierShadow__Fii);
+void hierShadow(int ctx, int arg)
+{
+    _fvector eo;
+    _cs *cs;
+    int i;
+
+    tracingShadow = 1;
+    eoCnt = 0;
+    lastGsCtx = 0;
+    world = &worldCtx[ctx];
+    gCs = 0;
+    psInitBlockerDMA();
+    for (i = 0; i < 10; i++) {
+        cs = psIsBlockerCsActive(i);
+        if (cs && cs->drawMe && cs->epNode) {
+            lastEoCnt = 999999;
+            shadowLodRangeSq = psGetBlockerLodRangeSq(i);
+            gCs = cs;
+            psSetBlkLitPos(&world->eo, i);
+            psBldBlockerPkt(&world->eo, ctx, arg);
+            hierCsUpdate(cs, world, cs->lightEnv, &eo);
+            hierTraverseAsm(cs, &eo, ctx);
+            cs = psBlockerHas2ndCS(i);
+            if (cs) {
+                hierCsUpdate(cs, world, cs->lightEnv, &eo);
+                hierTraverseAsm(cs, &eo, ctx);
+            }
+            psEndBlkObjs(i);
+        }
+    }
+    psEndBlkDma();
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierCheckVifComplete__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierWaitForVif1__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/hier", vu0HierRotateAsm__FPA3_A3_fi);
