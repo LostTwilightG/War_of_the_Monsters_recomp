@@ -15,6 +15,13 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+void mathfMulMatrix(float (*dst)[4], float (*a)[4], float (*b)[4]);
+_hierSkelBone *skelGetRoot(int);
+float (*skelGetSkelMat(int))[4][4];
+extern "C" void sceGsSyncPath(int, int);
+extern "C" void FlushCache(int);
+extern char D_0025B890[];
+extern char D_00257C10[];
 void vu0GetEoAsm(QwData *);
 _fvector *viewGetTrans(int);
 _lightenv *lightGetEnv(int);
@@ -147,13 +154,39 @@ void hierTraceHPCsList(int mask)
 #else
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierTraceHPCsList__Fi);
 #endif
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierLoadVu1Ucode__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierLoadVu0Ucode__Fv);
+void hierLoadVu1Ucode(void)
+{
+    FlushCache(0);
+    sceGsSyncPath(0, 0);
+    *(volatile unsigned *)0x10009020 = 0;
+    *(volatile unsigned *)0x10009030 = (unsigned)D_00257C10 & 0xFFFFFFF;
+    *(volatile unsigned *)0x1000E010 = 2;
+    *(volatile unsigned *)0x10009000 = 0x145;
+}
+void hierLoadVu0Ucode(void)
+{
+    sceGsSyncPath(0, 0);
+    *(volatile unsigned *)0x10008020 = 0;
+    *(volatile unsigned *)0x10008030 = (unsigned)D_0025B890 & 0xFFFFFFF;
+    *(volatile unsigned *)0x1000E010 = 1;
+    *(volatile unsigned *)0x10008000 = 0x145;
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierCsUpdate__FP3_csP9_worldctxP9_lightenvP8_fvector);
 INCLUDE_ASM("asm/nonmatchings/common/hier", vu0MulMatrix3x3_1__FPA3_fN20);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierPush__FPP9_hierheadiUiUiPUifP17_animCharInstanceii);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierTranslateSkel);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierRotateSkel);
+extern "C" void hierRotateSkel(short *depth, short *matIdx, _animCharInstance *anim, _hierSkelBone *node)
+{
+    Mat4 m;
+    _hierSkelBone *root = skelGetRoot(*depth);
+    float (*sm)[4][4] = skelGetSkelMat(*matIdx);
+
+    mathfMulMatrix(m.m, (float (*)[4])&node->restPoseInv, (float (*)[4])sm);
+    addSkelMat((float (*)[4][4])&m, ++*matIdx);
+    if (root->skelOutputMatIdx >= 0)
+        mathfMulMatrix((float (*)[4])anim->animMatrixPtr[root->skelOutputMatIdx], (float (*)[4])&root->restPoseInv, m.m);
+    --*depth;
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierAnimTransNode);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierStartRotMatPRH);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierGetRotMatPRH);
