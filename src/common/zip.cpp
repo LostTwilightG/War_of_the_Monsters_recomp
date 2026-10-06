@@ -315,7 +315,139 @@ int zipInflateBlockFixed(void)
     return zipInflateCodes(G_fixedTlen, G_fixedTdist, G_fixedBlen, G_fixedBdist);
 }
 
-INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateBlockDynamic__Fv);
+/* decompress an inflated type 2 (dynamic Huffman codes) block (gzip 1.3 inflate_dynamic) */
+int zipInflateBlockDynamic(void)
+{
+    int i; /* temporary variables */
+    unsigned j;
+    unsigned l;        /* last length */
+    unsigned m;        /* mask for bit lengths table */
+    unsigned n;        /* number of lengths to get */
+    struct huft *tl;   /* literal/length code table */
+    struct huft *td;   /* distance code table */
+    int bl;            /* lookup bits for tl */
+    int bd;            /* lookup bits for td */
+    unsigned nb;       /* number of bit length codes */
+    unsigned nl;       /* number of literal/length codes */
+    unsigned nd;       /* number of distance codes */
+    unsigned ll[286 + 30]; /* literal/length and distance code lengths */
+    unsigned long b;   /* bit buffer */
+    unsigned k;        /* number of bits in bit buffer */
+
+    /* make local bit buffer */
+    b = G_bitBucket;
+    k = G_bitCount;
+
+    /* read in table lengths */
+    NEEDBITS(5)
+    nl = 257 + (b & mask_bits[5]); /* number of literal/length codes */
+    DUMPBITS(5)
+    NEEDBITS(5)
+    nd = 1 + (b & mask_bits[5]); /* number of distance codes */
+    DUMPBITS(5)
+    NEEDBITS(4)
+    nb = 4 + (b & mask_bits[4]); /* number of bit length codes */
+    DUMPBITS(4)
+    if (nl > 286 || nd > 30)
+        return 1; /* bad lengths */
+
+    /* read in bit-length-code lengths */
+    for (j = 0; j < nb; j++) {
+        NEEDBITS(3)
+        ll[c_border[j]] = b & 7;
+        DUMPBITS(3)
+    }
+    for (; j < 19; j++)
+        ll[c_border[j]] = 0;
+
+    /* build decoding table for trees--single level, 7 bit lookup */
+    bl = 7;
+    i = zipBuildHuffmanTable(ll, 19, 19, NULL, NULL, &tl, &bl);
+    if (bl == 0) /* no bit lengths */
+        i = 1;
+    if (i) {
+        if (i == 1)
+            zipFreeHuffmanTable(tl);
+        printf("!! Problems in building huffman tables. Error %i
+", i);
+    }
+
+    /* read in literal and distance code lengths */
+    n = nl + nd;
+    m = mask_bits[bl];
+    i = l = 0;
+    while ((unsigned)i < n) {
+        NEEDBITS((unsigned)bl)
+        j = (td = tl + ((unsigned)b & m))->b;
+        DUMPBITS(j)
+        j = td->v.n;
+        if (j < 16) { /* length of code in bits (0..15) */
+            ll[i++] = l = j; /* save last length in l */
+        } else if (j == 16) { /* repeat last length 3 to 6 times */
+            NEEDBITS(2)
+            j = 3 + (b & mask_bits[2]);
+            DUMPBITS(2)
+            if ((unsigned)i + j > n)
+                return 1;
+            while (j--)
+                ll[i++] = l;
+        } else if (j == 17) { /* 3 to 10 zero length codes */
+            NEEDBITS(3)
+            j = 3 + (b & mask_bits[3]);
+            DUMPBITS(3)
+            if ((unsigned)i + j > n)
+                return 1;
+            while (j--)
+                ll[i++] = 0;
+            l = 0;
+        } else { /* j == 18: 11 to 138 zero length codes */
+            NEEDBITS(7)
+            j = 11 + (b & mask_bits[7]);
+            DUMPBITS(7)
+            if ((unsigned)i + j > n)
+                return 1;
+            while (j--)
+                ll[i++] = 0;
+            l = 0;
+        }
+    }
+
+    /* free decoding table for trees */
+    zipFreeHuffmanTable(tl);
+
+    /* restore the global bit buffer */
+    G_bitBucket = b;
+    G_bitCount = k;
+
+    /* build the decoding tables for literal/length and distance codes */
+    bl = 9;
+    i = zipBuildHuffmanTable(ll, nl, 257, c_plens, c_plext, &tl, &bl);
+    if (bl == 0) /* no literals or lengths */
+        i = 1;
+    if (i) {
+        if (i == 1)
+            zipFreeHuffmanTable(tl);
+        return i; /* incomplete code set */
+    }
+    bd = 6;
+    i = zipBuildHuffmanTable(ll + nl, nd, 0, c_pdist, c_pdext, &td, &bd);
+    if (bd == 0 && nl > 257) /* lengths but no distances */
+        i = 1;
+    if (i) {
+        if (i == 1)
+            zipFreeHuffmanTable(td);
+        zipFreeHuffmanTable(tl);
+        return i; /* incomplete code set */
+    }
+
+    /* decompress until an end-of-block code */
+    i = zipInflateCodes(tl, td, bl, bd);
+
+    /* free the decoding tables, return */
+    zipFreeHuffmanTable(tl);
+    zipFreeHuffmanTable(td);
+    return i;
+}
 
 /* decompress one block; *e is set on the last block */
 int zipInflateBlock(int *e)
