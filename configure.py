@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate build.ninja for the WoTM decomp. Run inside WSL/Linux.
+"""Generate build.ninja for the WotM decomp. Run inside WSL/Linux.
 
     python3 configure.py            # write build.ninja (runs splat first if asm/ is missing)
     python3 configure.py --split    # force a fresh splat split
