@@ -15,6 +15,10 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+void mathfMulMatrix3x3(float (*dst)[4], float (*a)[4], float (*b)[4]);
+void mathfNormalizeColumns(float (*m)[4]);
+void mathfScaleMatrix3x3(float (*dst)[4], float (*m)[4], float s);
+void vu0LoadEoAsm(QwData *);
 struct LensFlareEnt {
     float pos[3];
     unsigned id;
@@ -352,7 +356,98 @@ extern "C" void hierAttachPtNode(_hierhead *node, int view, _cs *cs, int idx)
                      : "=m"(out) : "r"(&out), "r"(t));
     gTraversalCallback(cs, node->id1, node->id2, *(float (*)[4][4])((char *)matStack + idx * 64), &out);
 }
+#ifdef NON_MATCHING
+/* 127/144 words: temp registers of the three 4xqword copies differ ($v1 vs $a0) */
+extern "C" void hierScaleNode(_hierscale *sc, int idx)
+{
+    Mat4 m;
+    QwData eo;
+    char *src;
+    char *dst;
+
+    if (sc->numKids) {
+        mathfUnitMatrix(m.m);
+        m.m[0][0] = sc->scale.x;
+        m.m[1][1] = sc->scale.y;
+        m.m[2][2] = sc->scale.z;
+        vu0GetEoAsm(&eo);
+        eo.fVec[0] = (eo.fVec[0] + sc->trans.x) / sc->scale.x;
+        eo.fVec[1] = (eo.fVec[1] + sc->trans.y) / sc->scale.y;
+        eo.fVec[2] = (eo.fVec[2] + sc->trans.z) / sc->scale.z;
+        vu0LoadEoAsm(&eo);
+        mathfMulMatrix3x3((float (*)[4])((char *)matStack + (idx + 1) * 64), m.m, (float (*)[4])((char *)matStack + idx * 64));
+        if (sc->uniform) {
+            dst = (char *)((idx + 1) * 64) + (unsigned)fovNorms;
+            src = (char *)(idx * 64) + (unsigned)fovNorms;
+            __asm__ volatile("lq $8, 0x0(%0)
+	"
+                             "lq $9, 0x10(%0)
+	"
+                             "lq $10, 0x20(%0)
+	"
+                             "lq $11, 0x30(%0)
+	"
+                             "sq $8, 0x0(%1)
+	"
+                             "sq $9, 0x10(%1)
+	"
+                             "sq $10, 0x20(%1)
+	"
+                             "sq $11, 0x30(%1)"
+                             : : "r"(src), "r"(dst) : "$8", "$9", "$10", "$11", "memory");
+            dst = (char *)((idx + 1) * 64) + (unsigned)fovNorms1;
+            src = (char *)(idx * 64) + (unsigned)fovNorms1;
+            __asm__ volatile("lq $8, 0x0(%0)
+	"
+                             "lq $9, 0x10(%0)
+	"
+                             "lq $10, 0x20(%0)
+	"
+                             "lq $11, 0x30(%0)
+	"
+                             "sq $8, 0x0(%1)
+	"
+                             "sq $9, 0x10(%1)
+	"
+                             "sq $10, 0x20(%1)
+	"
+                             "sq $11, 0x30(%1)"
+                             : : "r"(src), "r"(dst) : "$8", "$9", "$10", "$11", "memory");
+            dst = (char *)((idx + 1) * 64) + (unsigned)lightDir;
+            src = (char *)(idx * 64) + (unsigned)lightDir;
+            __asm__ volatile("lq $8, 0x0(%0)
+	"
+                             "lq $9, 0x10(%0)
+	"
+                             "lq $10, 0x20(%0)
+	"
+                             "lq $11, 0x30(%0)
+	"
+                             "sq $8, 0x0(%1)
+	"
+                             "sq $9, 0x10(%1)
+	"
+                             "sq $10, 0x20(%1)
+	"
+                             "sq $11, 0x30(%1)"
+                             : : "r"(src), "r"(dst) : "$8", "$9", "$10", "$11", "memory");
+        } else {
+            mathfMulMatrix3x3((float (*)[4])((char *)fovNorms + (idx + 1) * 64), m.m, (float (*)[4])((char *)fovNorms + idx * 64));
+            mathfMulMatrix3x3((float (*)[4])((char *)fovNorms1 + (idx + 1) * 64), m.m, (float (*)[4])((char *)fovNorms1 + idx * 64));
+            m.m[0][0] = 1.0f / sc->scale.x;
+            m.m[1][1] = 1.0f / sc->scale.y;
+            m.m[2][2] = 1.0f / sc->scale.z;
+            mathfMulMatrix3x3((float (*)[4])((char *)lightDir + (idx + 1) * 64), m.m, (float (*)[4])((char *)lightDir + idx * 64));
+            mathfNormalizeColumns((float (*)[4])((char *)fovNorms + (idx + 1) * 64));
+            mathfNormalizeColumns((float (*)[4])((char *)fovNorms1 + (idx + 1) * 64));
+            mathfNormalizeColumns((float (*)[4])((char *)lightDir + (idx + 1) * 64));
+            mathfScaleMatrix3x3((float (*)[4])((char *)lightDir + (idx + 1) * 64), (float (*)[4])((char *)lightDir + (idx + 1) * 64), 32.0f);
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierScaleNode);
+#endif
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierAnimScaleNode);
 extern "C" void hierSkelBoneNode(_hierSkelBone *bone, unsigned short *boneIdx, short *matIdx)
 {
