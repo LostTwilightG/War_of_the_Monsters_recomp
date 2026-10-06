@@ -48,6 +48,7 @@ unsigned char zipGetChar(void);
 
 #define ZIP_BUF ((unsigned char *)0x01F7F840) /* 512 KB read window at the top of RAM */
 #define ZIP_BUF_END (ZIP_BUF + 0x80000)
+#define WSIZE 0x80000 /* output window flushed by zipFlush() */
 
 int whichHalfMeg = 0;
 unsigned int G_windowPos = 0;
@@ -140,7 +141,50 @@ int zipFreeHuffmanTable(struct huft *t)
 
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipBuildHuffmanTable__FPCUiUiUiPCUsT3PP4huftPi);
 
-INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateBlockStored__Fv);
+/* "decompress" an inflated type 0 (stored) block */
+int zipInflateBlockStored(void)
+{
+    unsigned n;
+    unsigned w;
+    unsigned long b;
+    unsigned k;
+    int r = 0;
+
+    b = G_bitBucket;
+    k = G_bitCount;
+    w = G_windowPos;
+
+    n = k & mask_bits[3];
+    DUMPBITS(n)
+
+    NEEDBITS(16)
+    n = ((unsigned)b & 0xffff);
+    DUMPBITS(16)
+    NEEDBITS(16)
+    if (n != (unsigned)((~b) & 0xffff)) {
+        printf("Error in compressed data, stored block.
+");
+        return 1;
+    }
+    DUMPBITS(16)
+
+    while (n--) {
+        NEEDBITS(8)
+        outFileBuf[w++] = (unsigned char)b;
+        if (w == WSIZE) {
+            r = zipFlush(w);
+            if (r != 0)
+                return r;
+            w = 0;
+        }
+        DUMPBITS(8)
+    }
+
+    G_windowPos = w;
+    G_bitBucket = b;
+    G_bitCount = k;
+    return r;
+}
 
 INCLUDE_ASM("asm/nonmatchings/common/zip", zipInflateBlockFixed__Fv);
 
