@@ -13,6 +13,26 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+extern _worldctx *world;
+extern _cs *gCs;
+extern float (*matStack)[4];
+extern float (*fovNorms)[4];
+extern float (*fovNorms1)[4];
+extern float (*lightDir)[4];
+struct CsNode {
+    _cs *cs;
+    CsNode *next;
+};
+class CsPool {
+public:
+    static CsNode m_activeList;
+    static CsNode m_HPActiveList;
+};
+extern "C" int hierCsUpdateAsm(_cs *cs, _fvector *eo);
+extern "C" void hierTraverseAsm(void *root, void *ctx, int arg);
+void vu0UnitMatrix(float (*m)[4]);
+void vu0CopyMatrix(float (*dst)[4], float (*src)[4]);
+float (*plightGetParaLight(void))[4];
 
 unsigned *hierGetLastGSCtx(void)
 {
@@ -57,10 +77,70 @@ float (*skelGetSkelMat(int idx))[4][4]
     return (unsigned)idx < 0xA0 ? &skelMatStack[idx] : 0;
 }
 INCLUDE_ASM("asm/nonmatchings/common/hier", hier__Fii);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierTraceSky__Fi);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierTraceWorld__Fi);
+void hierTraceSky(int arg)
+{
+    _fvector eo;
+    _cs *sky = world->skyCs;
+
+    if (sky && sky->epNode) {
+        hierCsUpdateAsm(sky, &eo);
+        hierTraverseAsm(world->skyCs, &eo, arg);
+    }
+}
+void hierTraceWorld(int arg)
+{
+    if (world->ep) {
+        vu0UnitMatrix(matStack);
+        vu0CopyMatrix(fovNorms, (float (*)[4])world->fovNorms);
+        vu0CopyMatrix(fovNorms1, (float (*)[4])world->fovNorms[1]);
+        vu0CopyMatrix(lightDir, plightGetParaLight());
+        hierTraverseAsm(world, &world->eo, arg);
+    }
+}
+#ifdef NON_MATCHING
+/* 49/57 words: $s2/$s3 swapped (list end vs ~(1 << mask)) */
+void hierTraceCsList(int mask)
+{
+    _fvector eo;
+    CsNode *n;
+    CsNode *const end = &CsPool::m_activeList;
+
+    for (n = end->next; n != end; n = n->next) {
+        if (!n->cs->drawMe || !n->cs->epNode)
+            continue;
+        gCs = n->cs;
+        gCs->inFov &= ~(1 << mask);
+        if (gCs->scaleMe)
+            *(float *)0x700003A0 = 1.0f / gCs->scale.x;
+        hierCsUpdateAsm(gCs, &eo);
+        hierTraverseAsm(n->cs, &eo, mask);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierTraceCsList__Fi);
+#endif
+#ifdef NON_MATCHING
+/* 49/57 words: $s2/$s3 swapped (list end vs ~(1 << mask)) */
+void hierTraceHPCsList(int mask)
+{
+    _fvector eo;
+    CsNode *n;
+    CsNode *const end = &CsPool::m_HPActiveList;
+
+    for (n = end->next; n != end; n = n->next) {
+        if (!n->cs->drawMe || !n->cs->epNode)
+            continue;
+        gCs = n->cs;
+        gCs->inFov &= ~(1 << mask);
+        if (gCs->scaleMe)
+            *(float *)0x700003A0 = 1.0f / gCs->scale.x;
+        hierCsUpdateAsm(gCs, &eo);
+        hierTraverseAsm(n->cs, &eo, mask);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierTraceHPCsList__Fi);
+#endif
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierLoadVu1Ucode__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierLoadVu0Ucode__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierCsUpdate__FP3_csP9_worldctxP9_lightenvP8_fvector);
