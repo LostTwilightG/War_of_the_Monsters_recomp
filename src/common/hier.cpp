@@ -8,8 +8,16 @@ struct Mat4 {
 extern _hierSkelBone **skelStack;
 extern float (*skelMatStack)[4][4];
 extern int g_cameraLosPointsPerView[5];
+extern unsigned *lastGsCtx;
+typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
+extern TravCb gTraversalCallback;
+extern unsigned FxToKill[32];
+void particleKillFx(int &);
 
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierGetLastGSCtx__Fv);
+unsigned *hierGetLastGSCtx(void)
+{
+    return lastGsCtx;
+}
 void addSkeleton(_hierSkelBone *bone, int idx)
 {
     skelStack[idx] = bone;
@@ -35,8 +43,19 @@ void addSkelMat(float (*mat)[4][4], int idx)
                      "sq $11, 0x30(%1)"
                      : : "r"(mat), "r"(dst) : "$8", "$9", "$10", "$11", "memory");
 }
+#ifdef NON_MATCHING
+/* register allocation differs: base pointer lands in $v1 instead of $v0 */
+_hierSkelBone *skelGetRoot(int idx)
+{
+    return (unsigned)idx < 5 ? skelStack[idx] : 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/hier", skelGetRoot__Fi);
-INCLUDE_ASM("asm/nonmatchings/common/hier", skelGetSkelMat__Fi);
+#endif
+float (*skelGetSkelMat(int idx))[4][4]
+{
+    return (unsigned)idx < 0xA0 ? &skelMatStack[idx] : 0;
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", hier__Fii);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierTraceSky__Fi);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierTraceWorld__Fi);
@@ -80,7 +99,10 @@ void hierSetCsDrawMe(_cs *cs, unsigned char drawMe)
     if (cs)
         cs->drawMe = drawMe;
 }
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierSetTraversalCallback__FPFP3_csUiUiRA3_A3_fP8_fvector_v);
+void hierSetTraversalCallback(TravCb cb)
+{
+    gTraversalCallback = cb;
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierInitCs__FP3_cs);
 void hierSetSwitch(_hierswitch *sw, int which)
 {
@@ -93,9 +115,41 @@ void hierSetLosPointsPerView(int idx, int points)
     g_cameraLosPointsPerView[idx] = points;
 }
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierSetCamera);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierKillLocator);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierRegisterLocator__FUii);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierClearLocatorListForReplay__Fv);
+extern "C" void hierKillLocator(int idx, _hierhead *node)
+{
+    unsigned *slot = &FxToKill[idx];
+
+    particleKillFx((int &)*slot);
+    *slot = (unsigned)node;
+    node->id1 = idx;
+}
+void hierRegisterLocator(unsigned id, int fx)
+{
+    unsigned idx;
+
+    if (fx != -1) {
+        idx = id - 0x1D4C;
+        if (idx < 32)
+            FxToKill[idx] = fx;
+    }
+}
+void hierClearLocatorListForReplay(void)
+{
+    int i;
+
+    for (i = 0; i < 32; i++) {
+        unsigned fx = FxToKill[i];
+
+        if (fx >= 100) {
+            if (fx != 0xFFFFFFFF) {
+                _hierhead *node = (_hierhead *)fx;
+
+                node->id1 = node->id1 + 0x1D4C;
+            }
+        }
+        FxToKill[i] = 0xFFFFFFFF;
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierTraverseCSForLocators__FP3_csb);
 INCLUDE_ASM("asm/nonmatchings/common/hier", vu0LoadEoAsm__FP6QwData);
 INCLUDE_ASM("asm/nonmatchings/common/hier", vu0GetEoAsm__FP6QwData);
