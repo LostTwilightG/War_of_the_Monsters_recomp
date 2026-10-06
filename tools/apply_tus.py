@@ -26,3 +26,28 @@ else:
     text = re.sub(r'^      - \[0x000000, asm, cod/000000\] # \.text$', lambda m: block, text, flags=re.M)
 open(YAML, 'w', newline='\n').write(text)
 print(f'{len(rows)} text subsegments written to {YAML}')
+
+# ---- data sections: per-TU subsegments from config/data_tus.csv (tools/find_data_tus.py) ----
+DBEGIN, DEND = '      # BEGIN data TUs (tools/apply_tus.py)', '      # END data TUs'
+SPLAT_TYPE = {'.data': 'data', '.rodata': 'rodata', '.gcc_except_table': 'gcc_except_table',
+              '.sdata': 'sdata', '.sbss': 'sbss', '.bss': 'bss'}
+drows = list(csv.DictReader(open('config/data_tus.csv')))
+dlines = [DBEGIN]
+for r in drows:
+    vram, typ = int(r['start'], 16), SPLAT_TYPE[r['section']]
+    if typ == 'rodata' and r['tu'] in decomp:
+        typ = '.rodata'  # C TU: rodata migrates into each function's INCLUDE_ASM file / comes from the C object
+    if typ in ('sbss', 'bss'):
+        dlines.append(f"      - {{ type: {typ}, vram: 0x{vram:08X}, name: {r['tu']} }}")
+    else:
+        dlines.append(f"      - [0x{vram - TEXT_VRAM:06X}, {typ}, {r['tu']}]")
+dlines.append(DEND)
+dblock = '\n'.join(dlines)
+text = open(YAML).read()
+if DBEGIN in text:
+    text = re.sub(re.escape(DBEGIN) + r'.*?' + re.escape(DEND), lambda m: dblock, text, flags=re.S)
+else:
+    text = re.sub(r'^      - \[0x15C480, data, cod/15C480\].*?\n(?=  - \[0x5F8B44\])',
+                  lambda m: dblock + '\n', text, flags=re.M | re.S)
+open(YAML, 'w', newline='\n').write(text)
+print(f'{len(drows)} data subsegments written to {YAML}')

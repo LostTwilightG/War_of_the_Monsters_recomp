@@ -409,10 +409,489 @@ segments:
       - [0x150F68, asm, newlib/libc/machine/r5900/memcmp]  # asm, 3 funcs, name: mdebug
       # END text TUs
       - [0x151020, textbin, cod/151020] # .vutext
-      - [0x15C480, data, cod/15C480] # .data
-      - [0x5E7500, rodata, cod/5E7500] # .rodata
-      - [0x5F7800, gcc_except_table, cod/5F7800] # .gcc_except_table
-      - [0x5F7900, sdata, cod/5F7900] # .sdata
-      - { type: sbss, vram: 0x006F8B80, name: cod/006F8B80 } # .sbss
-      - { type: bss, vram: 0x006F8F00, name: cod/006F8F00 } # .bss
+      # BEGIN data TUs (tools/apply_tus.py)
+      - [0x15C480, data, crt0]
+      - [0x15C4C0, data, game/Ai_2]
+      - [0x15C4F0, data, game/AiPathTool]
+      - [0x160550, data, game/AiNavigator]
+      - [0x160590, data, game/airport]
+      - [0x1606A0, data, game/AnimContact]
+      - [0x1606C0, data, game/canyon2]
+      - [0x1606D0, data, game/DodgeBallLevel]
+      - [0x160720, data, game/Debris]
+      - [0x188F20, data, game/FinalBoss]
+      - [0x189400, data, game/TheGame]
+      - [0x1A26F0, data, game/HeliVehicle]
+      - [0x1A2700, data, game/HomingBug]
+      - [0x1A3000, data, game/Hud]
+      - [0x1A35F0, data, game/island]
+      - [0x1A36A0, data, game/McFile]
+      - [0x1A5840, data, game/Monster]
+      - [0x1A6C80, data, game/MonsterMc]
+      - [0x1AABC0, data, game/MonsterTriggers]
+      - [0x1AAC00, data, game/PathTool]
+      - [0x1AEC60, data, game/Pickup]
+      - [0x1AEF98, data, game/PlantBoss]
+      - [0x1AEFD0, data, game/PowerUps]
+      - [0x1AF0C0, data, game/PowerUpTool]
+      - [0x1B3120, data, game/rt]
+      - [0x1B3130, data, game/screen]
+      - [0x1B3570, data, game/Shell]
+      - [0x317F90, data, game/ShockWave]
+      - [0x319F70, data, game/Sound]
+      - [0x31A0B8, data, game/SpecFxAnim]
+      - [0x31A4F8, data, game/StartPoints]
+      - [0x31A540, data, game/StartPointTool]
+      - [0x31E5A0, data, game/StickShaker]
+      - [0x322920, data, game/TankVehicle]
+      - [0x322930, data, game/TurretPickup]
+      - [0x3229E0, data, game/threemile]
+      - [0x323CB0, data, game/tokyo]
+      - [0x323CE0, data, game/UfoPickup]
+      - [0x323D40, data, game/ui]
+      - [0x330000, data, game/uidev]
+      - [0x334450, data, gcc/libgcc2/do_global_dtors]
+      - [0x334454, data, gcc/cp/new]
+      - [0x3344F8, data, gcc/cp/new2]
+      - [0x334540, data, gcc/cp/tinfo]
+      - [0x3348C4, data, gcc/libgcc2/default_terminate]
+      - [0x334EBC, data, gcc/cp/exception]
+      - [0x335250, data, gcc/frame]
+      - [0x335258, data, gcc/cp/tinfo2]
+      - [0x335780, data, lib989snd/snd]
+      - [0x33A2C0, data, common/CsPool]
+      - [0x33A2F0, data, common/dbs]
+      - [0x33DB30, data, common/electric]
+      - [0x33DB80, data, common/file]
+      - [0x345580, data, common/fog]
+      - [0x345C80, data, common/hier]
+      - [0x40F100, data, common/texm]
+      - [0x41C600, data, common/ps]
+      - [0x44CD00, data, common/light]
+      - [0x44CF40, data, common/mathf]
+      - [0x44D950, data, common/MemoryStack]
+      - [0x44D968, data, common/MpegMovie]
+      - [0x44DB60, data, common/movies]
+      - [0x4ADD00, data, common/particle]
+      - [0x5DFC00, data, common/plight]
+      - [0x5E0580, data, common/ScreenPolys]
+      - [0x5E0680, data, common/ShiftJIS]
+      - [0x5E0718, data, common/TaskManager]
+      - [0x5E0750, data, common/tod]
+      - [0x5E12C0, data, common/view]
+      - [0x5E37B0, data, common/ctx]
+      - [0x5E3820, data, sce/libgraph/vu]
+      - [0x5E3840, data, sce/libgraph/graphdev]
+      - [0x5E3860, data, sce/libgraph/graphdev_sceGsExecStoreImage]
+      - [0x5E3870, data, sce/libpad/libpad]
+      - [0x5E38B8, data, sce/libmc/libmc]
+      - [0x5E38D0, data, sce/libmpeg/pack]
+      - [0x5E3970, data, sce/libmpeg/mpeg]
+      - [0x5E3980, data, sce/libmpeg/init]
+      - [0x5E3A00, data, sce/libmpeg/mpc]
+      - [0x5E3AB0, data, sce/libipu/ipuinit]
+      - [0x5E3B40, data, sce/libcdvd/eecdvd]
+      - [0x5E3C40, data, sce/libcdvd/eecdvd_sceCdRead]
+      - [0x5E4D40, data, sce/libcdvd/eecdvd_sceCdGetError]
+      - [0x5E55B0, data, sce/libcdvd/eecdvd_sceCdStInit]
+      - [0x5E55B8, data, newlib/libc/stdlib/malloc]
+      - [0x5E58A8, data, newlib/libc/stdlib/mallocr]
+      - [0x5E5D00, data, newlib/libc/stdio/vfprintf]
+      - [0x5E5D08, data, newlib/libc/locale/locale]
+      - [0x5E5D28, data, sce/libkernl/glue]
+      - [0x5E5D30, data, sce/libkernl/intr]
+      - [0x5E64D8, data, sce/libkernl/thread]
+      - [0x5E64DC, data, sce/libkernl/kprintf]
+      - [0x5E64E4, data, sce/libkernl/sifcmd]
+      - [0x5E64E8, data, sce/libkernl/sifrpc]
+      - [0x5E64F0, data, sce/libkernl/filestub]
+      - [0x5E6584, data, sce/libkernl/iopheap]
+      - [0x5E6588, data, sce/libkernl/eeloadfile]
+      - [0x5E6590, data, sce/libkernl/initsys]
+      - [0x5E65A8, data, sce/libkernl/libosd]
+      - [0x5E6D68, data, sce/libkernl/tlbfunc]
+      - [0x5E7484, data, newlib/libc/machine/r5900/memcmp]
+      - [0x5E7500, rodata, crt0]
+      - [0x5E7540, rodata, game/ActionDispatch]
+      - [0x5E7598, rodata, game/AiAction]
+      - [0x5E7720, rodata, game/Ai_2]
+      - [0x5E7A10, rodata, game/AiBrain]
+      - [0x5E7A40, rodata, game/AiGrapple]
+      - [0x5E7AC0, rodata, game/AiPathTool]
+      - [0x5E7B40, rodata, game/AiReflex]
+      - [0x5E81E0, rodata, game/AiReset]
+      - [0x5E8450, rodata, game/AiSeek]
+      - [0x5E8810, rodata, game/AiNavigator]
+      - [0x5E8830, rodata, game/airport]
+      - [0x5E88C0, rodata, game/AnimContact]
+      - [0x5E8930, rodata, game/BigShotLevel]
+      - [0x5E8A28, rodata, game/Cameras]
+      - [0x5E8AB0, rodata, game/canyon2]
+      - [0x5E8B10, rodata, game/CarPickup]
+      - [0x5E8B90, rodata, game/charreset]
+      - [0x5E8C50, rodata, game/charreset_2]
+      - [0x5E8D70, rodata, game/CrushLevel]
+      - [0x5E8E60, rodata, game/db]
+      - [0x5E8E90, rodata, game/Debris]
+      - [0x5E8F60, rodata, game/Destructible]
+      - [0x5E8FE0, rodata, game/FinalBoss]
+      - [0x5E90B0, rodata, game/TheGame]
+      - [0x5E94E0, rodata, game/GlobalReset]
+      - [0x5E9590, rodata, game/Grapple]
+      - [0x5E9650, rodata, game/GrappleOHAttack]
+      - [0x5E9750, rodata, game/GrappleThrow]
+      - [0x5E98C0, rodata, game/HeliPickup]
+      - [0x5E9980, rodata, game/HeliVehicleNav]
+      - [0x5E99A0, rodata, game/HomingBug]
+      - [0x5EA8F0, rodata, game/Hud]
+      - [0x5EAB50, rodata, game/Interactives]
+      - [0x5EABA0, rodata, game/McFile]
+      - [0x5EAEF0, rodata, game/McPage]
+      - [0x5EAF80, rodata, game/MilitaryFormation]
+      - [0x5EB078, rodata, game/MilitaryPickup]
+      - [0x5EB120, rodata, game/MissileTruckPickup]
+      - [0x5EB210, rodata, game/MonsterStates]
+      - [0x5EBDA0, rodata, game/Monster]
+      - [0x5EC750, rodata, game/MonsterMc]
+      - [0x5ED3F0, rodata, game/MovementStates]
+      - [0x5ED870, rodata, game/PathTool]
+      - [0x5ED8C0, rodata, game/Pickup]
+      - [0x5EDC10, rodata, game/PlantBoss]
+      - [0x5EDEC0, rodata, game/PowerUpTool]
+      - [0x5EDEF8, rodata, game/rt]
+      - [0x5EDF28, rodata, game/reset]
+      - [0x5EDF50, rodata, game/RigidDebris]
+      - [0x5EDFB0, rodata, game/RigidPickup]
+      - [0x5EE060, rodata, game/sanfran]
+      - [0x5EE230, rodata, game/screen]
+      - [0x5EF0F0, rodata, game/Shell]
+      - [0x5EF9F0, rodata, game/ShellFinished]
+      - [0x5EFFA0, rodata, game/Sound]
+      - [0x5F0930, rodata, game/StreamingSoundManager]
+      - [0x5F0D70, rodata, game/SpecialStates]
+      - [0x5F1450, rodata, game/SpecFxAnim]
+      - [0x5F1498, rodata, game/StartPointTool]
+      - [0x5F14D8, rodata, game/SubwayPickup]
+      - [0x5F1560, rodata, game/TankPickup]
+      - [0x5F1640, rodata, game/TurretPickup]
+      - [0x5F1700, rodata, game/threemile]
+      - [0x5F17B0, rodata, game/StateThrowBack]
+      - [0x5F1A80, rodata, game/TokenManager]
+      - [0x5F1B08, rodata, game/tokyo]
+      - [0x5F1B60, rodata, game/UfoNav]
+      - [0x5F1B80, rodata, game/UfoPickup]
+      - [0x5F1C60, rodata, game/ui]
+      - [0x5F2320, rodata, game/uidev]
+      - [0x5F2820, rodata, game/VehicleNavigator]
+      - [0x5F2840, rodata, game/Weapon]
+      - [0x5F2B80, rodata, gcc/cp/new]
+      - [0x5F2BE0, rodata, gcc/cp/tinfo]
+      - [0x5F2CE0, rodata, gcc/cp/exception]
+      - [0x5F2D30, rodata, gcc/frame]
+      - [0x5F2E10, rodata, gcc/cp/tinfo2]
+      - [0x5F2FB0, rodata, lib989snd/snd]
+      - [0x5F3150, rodata, common/animation]
+      - [0x5F32E0, rodata, common/AnimCurve]
+      - [0x5F3620, rodata, common/AnimQueue]
+      - [0x5F36A0, rodata, common/SoundBank]
+      - [0x5F37D0, rodata, common/CsPool]
+      - [0x5F3870, rodata, common/dbs]
+      - [0x5F3B30, rodata, common/file]
+      - [0x5F3D80, rodata, common/font]
+      - [0x5F3E30, rodata, common/hdSphere]
+      - [0x5F3E50, rodata, common/hdTraverse]
+      - [0x5F3FA0, rodata, common/texm]
+      - [0x5F4058, rodata, common/ps]
+      - [0x5F40B0, rodata, common/hoser]
+      - [0x5F40D0, rodata, common/input]
+      - [0x5F4420, rodata, common/mathf]
+      - [0x5F4480, rodata, common/MpegMovie]
+      - [0x5F44E0, rodata, common/partdraw]
+      - [0x5F4620, rodata, common/particle]
+      - [0x5F4720, rodata, common/PointToolKit]
+      - [0x5F4810, rodata, common/videocb]
+      - [0x5F4830, rodata, common/resetcom]
+      - [0x5F4A70, rodata, common/ShiftJIS]
+      - [0x5F4A88, rodata, common/str]
+      - [0x5F4B40, rodata, common/blit]
+      - [0x5F4BA0, rodata, common/vi]
+      - [0x5F4BB8, rodata, common/videodec]
+      - [0x5F4C00, rodata, common/view]
+      - [0x5F4C20, .rodata, common/zip]
+      - [0x5F57A0, rodata, common/CsColor]
+      - [0x5F57C8, rodata, common/ColGrid]
+      - [0x5F57E8, rodata, newlib/libm/math/sf_atan]
+      - [0x5F583C, rodata, newlib/libm/math/sf_ceil]
+      - [0x5F5840, rodata, newlib/libm/math/sf_cos]
+      - [0x5F5848, rodata, newlib/libm/math/wf_acos]
+      - [0x5F5850, rodata, newlib/libm/math/wf_asin]
+      - [0x5F5858, rodata, newlib/libm/math/wf_atan2]
+      - [0x5F5860, rodata, newlib/libm/math/wf_pow]
+      - [0x5F5880, rodata, newlib/libm/math/wf_sqrt]
+      - [0x5F5890, rodata, newlib/libm/math/ef_acos]
+      - [0x5F58C8, rodata, newlib/libm/math/ef_asin]
+      - [0x5F5904, rodata, newlib/libm/math/ef_atan2]
+      - [0x5F5920, rodata, newlib/libm/math/ef_pow]
+      - [0x5F59A8, rodata, newlib/libm/math/ef_rem_pio2]
+      - [0x5F5D68, rodata, newlib/libm/math/ef_sqrt]
+      - [0x5F5D70, rodata, newlib/libm/math/kf_cos]
+      - [0x5F5D90, rodata, newlib/libm/math/kf_rem_pio2]
+      - [0x5F5DDC, rodata, newlib/libm/math/kf_sin]
+      - [0x5F5DF8, rodata, newlib/libm/math/kf_tan]
+      - [0x5F5E50, rodata, newlib/libm/common/s_rint]
+      - [0x5F5E60, rodata, newlib/libm/math/sf_floor]
+      - [0x5F5E64, rodata, newlib/libm/common/sf_scalbn]
+      - [0x5F5E78, rodata, sce/libgraph/graphdev_sceGsSetDefDispEnv]
+      - [0x5F5EB0, rodata, sce/libgraph/graphdev_sceGsSetDefLoadImage]
+      - [0x5F5FD0, rodata, sce/libgraph/graphdev_sceGsExecLoadImage]
+      - [0x5F6010, rodata, sce/libgraph/graphdev_sceGsExecStoreImage]
+      - [0x5F61E0, rodata, sce/libpad/libpad]
+      - [0x5F6338, rodata, sce/libmc/libmc]
+      - [0x5F63A0, rodata, sce/libmpeg/pack]
+      - [0x5F63E0, rodata, sce/libmpeg/mpeg]
+      - [0x5F6488, rodata, sce/libmpeg/init]
+      - [0x5F65D0, rodata, sce/libmpeg/mpc]
+      - [0x5F6898, rodata, sce/libmpeg/csc]
+      - [0x5F68B0, rodata, sce/libcdvd/eecdvd]
+      - [0x5F6A60, rodata, sce/libcdvd/eecdvd_sceCdRead]
+      - [0x5F6A88, rodata, sce/libcdvd/eecdvd_sceCdReadClock]
+      - [0x5F6AC8, rodata, sce/libcdvd/eecdvd_sceCdStInit]
+      - [0x5F6BE8, rodata, newlib/libc/stdlib/strtol]
+      - [0x5F6D00, rodata, newlib/libc/stdio/vfprintf]
+      - [0x5F6F10, rodata, newlib/libc/stdlib/dtoa]
+      - [0x5F6F68, rodata, newlib/libc/locale/locale]
+      - [0x5F6FB0, rodata, newlib/libc/stdlib/mprec]
+      - [0x5F70D8, rodata, sce/libkernl/thread]
+      - [0x5F7100, rodata, sce/libkernl/tty]
+      - [0x5F7170, rodata, sce/libkernl/kprintf]
+      - [0x5F72D0, rodata, sce/libkernl/filestub]
+      - [0x5F7348, rodata, sce/libkernl/eeloadfile]
+      - [0x5F7350, rodata, sce/libkernl/iopreset]
+      - [0x5F7380, rodata, sce/libkernl/tlbfunc]
+      - [0x5F7400, rodata, gcc/libgcc2/divdi3]
+      - [0x5F7500, rodata, gcc/libgcc2/moddi3]
+      - [0x5F7600, rodata, gcc/libgcc2/udivdi3]
+      - [0x5F7700, rodata, gcc/libgcc2/umoddi3]
+      - [0x5F7800, gcc_except_table, crt0]
+      - [0x5F7838, gcc_except_table, gcc/cp/exception]
+      - [0x5F7900, sdata, crt0]
+      - [0x5F7904, sdata, game/ActionDispatch]
+      - [0x5F7918, sdata, game/Ai]
+      - [0x5F7940, sdata, game/AiAction]
+      - [0x5F7960, sdata, game/Ai_2]
+      - [0x5F7980, sdata, game/AiPathNet]
+      - [0x5F7988, sdata, game/AiPathFinder]
+      - [0x5F7998, sdata, game/AiPathTool]
+      - [0x5F79A8, sdata, game/AiReflex]
+      - [0x5F79C0, sdata, game/AiReset]
+      - [0x5F79D8, sdata, game/AiScript3Mile]
+      - [0x5F79E4, sdata, game/AiSeek]
+      - [0x5F7A10, sdata, game/AiTweaks]
+      - [0x5F7A14, sdata, game/AiNavigator]
+      - [0x5F7A28, sdata, game/BigShotLevel]
+      - [0x5F7A38, sdata, game/BoneSpring]
+      - [0x5F7A3C, sdata, game/Cameras]
+      - [0x5F7A48, sdata, game/canyon2]
+      - [0x5F7A64, sdata, game/collision]
+      - [0x5F7A78, sdata, game/CrushLevel]
+      - [0x5F7A90, sdata, game/DodgeBallLevel]
+      - [0x5F7AA0, sdata, game/EnemyInfo]
+      - [0x5F7AAC, sdata, game/FinalBoss]
+      - [0x5F7AC8, sdata, game/PedGroup]
+      - [0x5F7B10, sdata, game/TheGame]
+      - [0x5F7B34, sdata, game/GamePad]
+      - [0x5F7B40, sdata, game/GrappleThrow]
+      - [0x5F7B44, sdata, game/HeliPickup]
+      - [0x5F7B78, sdata, game/HeliVehicle]
+      - [0x5F7B94, sdata, game/HeliVehicleNav]
+      - [0x5F7BAC, sdata, game/HomingBug]
+      - [0x5F7BBC, sdata, game/Hud]
+      - [0x5F7C34, sdata, game/McFile]
+      - [0x5F7C90, sdata, game/McPage]
+      - [0x5F7CC8, sdata, game/MissileTruckPickup]
+      - [0x5F7CF8, sdata, game/MonsterStates]
+      - [0x5F7D00, sdata, game/Monster]
+      - [0x5F7D1C, sdata, game/MonsterDynamics]
+      - [0x5F7D30, sdata, game/MonsterMc]
+      - [0x5F7D98, sdata, game/MonsterTweaks]
+      - [0x5F7D9C, sdata, game/MovementStates]
+      - [0x5F7DC0, sdata, game/OgreMace]
+      - [0x5F7DC4, sdata, game/PathNet]
+      - [0x5F7DC8, sdata, game/PathTool]
+      - [0x5F7DD8, sdata, game/Pickup]
+      - [0x5F7DE8, sdata, game/PlantBoss]
+      - [0x5F7DFC, sdata, game/PowerUps]
+      - [0x5F7E10, sdata, game/PowerUpTool]
+      - [0x5F7E24, sdata, game/rt]
+      - [0x5F7E40, sdata, game/reset]
+      - [0x5F7E48, sdata, game/RigidPickup]
+      - [0x5F7E58, sdata, game/sanfran]
+      - [0x5F7E74, sdata, game/screen]
+      - [0x5F8180, sdata, game/Shell]
+      - [0x5F8208, sdata, game/ShellFinished]
+      - [0x5F82C0, sdata, game/ShellRtLoop]
+      - [0x5F82C8, sdata, game/Sound]
+      - [0x5F82E0, sdata, game/StreamingSoundManager]
+      - [0x5F8308, sdata, game/SpecialStates]
+      - [0x5F8314, sdata, game/SpecFxAnim]
+      - [0x5F8318, sdata, game/StartPointTool]
+      - [0x5F8330, sdata, game/TankPickup]
+      - [0x5F8368, sdata, game/TankVehicle]
+      - [0x5F8374, sdata, game/TurretPickup]
+      - [0x5F8380, sdata, game/threemile]
+      - [0x5F83B0, sdata, game/StateThrowBack]
+      - [0x5F83E0, sdata, game/tokyo]
+      - [0x5F83FC, sdata, game/ufo]
+      - [0x5F840C, sdata, game/UfoNav]
+      - [0x5F8420, sdata, game/UfoPickup]
+      - [0x5F8458, sdata, game/ui]
+      - [0x5F84F8, sdata, game/uidev]
+      - [0x5F8550, sdata, game/vegas]
+      - [0x5F855C, sdata, game/Vehicle]
+      - [0x5F8564, sdata, game/VehicleNavigator]
+      - [0x5F8578, sdata, common/MotionBlurAA]
+      - [0x5F85C8, sdata, common/animation]
+      - [0x5F85D0, sdata, common/AnimCurve]
+      - [0x5F85D8, sdata, common/SoundBank]
+      - [0x5F85E8, sdata, common/dbs]
+      - [0x5F8638, sdata, common/disp]
+      - [0x5F8668, sdata, common/electric]
+      - [0x5F8670, sdata, common/file]
+      - [0x5F86C8, sdata, common/fog]
+      - [0x5F871C, sdata, common/font]
+      - [0x5F872C, sdata, common/hd]
+      - [0x5F8738, sdata, common/hdHat]
+      - [0x5F873C, sdata, common/HdIterator]
+      - [0x5F8748, sdata, common/hdLos]
+      - [0x5F874C, sdata, common/hdPoly]
+      - [0x5F8758, sdata, common/hdPrim]
+      - [0x5F8768, sdata, common/hier]
+      - [0x5F87E0, sdata, common/texm]
+      - [0x5F881C, sdata, common/ps]
+      - [0x5F8838, sdata, common/IncognitoEntertainmentGS]
+      - [0x5F8840, sdata, common/MpegMovie]
+      - [0x5F88A0, sdata, common/movies]
+      - [0x5F88D0, sdata, common/partdraw]
+      - [0x5F88D8, sdata, common/particle]
+      - [0x5F8910, sdata, common/peds]
+      - [0x5F8918, sdata, common/plight]
+      - [0x5F8940, sdata, common/resetcom]
+      - [0x5F8958, sdata, common/ScreenPolys]
+      - [0x5F8960, sdata, common/ShiftJIS]
+      - [0x5F8968, sdata, common/str]
+      - [0x5F8998, sdata, common/tex]
+      - [0x5F89B8, sdata, common/tod]
+      - [0x5F8A70, sdata, common/blit]
+      - [0x5F8A80, sdata, common/videodec]
+      - [0x5F8A88, sdata, common/view]
+      - [0x5F8AF0, sdata, common/zip]
+      - [0x5F8B40, sdata, common/bsp]
+      - { type: sbss, vram: 0x006F8B80, name: crt0 }
+      - { type: sbss, vram: 0x006F8B84, name: game/Ai_2 }
+      - { type: sbss, vram: 0x006F8BC8, name: game/airport }
+      - { type: sbss, vram: 0x006F8BD4, name: game/canyon2 }
+      - { type: sbss, vram: 0x006F8BE4, name: game/Destructible }
+      - { type: sbss, vram: 0x006F8BEC, name: game/FinalBoss }
+      - { type: sbss, vram: 0x006F8BF8, name: game/TheGame }
+      - { type: sbss, vram: 0x006F8BFC, name: game/HeliVehicleNav }
+      - { type: sbss, vram: 0x006F8C00, name: game/Hud }
+      - { type: sbss, vram: 0x006F8C08, name: game/island }
+      - { type: sbss, vram: 0x006F8C28, name: game/McFile }
+      - { type: sbss, vram: 0x006F8C68, name: game/PadFlags }
+      - { type: sbss, vram: 0x006F8C6C, name: game/PlantBoss }
+      - { type: sbss, vram: 0x006F8C70, name: game/RigidPickup }
+      - { type: sbss, vram: 0x006F8C74, name: game/sanfran }
+      - { type: sbss, vram: 0x006F8C84, name: game/screen }
+      - { type: sbss, vram: 0x006F8C9C, name: game/ShellFinished }
+      - { type: sbss, vram: 0x006F8CA8, name: game/threemile }
+      - { type: sbss, vram: 0x006F8CF0, name: game/tokyo }
+      - { type: sbss, vram: 0x006F8D04, name: game/ufo }
+      - { type: sbss, vram: 0x006F8D08, name: game/ui }
+      - { type: sbss, vram: 0x006F8D0C, name: game/vegas }
+      - { type: sbss, vram: 0x006F8D10, name: game/VehicleNavigator }
+      - { type: sbss, vram: 0x006F8D14, name: common/MotionBlurAA }
+      - { type: sbss, vram: 0x006F8D2C, name: common/font }
+      - { type: sbss, vram: 0x006F8D48, name: common/hdLos }
+      - { type: sbss, vram: 0x006F8D50, name: common/hdTraverse }
+      - { type: sbss, vram: 0x006F8D58, name: common/texm }
+      - { type: sbss, vram: 0x006F8D70, name: common/ps }
+      - { type: sbss, vram: 0x006F8D80, name: common/hoser }
+      - { type: sbss, vram: 0x006F8D8C, name: common/input }
+      - { type: sbss, vram: 0x006F8D90, name: common/particle }
+      - { type: sbss, vram: 0x006F8DB0, name: common/str }
+      - { type: sbss, vram: 0x006F8DB4, name: common/timer }
+      - { type: sbss, vram: 0x006F8DE8, name: common/tod }
+      - { type: sbss, vram: 0x006F8DEC, name: common/blit }
+      - { type: sbss, vram: 0x006F8DF0, name: common/view }
+      - { type: sbss, vram: 0x006F8DF4, name: common/ColGrid }
+      - { type: sbss, vram: 0x006F8EF8, name: newlib/libc/reent/sbrkr }
+      - { type: bss, vram: 0x006F8F00, name: crt0 }
+      - { type: bss, vram: 0x006F9080, name: game/ActionDispatch }
+      - { type: bss, vram: 0x006F93B0, name: game/Ai_2 }
+      - { type: bss, vram: 0x006F93C0, name: game/AiPadClips }
+      - { type: bss, vram: 0x006F9440, name: game/AiTweaks }
+      - { type: bss, vram: 0x00705540, name: game/AiNavigator }
+      - { type: bss, vram: 0x00705560, name: game/airport }
+      - { type: bss, vram: 0x007057A0, name: game/BigShotLevel }
+      - { type: bss, vram: 0x00705810, name: game/canyon2 }
+      - { type: bss, vram: 0x007059C0, name: game/Destructible }
+      - { type: bss, vram: 0x007059F0, name: game/TheGame }
+      - { type: bss, vram: 0x00709C50, name: game/Hud }
+      - { type: bss, vram: 0x0070B590, name: game/island }
+      - { type: bss, vram: 0x0070B600, name: game/McFile }
+      - { type: bss, vram: 0x00724F00, name: game/McPage }
+      - { type: bss, vram: 0x00724F50, name: game/MonsterMc }
+      - { type: bss, vram: 0x00725240, name: game/MonsterTweaks }
+      - { type: bss, vram: 0x00731340, name: game/Pickup }
+      - { type: bss, vram: 0x00731350, name: game/rt }
+      - { type: bss, vram: 0x007313C0, name: game/RigidPickup }
+      - { type: bss, vram: 0x00731420, name: game/sanfran }
+      - { type: bss, vram: 0x00731458, name: game/screen }
+      - { type: bss, vram: 0x00731500, name: game/Shell }
+      - { type: bss, vram: 0x007315B0, name: game/threemile }
+      - { type: bss, vram: 0x007317B0, name: game/tokyo }
+      - { type: bss, vram: 0x00731820, name: game/ui }
+      - { type: bss, vram: 0x00731940, name: gcc/libgcc2/do_global_dtors }
+      - { type: bss, vram: 0x00731948, name: gcc/fp-bit }
+      - { type: bss, vram: 0x00731958, name: gcc/libgcc2/default_terminate }
+      - { type: bss, vram: 0x00731978, name: gcc/dp-bit }
+      - { type: bss, vram: 0x00731990, name: gcc/frame }
+      - { type: bss, vram: 0x00731998, name: lib989snd/snd }
+      - { type: bss, vram: 0x007319F0, name: common/MotionBlurAA }
+      - { type: bss, vram: 0x007329F0, name: common/animation }
+      - { type: bss, vram: 0x007356C8, name: common/AnimCurve }
+      - { type: bss, vram: 0x00735710, name: common/electric }
+      - { type: bss, vram: 0x00735730, name: common/file }
+      - { type: bss, vram: 0x00735750, name: common/fog }
+      - { type: bss, vram: 0x007357D0, name: common/font }
+      - { type: bss, vram: 0x00764700, name: common/hd }
+      - { type: bss, vram: 0x0076479C, name: common/hdTraverse }
+      - { type: bss, vram: 0x00777F80, name: common/hier }
+      - { type: bss, vram: 0x00777FD0, name: common/texm }
+      - { type: bss, vram: 0x00778010, name: common/hoser }
+      - { type: bss, vram: 0x00779350, name: common/IncognitoEntertainmentGS }
+      - { type: bss, vram: 0x00779500, name: common/input }
+      - { type: bss, vram: 0x0077A280, name: common/MpegMovie }
+      - { type: bss, vram: 0x0078EAC0, name: common/particle }
+      - { type: bss, vram: 0x00793980, name: common/ScreenPolys }
+      - { type: bss, vram: 0x007B2D80, name: common/blit }
+      - { type: bss, vram: 0x007B3040, name: common/CsColor }
+      - { type: bss, vram: 0x007B3050, name: common/ColGrid }
+      - { type: bss, vram: 0x007B5080, name: sce/libpad/libpad }
+      - { type: bss, vram: 0x007B5440, name: sce/libmc/libmc }
+      - { type: bss, vram: 0x007B6A40, name: sce/libcdvd/eecdvd }
+      - { type: bss, vram: 0x007B6CD8, name: sce/libcdvd/eecdvd_sceCdStInit }
+      - { type: bss, vram: 0x007B6CE0, name: sce/libkernl/thread }
+      - { type: bss, vram: 0x007B7500, name: sce/libkernl/tty }
+      - { type: bss, vram: 0x007B78C0, name: sce/libkernl/kprintf }
+      - { type: bss, vram: 0x007B7940, name: sce/libkernl/sifcmd }
+      - { type: bss, vram: 0x007B7BC0, name: sce/libkernl/sifrpc }
+      - { type: bss, vram: 0x007B9400, name: sce/libkernl/filestub }
+      - { type: bss, vram: 0x007BA7C0, name: sce/libkernl/iopheap }
+      - { type: bss, vram: 0x007BA980, name: sce/libkernl/eeloadfile }
+      - { type: bss, vram: 0x007BABC0, name: sce/libkernl/iopreset }
+      - { type: bss, vram: 0x007BAC28, name: sce/libkernl/deci2 }
+      - { type: bss, vram: 0x007BBC80, name: sce/libkernl/tlbtrap }
+      - { type: bss, vram: 0x007BBEB0, name: newlib/libc/machine/r5900/memcmp }
+      # END data TUs
   - [0x5F8B44]

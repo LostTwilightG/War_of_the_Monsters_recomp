@@ -32,7 +32,7 @@
 ## Pendências
 - [x] Identificar o compilador: **SN Systems ProDG ee-gcc 2.95.2 (v2.73a) + assembler SN `ps2eeas`**, `-O2` (`-G8` no jogo e na engine). Veja "Toolchain".
 - [x] Dividir o `.text` em TUs. São 336, e o rebuild continua fazendo match. Veja "Divisão em TUs" abaixo.
-- [ ] Dividir `.data`/`.rodata`/`.bss` por TU (hoje cada seção é um arquivo só).
+- [x] Dividir `.data`/`.rodata`/`.sdata`/`.sbss`/`.bss`/`.gcc_except_table` por TU (483 faixas). Veja "Divisão dos dados".
 - [x] Ambiente Linux/WSL com binutils MIPS; rebuild do asm puro faz match do SHA1.
   Observações: `-mabi=o64` no GAS (o spimdisasm usa nomes de registradores o32) e seções alinhadas a 0x80 (`align: 0x80` no yaml).
 - [ ] Exportar tipos de `hieri.cpp` para headers.
@@ -69,3 +69,13 @@
 - `tools/cc.sh` é o pipeline de compilação, e `tools/setup_toolchain.sh` baixa o compilador para `tools/cc/`.
 - `tools/ccmatch.py <src> "<flags>" [compiladores|project]` compila e compara cada função com o original.
   `tools/wsl/objdiff.sh <func> <obj>` mostra o diff lado a lado.
+
+## Divisão dos dados
+- `tools/find_data_tus.py` gera `config/data_tus.csv`, e `tools/apply_tus.py` grava os subsegments no yaml.
+- Evidências: (1) os statics locais, agrupados por objeto na `.symtab` (exatos, e monotônicos em todas as
+  seções); (2) as referências `%hi`/`%lo`/`%gp_rel` do código de cada TU. Uma DP escolhe a atribuição
+  monotônica de maior peso.
+- Os limites em trechos sem evidência (dados sem referência entre duas TUs) são arbitrários dentro do
+  intervalo possível. Não afetam o match, mas podem precisar de ajuste ao descompilar.
+- TUs em `config/decomp_tus.txt` usam `.rodata` (com ponto): a rodata usada por uma única função migra
+  para o `.s` da função (INCLUDE_ASM), e a rodata compartilhada precisa ser definida no C/C++.
