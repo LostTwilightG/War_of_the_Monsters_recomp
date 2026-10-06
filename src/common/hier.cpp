@@ -15,6 +15,8 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+extern float hierClipRange;
+void ctxSetUpGSCtx(void);
 int particleCreateModeledFx(_fvector *, HierParticleEmitter *);
 void hierRegisterLocator(unsigned id, int fx);
 void hierPush(_hierhead **, int, unsigned, unsigned, unsigned *, float, _animCharInstance *, int, int);
@@ -90,6 +92,7 @@ class CsPool {
 public:
     static CsNode m_activeList;
     static CsNode m_HPActiveList;
+    static void init(void);
 };
 extern "C" int hierCsUpdateAsm(_cs *cs, _fvector *eo);
 extern "C" void hierTraverseAsm(void *root, void *ctx, int arg);
@@ -521,7 +524,59 @@ int hierLod(_hierlod *lod, float dist, _hierhead **out, _hierstack *stk)
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierLod__FP8_hierlodfPP9_hierheadP10_hierstack);
 #endif
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierCtrlNode);
+#ifdef NON_MATCHING
+/* 35/124 words: retail keeps the scratchpad base 0x70000000 in $s0 across calls; constant folding here does not */
+void hierInit(void)
+{
+    _worldctx *w;
+    int i;
+    unsigned *spad = (unsigned *)0x70000000;
+
+    hierClipRange = 5.0f;
+    for (i = 0; i < 5; i++) {
+        w = &worldCtx[i];
+        w->skyCs = 0;
+        w->skyCs2 = 0;
+        w->skyClouds = 0;
+        w->ep = 0;
+    }
+    CsPool::init();
+    ctxSetUpGSCtx();
+    FlushCache(0);
+    sceGsSyncPath(0, 0);
+    spad[0x3] = 0x1000;
+    spad[0x6] = 0x50505050;
+    spad[0x0] = 0x30000000;
+    spad[0xB] = 0x800000;
+    spad[0x5] = 0x20000000;
+    spad[0x7] = 0x31000000;
+    spad[0x8] = 0x800000;
+    spad[0x9] = 0x800000;
+    spad[0xA] = 0x800000;
+    spad[0x1] = 0;
+    spad[0x2] = 0;
+    spad[0x4] = 0;
+    *(unsigned *)0x10009020 = 3;
+    *(unsigned *)0x10009010 = 0xF0000000;
+    *(unsigned *)0x1000E010 = 2;
+    *(unsigned *)0x10009000 = 0x101;
+    sceGsSyncPath(0, 0);
+    spad[0x7] = 0x31000000;
+    spad[0x0] = 0x30000000;
+    *(unsigned *)0x10008010 = 0xF0000000;
+    spad[0x5] = 0x20000000;
+    *(unsigned *)0x10008020 = 3;
+    *(unsigned *)0x1000E010 = 1;
+    *(unsigned *)0x10008000 = 0x101;
+    sceGsSyncPath(0, 0);
+    *(unsigned *)0x10008020 = 0;
+    *(unsigned *)0x10008030 = (unsigned)D_0025B890 & 0xFFFFFFF;
+    *(unsigned *)0x1000E010 = 1;
+    *(unsigned *)0x10008000 = 0x145;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierInit__Fv);
+#endif
 void hierDisableFov(void)
 {
 }
