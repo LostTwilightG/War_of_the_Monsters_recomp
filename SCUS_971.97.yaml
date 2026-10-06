@@ -259,7 +259,7 @@ segments:
       - [0x127380, asm, common/videodec]  # c++, 23 funcs, name: manual
       - [0x127BD8, asm, common/view]  # c++, 56 funcs, name: guess
       - [0x129A28, asm, common/vo]  # c++, 9 funcs, name: guess
-      - [0x129C08, asm, common/zip]  # c++, 14 funcs, name: guess
+      - [0x129C08, cpp, common/zip]  # c++, 14 funcs, name: guess
       - [0x12B7E0, asm, common/audio]  # c++, 13 funcs, name: guess
       - [0x12BEE0, asm, common/bsp]  # c++, 7 funcs, name: guess
       - [0x12C348, asm, common/CsColor]  # c++, 8 funcs, name: guess

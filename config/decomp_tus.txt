@@ -1,0 +1,2 @@
+# TUs that are (partially) decompiled: built from src/<name>.c(pp) with INCLUDE_ASM for the rest.
+common/zip
