@@ -15,6 +15,14 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+void mathfUnitMatrix(float (*m)[4]);
+void viewSetRot(float (*m)[4][4], int view);
+void viewSetTrans(_fvector *v, int view);
+void viewSetSkyTrans(_fvector *v, int view);
+extern int hierCamDirty __asm__("dirty.476");
+extern float hierCamFixAxes[4][4] __asm__("fixAxes.477");
+extern float D_00777F80[4][4];
+extern _fvector D_00777FC0;
 void mathfMulVec(float (*m)[4], _fvector *v, _fvector *out);
 void vu0MulMatrix3x3(float (*dst)[4], float (*a)[4], float (*b)[4]);
 void vu0MulMatrix3x3_1(float (*dst)[4], float (*a)[4], float (*b)[4]);
@@ -189,7 +197,28 @@ void hierCsUpdate(_cs *cs, _worldctx *wc, _lightenv *le, _fvector *out)
 }
 INCLUDE_ASM("asm/nonmatchings/common/hier", vu0MulMatrix3x3_1__FPA3_fN20);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierPush__FPP9_hierheadiUiUiPUifP17_animCharInstanceii);
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierTranslateSkel);
+extern "C" void hierTranslateSkel(short *depth, short *matIdx, _animCharInstance *anim, _fvector *trans)
+{
+    Mat4 a;
+    Mat4 b;
+    _hierSkelBone *root = skelGetRoot(*depth);
+
+    mathfUnitMatrix(a.m);
+    __asm__ volatile("lqc2 $vf11, 0x0(%1)
+	"
+                     "lqc2 $vf12, 0x0(%2)
+	"
+                     "vadd.xyz $vf11, $vf11, $vf12
+	"
+                     "sqc2 $vf11, %0"
+                     : "=m"(a.m[3]) : "r"(&a.m[3]), "r"(trans));
+    float (*sm)[4][4] = skelGetSkelMat(*matIdx);
+    mathfMulMatrix(b.m, a.m, (float (*)[4])sm);
+    addSkelMat((float (*)[4][4])&b, ++*matIdx);
+    if (root->skelOutputMatIdx >= 0)
+        mathfMulMatrix((float (*)[4])anim->animMatrixPtr[root->skelOutputMatIdx], (float (*)[4])&root->restPoseInv, b.m);
+    --*depth;
+}
 extern "C" void hierRotateSkel(short *depth, short *matIdx, _animCharInstance *anim, _hierSkelBone *node)
 {
     Mat4 m;
@@ -372,7 +401,44 @@ void hierSetLosPointsPerView(int idx, int points)
 {
     g_cameraLosPointsPerView[idx] = points;
 }
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierSetCamera);
+__asm__("#SNFIX_SMALL dirty.476");
+extern "C" void hierSetCamera(float (*mat)[4][4], _fvector *vec, int view)
+{
+    if (mat) {
+        hierCamDirty = 1;
+        __asm__ volatile("lqc2 $vf11, 0x0(%1)
+	"
+                         "lqc2 $vf12, 0x0(%2)
+	"
+                         "lqc2 $vf13, 0x10(%2)
+	"
+                         "lqc2 $vf14, 0x20(%2)
+	"
+                         "vmulax.xyz $ACC, $vf12, $vf11x
+	"
+                         "vmadday.xyz $ACC, $vf13, $vf11y
+	"
+                         "vmaddz.xyz $vf11, $vf14, $vf11z
+	"
+                         "sqc2 $vf11, %0"
+                         : "=m"(D_00777FC0) : "r"(vec), "r"(mat));
+        _fvector *t = viewGetTrans(view);
+        __asm__ volatile("lqc2 $vf11, 0x0(%1)
+	"
+                         "lqc2 $vf12, 0x0(%2)
+	"
+                         "vadd.xyz $vf11, $vf11, $vf12
+	"
+                         "sqc2 $vf11, %0"
+                         : "=m"(D_00777FC0) : "r"(&D_00777FC0), "r"(t));
+        mathfMulMatrix(D_00777F80, hierCamFixAxes, (float (*)[4])mat);
+    } else if (hierCamDirty) {
+        hierCamDirty = 0;
+        viewSetRot((float (*)[4][4])D_00777F80, view);
+        viewSetTrans(&D_00777FC0, view);
+        viewSetSkyTrans(&D_00777FC0, view);
+    }
+}
 extern "C" void hierKillLocator(int idx, _hierhead *node)
 {
     unsigned *slot = &FxToKill[idx];
