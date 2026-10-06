@@ -15,6 +15,31 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+extern _worldctx worldCtx[5];
+extern int g_doFOVGroups;
+extern int g_dontTraverseObjects;
+extern int tracingShadow;
+extern char pointLights[0x8A0];
+void *psGetLightDir(void);
+float fogGetFarClipRange(void);
+extern "C" void hierCacheForAsm(_fvector *trans, void *lightDir, int pl, float farClip, float one);
+extern "C" void hierCacheWorldMatsAsm(_worldctx *wc, float (*light)[4]);
+extern "C" void hierTraverseAsm(void *root, void *ctx, int arg);
+struct HierStackEnt {
+    float eo[3];
+    _hierhead **pp;
+    short i10;
+    short i12;
+    unsigned w14;
+    unsigned *p18;
+    float f1c;
+    _animCharInstance *anim;
+    short s24;
+    short s26;
+    int pad28[2];
+};
+#define SPAD_HIERSTACK (*(HierStackEnt **)0x70000030)
+#define SPAD_HIERDEPTH (*(int *)0x70000034)
 void mathfUnitMatrix(float (*m)[4]);
 void viewSetRot(float (*m)[4][4], int view);
 void viewSetTrans(_fvector *v, int view);
@@ -196,7 +221,30 @@ void hierCsUpdate(_cs *cs, _worldctx *wc, _lightenv *le, _fvector *out)
     vu0MulMatrix3x3_1(lightDir, (float (*)[4])&cs->mat, plightGetParaLight());
 }
 INCLUDE_ASM("asm/nonmatchings/common/hier", vu0MulMatrix3x3_1__FPA3_fN20);
+#ifdef NON_MATCHING
+/* 45/59 words: $s register order and store order differ */
+void hierPush(_hierhead **pp, int a, unsigned b, unsigned c, unsigned *d, float f, _animCharInstance *anim, int e, int g)
+{
+    HierStackEnt *ent = SPAD_HIERSTACK;
+
+    vu0GetEoAsm((QwData *)ent);
+    ent->s24 = e;
+    ent->anim = anim;
+    ent->f1c = f;
+    ent->p18 = d;
+    ent->w14 = b;
+    ent->i12 = c;
+    ent->i10 = a;
+    ent->pp = pp;
+    ent->s26 = g;
+    if (SPAD_HIERDEPTH < 0x96) {
+        SPAD_HIERDEPTH++;
+        SPAD_HIERSTACK++;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierPush__FPP9_hierheadiUiUiPUifP17_animCharInstanceii);
+#endif
 extern "C" void hierTranslateSkel(short *depth, short *matIdx, _animCharInstance *anim, _fvector *trans)
 {
     Mat4 a;
@@ -474,6 +522,34 @@ void hierClearLocatorListForReplay(void)
         FxToKill[i] = 0xFFFFFFFF;
     }
 }
-INCLUDE_ASM("asm/nonmatchings/common/hier", hierTraverseCSForLocators__FP3_csb);
+__asm__("#SNFIX_SMALL g_doFOVGroups");
+__asm__("#SNFIX_SMALL g_dontTraverseObjects");
+void hierTraverseCSForLocators(_cs *cs, bool flag)
+{
+    _fvector eo;
+
+    if (cs->epNode) {
+        matStack = (float (*)[4])0x70000400;
+        fovNorms = (float (*)[4])0x70000900;
+        g_doFOVGroups = flag;
+        fovNorms1 = (float (*)[4])0x70000E00;
+        lightDir = (float (*)[4])0x70001300;
+        world = worldCtx;
+        gCs = cs;
+        g_dontTraverseObjects = 1;
+        tracingShadow = 0;
+        _fvector *t = viewGetTrans(0);
+        void *ld = psGetLightDir();
+        int pl = *(int *)(pointLights + 0x820);
+        hierCacheForAsm(t, ld, pl, fogGetFarClipRange(), 1.0f);
+        hierCacheWorldMatsAsm(world, plightGetParaLight());
+        __asm__ volatile("sync
+	sync.p");
+        hierCsUpdate(cs, world, world->lightEnv, &eo);
+        hierTraverseAsm(cs, &eo, 0);
+        g_doFOVGroups = 1;
+        g_dontTraverseObjects = 0;
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/common/hier", vu0LoadEoAsm__FP6QwData);
 INCLUDE_ASM("asm/nonmatchings/common/hier", vu0GetEoAsm__FP6QwData);

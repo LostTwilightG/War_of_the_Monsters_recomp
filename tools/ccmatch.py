@@ -19,7 +19,7 @@ from elftools.elf.relocation import RelocationSection
 
 ROOT = Path(__file__).resolve().parent.parent
 COMPILERS = Path.home() / 'compilers'
-WORK = Path.home() / '.cache/ccmatch'  # outside /tmp: WSL may clear it between sessions
+WORK = Path(os.environ['CCMATCH_WORK']) if os.environ.get('CCMATCH_WORK') else Path.home() / '.cache/ccmatch'  # outside /tmp: WSL may clear it between sessions
 ROM_VRAM = 0x100000
 
 R_MIPS_26, R_MIPS_HI16, R_MIPS_LO16, R_MIPS_GPREL16 = 4, 5, 6, 7
