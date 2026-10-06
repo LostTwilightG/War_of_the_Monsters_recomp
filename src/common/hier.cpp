@@ -15,6 +15,7 @@ typedef void (*TravCb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *);
 extern TravCb gTraversalCallback;
 extern unsigned FxToKill[32];
 void particleKillFx(int &);
+void hierPush(_hierhead **, int, unsigned, unsigned, unsigned *, float, _animCharInstance *, int, int);
 extern int eoCnt;
 extern int lastEoCnt;
 extern float shadowLodRangeSq;
@@ -382,7 +383,44 @@ INCLUDE_ASM("asm/nonmatchings/common/hier", vu0HierRotateAsm__FPA3_A3_fi);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierGetRotatesAsm__Fi);
 INCLUDE_ASM("asm/nonmatchings/common/hier", vu0FovTestResAsm__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/hier", vu0MulEoForObj__FPA3_f);
+#ifdef NON_MATCHING
+/* 42/98 words: gcc cross-jumps the two hierPush call tails, retail keeps them separate (0x17c vs 0x188) */
+int hierLod(_hierlod *lod, float dist, _hierhead **out, _hierstack *stk)
+{
+    int i;
+    float t;
+
+    for (i = lod->numLods - 1; i >= 0; i--) {
+        if (dist < lod->lods[i].switchOutDis) {
+            *out = lod->lods[i].child;
+            if (lod->ctx)
+                stk->gsCtx = lod->ctx;
+            if (lod->lods[i].fade > 0.0f) {
+                if (lod->lods[i].fade < dist) {
+                    t = 1.0f - (dist - lod->lods[i].fade) / (lod->lods[i].switchOutDis - lod->lods[i].fade);
+                    if (i - 1 >= 0) {
+                        if (t > 0.5f) {
+                            *out = lod->lods[i - 1].child;
+                            stk->fade = (1.0f - t) * 2.0f;
+                            hierPush(&lod->lods[i].child, stk->matIdx, 1, stk->eoCnt, stk->gsCtx, 1.0f, stk->animCharInst, stk->skelIndex, stk->skelMatIndex);
+                            return 1;
+                        }
+                        *out = lod->lods[i - 1].child;
+                        stk->fade = 1.0f;
+                        hierPush(&lod->lods[i].child, stk->matIdx, 1, stk->eoCnt, stk->gsCtx, t * 2.0f, stk->animCharInst, stk->skelIndex, stk->skelMatIndex);
+                        return 1;
+                    }
+                    stk->fade = t;
+                }
+            }
+            return 1;
+        }
+    }
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierLod__FP8_hierlodfPP9_hierheadP10_hierstack);
+#endif
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierCtrlNode);
 INCLUDE_ASM("asm/nonmatchings/common/hier", hierInit__Fv);
 void hierDisableFov(void)
