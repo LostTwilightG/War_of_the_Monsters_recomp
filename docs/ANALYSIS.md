@@ -98,3 +98,14 @@ Um decomp-permuter deve resolver boa parte desses casos.
 - O escalonador tende a emitir instruções independentes na **ordem inversa** do fonte (ex.: stores consecutivos).
 - Store em campo `char` força recarregar globais (alias com tudo); campos `int` não.
 - O `zipCheckHeader` e o `zipGetChar` ficaram `NON_MATCHING` (registradores).
+
+## Fronteira com o hardware (primeira passada)
+`tools/hw_boundary.py` gera `config/hw_boundary.csv` com, por TU, chamadas ao SDK, acessos a registradores
+(0x1000xxxx/0x1200xxxx), instruções VU0 (COP2), scratchpad e chamadas ao 989snd.
+- **VU0 macro-mode está em quase todo o código de jogo** (2.681 `lqc2`, 1.426 `sqc2`, `vmulax/vmadday/vmaddz`...):
+  são funções inline de matemática vetorial (matriz×vetor, soma) com assembly inline. Para o port, devem vir
+  de um header de math, então trocá-las por C++/SSE resolve o problema num ponto só. Para o match, esse header
+  precisa reproduzir o asm inline original.
+- O acesso direto a registradores e DMA se concentra na engine (`common/hier`, `texm`, `vi`, `ps`, `pkt`, `disp`,
+  `blit`, `particle`...) e em `game/ui`. É a camada de render que o port vai reescrever.
+- Som: `game/Sound`, `game/StreamingSoundManager` e `game/ShellFinished` chamam o 989snd (`snd_*`). Memory card: `game/McFile`.
