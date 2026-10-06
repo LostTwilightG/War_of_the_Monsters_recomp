@@ -35,7 +35,7 @@
 - [x] Dividir `.data`/`.rodata`/`.sdata`/`.sbss`/`.bss`/`.gcc_except_table` por TU (483 faixas). Veja "Divisão dos dados".
 - [x] Ambiente Linux/WSL com binutils MIPS; rebuild do asm puro faz match do SHA1.
   Observações: `-mabi=o64` no GAS (o spimdisasm usa nomes de registradores o32) e seções alinhadas a 0x80 (`align: 0x80` no yaml).
-- [ ] Exportar tipos de `hieri.cpp` para headers.
+- [x] Exportar tipos de `hieri.cpp` para headers: `tools/stabs2h.py` gera `include/ps2_sdk_types.h` e `include/hieri_types.h`. Veja "Tipos do hieri".
 
 ## Divisão em TUs
 - O gcc 2.x emite um label local `gcc2_compiled.` no início do `.text` de cada TU, seguido de
@@ -109,3 +109,14 @@ Um decomp-permuter deve resolver boa parte desses casos.
 - O acesso direto a registradores e DMA se concentra na engine (`common/hier`, `texm`, `vi`, `ps`, `pkt`, `disp`,
   `blit`, `particle`...) e em `game/ui`. É a camada de render que o port vai reescrever.
 - Som: `game/Sound`, `game/StreamingSoundManager` e `game/ShellFinished` chamam o 989snd (`snd_*`). Memory card: `game/McFile`.
+
+## Tipos do hieri
+`python tools/stabs2h.py disc/SCUS_971.97 include` converte os stabs de `hieri.cpp` (.mdebug) em headers C++:
+81 tipos do SDK (registradores GIF/VIF/DMA/GS como bitfields, `ThreadParam`, `sceDmaTag`...) e 89 da engine
+(`_hierobject`, `_hiergroup`, `_animCharInstance`, `ParticleType`, enums de FX...).
+- Cada struct tem um `typedef char _size_X[sizeof(X) == N ? 1 : -1]`; o header compila limpo com o ee-gcc 2.95
+  (`tools/cc.sh`), então todos os tamanhos batem.
+- Os stabs não guardam `__attribute__((aligned))`; `infer_alignment` recupera o alinhamento (16) a partir dos offsets.
+- Métodos (construtores, `operator=`) são descartados; só ficam dados, enums e typedefs. Tipos opacos (`ActHead`) ficam só com forward declaration.
+- `long long` e `long128` têm 128 bits no ee-gcc (`long` tem 64).
+- Cobrem só a engine em `common/hier*`; o resto do jogo (`game/`) segue sem tipos.
