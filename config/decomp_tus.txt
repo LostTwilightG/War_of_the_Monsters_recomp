@@ -27,3 +27,5 @@ common/timer
 common/CsPool
 common/TaskManager
 common/AnimQueue
+common/PointToolKit
+common/hoser
