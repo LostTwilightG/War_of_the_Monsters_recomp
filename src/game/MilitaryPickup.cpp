@@ -5,16 +5,9 @@
 
 struct MilitaryFormation;
 
-/* Pickup is the (virtual) base in retail; only the fields used here are laid out. */
-class MilitaryPickup {
+class MilitaryPickup : public Pickup {
 public:
-    char pad0[4];
-    unsigned short flags;
-    char pad6[6];
-    _cs *cs;
-    char pad10[0x50 - 0x10];
-    unsigned long long bits;
-    char pad58[0x170 - 0x58];
+    char padE0[0x170 - 0xE0];
     int focus;
     int state;
     MilitaryFormation *formation;
@@ -37,7 +30,7 @@ public:
 INCLUDE_ASM("asm/nonmatchings/game/MilitaryPickup", _vt$14MilitaryPickup);
 void MilitaryPickup::grab(int i)
 {
-    ((Pickup *)this)->grab(i);
+    Pickup::grab(i);
     flags &= 0xFFFD;
     breakFormation();
     state = 7;

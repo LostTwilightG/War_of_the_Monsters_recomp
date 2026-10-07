@@ -25,23 +25,15 @@ INCLUDE_ASM("asm/nonmatchings/game/CarPickup", __9CarPickup);
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", initAfterDbLoad__9CarPickup);
 void CarPickup::takeHit(_fvector *pos, float dmg, int x)
 {
-    *(float *)((char *)this + 0x48) -= dmg;
+    health -= dmg;
 }
-#ifdef NON_MATCHING
-/* 14/16 words, untuned */
 void CarPickup::kill(void)
 {
-    _cs *cs = *(_cs **)((char *)this + 0xC);
-
     cs->drawMe = 0;
-    cs = *(_cs **)((char *)this + 0xC);
     cs->testCollision = 0;
     ((CarSound *)((char *)this + 0x170))->terminateCarSound();
     Pickup::kill();
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/game/CarPickup", kill__9CarPickup);
-#endif
 void CarPickup::grab(int i)
 {
     Pickup::grab(i);
@@ -50,10 +42,10 @@ void CarPickup::grab(int i)
 }
 void CarPickup::drop(void)
 {
-    *(int *)((char *)this + 0xD8) = 0;
+    heldState = 0;
     Pickup::setVisualState(0);
     Pickup::hatCheck();
-    hdReparentCsGrid(*(_cs **)((char *)this + 0xC));
+    hdReparentCsGrid(cs);
 }
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", update__9CarPickup);
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", regen__9CarPickup);
