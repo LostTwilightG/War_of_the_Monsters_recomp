@@ -1,17 +1,53 @@
 #include "common.h"
+#include "engine.h"
+#include "game/pickup.h"
+#include "game/pickup_sound.h"
+
+class TurretPickup : public Pickup {
+public:
+    enum State { STATE_0, STATE_1, STATE_2, STATE_3, STATE_4 };
+
+    char padE0[0x100 - 0xE0];
+    PickupSound sound; /* 0x100 */
+    char pad101[0x1B8 - 0x101];
+    int state;         /* 0x1B8 */
+
+    int getState(void);
+    void takeHit(_fvector *pos, float dmg, int x);
+    void drop(void);
+    void grab(int i);
+    void enterState(State s);
+};
 
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", __12TurretPickup);
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", initAfterDbLoad__12TurretPickup);
-INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", takeHit__12TurretPickupP8_fvectorfi);
-INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", drop__12TurretPickup);
+void TurretPickup::takeHit(_fvector *pos, float dmg, int x)
+{
+    health -= dmg;
+}
+void TurretPickup::drop(void)
+{
+    heldState = 0;
+    Pickup::setVisualState(0);
+    Pickup::hatCheck();
+    hdReparentCsGrid(cs);
+}
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", kill__12TurretPickup);
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", update__12TurretPickup);
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", fire__12TurretPickupR8_fvector);
-INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", grab__12TurretPickupi);
+void TurretPickup::grab(int i)
+{
+    Pickup::grab(i);
+    sound.terminateTurretSound();
+    enterState(STATE_4);
+}
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", updateBehavior__12TurretPickup);
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", enterState__12TurretPickupQ212TurretPickup5State);
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", _vt$12TurretPickup);
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", func_001D0FE0);
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", func_001D0FF0);
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", __tf12TurretPickup);
-INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", getState__12TurretPickup);
+int TurretPickup::getState(void)
+{
+    return state;
+}

@@ -1,31 +1,7 @@
 #include "common.h"
-#include "game/pickup.h"
+#include "game/military_pickup.h"
 #include "hieri_types.h"
 #include "cs_pool.h"
-
-struct MilitaryFormation;
-
-class MilitaryPickup : public Pickup {
-public:
-    char padE0[0x170 - 0xE0];
-    int focus;
-    int state;
-    MilitaryFormation *formation;
-    char pad17C[4];
-    _fvector formationPos;
-
-    void grab(int i);
-    void kill(void);
-    void breakFormation(void);
-    int getState(void);
-    int getFocus(void);
-    void leadFormation(void);
-    void followFormation(void);
-    void resignFormation(void);
-    void setFormation(MilitaryFormation *f);
-    void setFormationPos(_fvector &p);
-    _fvector *getFormationPos(void);
-};
 
 INCLUDE_ASM("asm/nonmatchings/game/MilitaryPickup", _vt$14MilitaryPickup);
 void MilitaryPickup::grab(int i)
