@@ -235,7 +235,7 @@ segments:
       - [0x110090, asm, common/movies]  # c++, 10 funcs, name: manual
       - [0x110938, asm, common/partdraw]  # c++, 39 funcs, name: manual
       - [0x114B38, asm, common/particle]  # c++, 49 funcs, name: guess
-      - [0x11B9F0, asm, common/peds]  # c++, 5 funcs, name: guess
+      - [0x11B9F0, cpp, common/peds]  # c++, 5 funcs, name: guess
       - [0x11C0D8, asm, common/pkt]  # c++, 10 funcs, name: guess
       - [0x11CBB0, cpp, common/plight]  # c++, 12 funcs, name: guess
       - [0x11D3B8, cpp, common/PointLight]  # c++, 13 funcs, name: guess
@@ -260,7 +260,7 @@ segments:
       - [0x127BD8, asm, common/view]  # c++, 56 funcs, name: guess
       - [0x129A28, cpp, common/vo]  # c++, 9 funcs, name: guess
       - [0x129C08, cpp, common/zip]  # c++, 14 funcs, name: guess
-      - [0x12B7E0, asm, common/audio]  # c++, 13 funcs, name: guess
+      - [0x12B7E0, cpp, common/audio]  # c++, 13 funcs, name: guess
       - [0x12BEE0, cpp, common/bsp]  # c++, 7 funcs, name: guess
       - [0x12C348, cpp, common/CsColor]  # c++, 8 funcs, name: guess
       - [0x12C488, cpp, common/ColGrid]  # c++, 5 funcs, name: manual
