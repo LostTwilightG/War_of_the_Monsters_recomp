@@ -8,7 +8,7 @@ struct MilitaryFormation;
 /* Pickup that moves in formation (tanks, missile trucks derive from it). */
 class MilitaryPickup : public Pickup {
 public:
-    enum State { STATE_0 };
+    enum State { STATE_0, STATE_1, STATE_2, STATE_3, STATE_4, STATE_5, STATE_6, STATE_7 };
 
     char padE0[0x170 - 0xE0];
     int focus;                    /* 0x170 */

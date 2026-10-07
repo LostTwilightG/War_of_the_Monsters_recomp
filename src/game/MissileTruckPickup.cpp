@@ -1,14 +1,22 @@
 #include "common.h"
 #include "engine.h"
 #include "game/military_pickup.h"
+#include "game/vehicle_navigator.h"
 
 class GamePad;
 
 class MissileTruckPickup : public MilitaryPickup {
 public:
-    char pad190[0x290 - 0x190];
-    int f290;
+    char pad190[0x1B8 - 0x190];
+    float speed;               /* 0x1B8 */
+    char pad1BC[0x200 - 0x1BC];
+    VehicleNavigator nav;      /* 0x200 */
+    char pad290[0x290 - 0x290];
+    int mode;                  /* 0x290 */
 
+    void leadFormation(void);
+    void followFormation(void);
+    void setTrans(_fvector &p);
     void takeHit(_fvector *pos, float dmg, int x);
     void drop(void);
     void updateFollowBehavior(GamePad &pad);
@@ -19,7 +27,16 @@ public:
 
 INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", __18MissileTruckPickup);
 INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", initAfterDbLoad__18MissileTruckPickup);
-INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", setTrans__18MissileTruckPickupR8_fvector);
+void MissileTruckPickup::setTrans(_fvector &p)
+{
+    register int t __asm__("$2");
+
+    __asm__ volatile("lq %1, 0(%2)
+	sq %1, %0" : "=m"(cs->trans), "=r"(t) : "r"(&p));
+    hdReparentCsGrid(cs);
+    nav.init();
+    enterState((MilitaryPickup::State)state);
+}
 void MissileTruckPickup::takeHit(_fvector *pos, float dmg, int x)
 {
     if (dmg <= 0.1f)
@@ -46,11 +63,34 @@ void MissileTruckPickup::updateFollowBehavior(GamePad &pad)
 INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", updateAttackBehavior__18MissileTruckPickupR7GamePad);
 INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", enterState__18MissileTruckPickupQ214MilitaryPickup5State);
 INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", _vt$18MissileTruckPickup);
+#ifdef NON_MATCHING
+/* 16/18 words, untuned: store scheduling */
+void MissileTruckPickup::leadFormation(void)
+{
+    VehicleNavigator *n = &nav;
+
+    speed = 88.0f;
+    n->f14 = 0.5f;
+    n->f10 = 0.5f;
+    mode = 1;
+    enterState(STATE_0);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", leadFormation__18MissileTruckPickup);
-INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", followFormation__18MissileTruckPickup);
+#endif
+void MissileTruckPickup::followFormation(void)
+{
+    VehicleNavigator *n = &nav;
+
+    speed = 146.66667f;
+    n->f14 = 1.0f;
+    n->f10 = 0;
+    mode = 2;
+    enterState(STATE_2);
+}
 void MissileTruckPickup::resignFormation(void)
 {
-    f290 = 0;
+    mode = 0;
     enterState(STATE_0);
 }
 INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", func_0014E508);
