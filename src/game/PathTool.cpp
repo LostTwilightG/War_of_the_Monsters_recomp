@@ -61,21 +61,13 @@ PathPoint *PointToolKitGetPoint(PathTool *t, int i) __asm__("getPoint__12PointTo
 void PointToolKitLoad(PathTool *t, char *name, bool b) __asm__("loadPoints__12PointToolKitPcb");
 
 INCLUDE_ASM("asm/nonmatchings/game/PathTool", _vt$8PathTool);
-#ifdef NON_MATCHING
-/* 25/28 words, untuned: prologue scheduling */
 void PathTool::loadPoints(char *n, bool b)
 {
     char path[0x20];
     char *fmt = D_006F7DC8;
 
-    if (!n)
-        n = shell->GetLevelName();
-    Shell::formatFilename(path, fmt, n, name);
-    PointToolKitLoad(this, path, b);
+    PointToolKitLoad(this, (Shell::formatFilename(path, fmt, n ? n : shell->GetLevelName(), name), path), b);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/game/PathTool", loadPoints__8PathToolPcb);
-#endif
 void PathTool::init(int i)
 {
     PointToolKitInit(this, 0);
