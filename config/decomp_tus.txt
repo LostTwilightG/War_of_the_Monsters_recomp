@@ -64,3 +64,7 @@ game/TokenManager
 game/reset
 game/AiPathTool
 game/AiBrain
+game/MonsterMeters
+game/StickShaker
+game/Vehicle
+game/SpecFxAnim

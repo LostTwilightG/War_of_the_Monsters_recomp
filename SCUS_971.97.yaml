@@ -134,7 +134,7 @@ segments:
       - [0x064778, asm, game/MonsterDynamics]  # c++, 21 funcs, name: guess
       - [0x065AC0, asm, game/MonsterInit]  # c++, 8 funcs, name: manual
       - [0x0676C8, asm, game/MonsterMc]  # c++, 144 funcs, name: manual
-      - [0x06D208, asm, game/MonsterMeters]  # c++, 15 funcs, name: manual
+      - [0x06D208, cpp, game/MonsterMeters]  # c++, 15 funcs, name: manual
       - [0x06D7C0, asm, game/MonsterTriggers]  # c++, 11 funcs, name: manual
       - [0x06E088, cpp, game/MonsterTweaks]  # c++, 5 funcs, name: guess
       - [0x06E158, asm, game/MovementStates]  # c++, 95 funcs, name: manual
@@ -162,10 +162,10 @@ segments:
       - [0x0B1840, asm, game/Sound]  # c++, 268 funcs, name: manual
       - [0x0C17A8, asm, game/StreamingSoundManager]  # c++, 44 funcs, name: guess
       - [0x0C4A38, asm, game/SpecialStates]  # c++, 148 funcs, name: manual
-      - [0x0CE4A0, asm, game/SpecFxAnim]  # c++, 14 funcs, name: guess
+      - [0x0CE4A0, cpp, game/SpecFxAnim]  # c++, 14 funcs, name: guess
       - [0x0CEA30, cpp, game/StartPoints]  # c++, 6 funcs, name: guess
       - [0x0CEB78, cpp, game/StartPointTool]  # c++, 9 funcs, name: guess
-      - [0x0CEE10, asm, game/StickShaker]  # c++, 7 funcs, name: guess
+      - [0x0CEE10, cpp, game/StickShaker]  # c++, 7 funcs, name: guess
       - [0x0CF450, cpp, game/SubwayPickup]  # c++, 8 funcs, name: guess
       - [0x0CF900, asm, game/TankPickup]  # c++, 16 funcs, name: guess
       - [0x0D0420, cpp, game/TankVehicle]  # c++, 2 funcs, name: guess
@@ -180,7 +180,7 @@ segments:
       - [0x0D93D8, asm, game/ui]  # c++, 16 funcs, name: guess
       - [0x0DAF08, asm, game/uidev]  # c++, 81 funcs, name: manual
       - [0x0DD788, asm, game/vegas]  # c++, 3 funcs, name: guess
-      - [0x0DDB28, asm, game/Vehicle]  # c++, 10 funcs, name: guess
+      - [0x0DDB28, cpp, game/Vehicle]  # c++, 10 funcs, name: guess
       - [0x0DE0B8, asm, game/VehicleNavigator]  # c++, 27 funcs, name: guess
       - [0x0DFF10, asm, game/WaterGrid]  # c++, 5 funcs, name: guess
       - [0x0E0688, asm, game/Weapon]  # c++, 28 funcs, name: guess
@@ -569,7 +569,7 @@ segments:
       - [0x5EFFA0, rodata, game/Sound]
       - [0x5F0930, rodata, game/StreamingSoundManager]
       - [0x5F0D70, rodata, game/SpecialStates]
-      - [0x5F1450, rodata, game/SpecFxAnim]
+      - [0x5F1450, .rodata, game/SpecFxAnim]
       - [0x5F1498, .rodata, game/StartPointTool]
       - [0x5F14D8, .rodata, game/SubwayPickup]
       - [0x5F1560, rodata, game/TankPickup]
