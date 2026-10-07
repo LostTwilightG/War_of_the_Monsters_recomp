@@ -30,6 +30,8 @@ EXISTING = {
     0x4: ('unsigned short', 'm_flags', 2), 0x7DD0: ('int', 'm_blockFlag1B', 4), 0x7E94: ('int', 'm_blockFlag1C', 4),
     0x298: ('float', 'm_climbSpeedBase', 4), 0x2A0: ('float', 'm_climbStrafeBase', 4), 0xFD70: ('float', 'm_fd70', 4), 0xFD74: ('float', 'm_fd74', 4),
     0x6C34: ('int', 'm_pinToggle', 4), 0x6C38: ('int', 'm_pinMode', 4), 0x1A70: ('int', 'm_shadowOff', 4), 0x1A74: ('char *', 'm_shadowCs', 4), 0x1A78: ('int', 'm_shadowSaved', 4),
+    0x44: ('int', 'm_frameTime', 4), 0xEA: ('signed char', 'm_unkEA', 1), 0xEB: ('signed char', 'm_unkEB', 1), 0xF5: ('signed char', 'm_unkF5', 1),
+    0x7978: ('int *', 'm_stateRef', 4), 0x6874: ('char *', 'm_x6874', 4), 0x69A0: ('float', 'm_padScale', 4),
     0x34: ('int *', 'm_state', 4), 0x38: ('int *', 'm_prevState', 4), 0xB4: ('float', 'm_bodyHeight', 4),
     0xEF: ('signed char', 'm_cloaked', 1), 0x1A3C: ('_cs *', 'm_shadow', 4), 0x846C: ('Monster *', 'm_killer', 4),
     0x4B0: ('int', 'm_healthGlow[3]', 12), 0x4BC: ('int', 'm_staminaGlow[3]', 12),

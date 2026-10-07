@@ -3,6 +3,22 @@
 #include "game/fire_breath.h"
 #include "game/power_ups.h"
 #include "task_manager.h"
+#include "game/level_pickups.h"
+
+class GamePad {
+public:
+    void clearInputs(void);
+};
+class HealthMeter {
+public:
+    void creditFull(void);
+};
+class Ai {
+public:
+    void updateInputs(void);
+};
+extern float cloaker;
+unsigned timerGetFieldCount(void);
 
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setWaterLevel__Ff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getWaterLevel__Fv);
@@ -14,7 +30,118 @@ void Monster::recomputeDynamics(void)
     m_fd74 = m_fd70 * 0.024444444f * 60.0f;
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", playerUpdateInputs__7Monster);
+#ifdef NON_MATCHING
+/* 10/341 words, untuned: written from the m2c draft; the retail clamps with min.s */
+void Monster::update(void)
+{
+    GamePad *gp = (GamePad *)((char *)this + 0x5024);
+    PadFlags *pf;
+    HealthMeter *health = (HealthMeter *)((char *)this + 0x448);
+
+    m_frameTime = timerGetFieldsLastFrame();
+    if (m_dead) {
+        gp->clearInputs();
+        updateDeathSequence();
+    } else {
+        if (m_godMode) {
+            m_specialWeapon = 1;
+            health->creditFull();
+            if (m_unkF5 == 0)
+                m_stamina.creditFull();
+        } else if (m_unkEA == 0) {
+            if (m_unkEB != 0) {
+                m_specialWeapon = 1;
+                if (m_unkF5 == 0)
+                    m_stamina.creditFull();
+            } else if (m_state != m_stateRef) {
+                m_stamina.update(m_frameTime);
+            }
+        } else {
+            health->creditFull();
+            m_stamina.update(m_frameTime);
+        }
+        if (m_playerNum == 1) {
+            if (m_unkF9 != 0)
+                playerUpdateInputs();
+            else
+                gp->clearInputs();
+            LevelPickups::computeHighlight(*this);
+        } else if (m_playerNum == 2) {
+            gp->clearInputs();
+            if (m_unkF9 != 0) {
+                ((Ai *)((char *)this + 0x4E0))->updateInputs();
+                LevelPickups::computeHighlight(*this);
+            }
+        }
+        pf = &m_padFlags;
+        pf->interpretInputs(*gp);
+        if (m_pinMode != 0) {
+            if ((*pf)[0]->f32 != 0 && (*pf)[1]->f32 == 0)
+                m_pinToggle ^= 1;
+            if (m_pinToggle != 0) {
+                unsigned short *a = (unsigned short *)((char *)this + 0x6648);
+                float v;
+
+                v = a[0x1A / 2] * m_padScale;
+                (*pf)[0]->f22 = (v < 255.0f) ? v : 255.0f;
+                v = a[0x1C / 2] * m_padScale;
+                (*pf)[0]->f24 = (v < 255.0f) ? v : 255.0f;
+                v = a[0x1E / 2] * m_padScale;
+                (*pf)[0]->f26 = (v < 255.0f) ? v : 255.0f;
+                v = a[0x20 / 2] * m_padScale;
+                (*pf)[0]->f28 = (v < 255.0f) ? v : 255.0f;
+                (*pf)[0]->f1C = (*pf)[0]->f18;
+                (*pf)[0]->f1A = (*pf)[0]->f16;
+                (*pf)[0]->f18 = 0;
+                (*pf)[0]->f16 = 0;
+                (*pf)[0]->f1E = 0;
+                (*pf)[0]->f20 = 0;
+            }
+        }
+        updateOnFire();
+        updateBeingShocked();
+        updateAirLegOverride();
+        if (m_cloaked != 0) {
+            m_cs->cloakWeight = smoothEasyIn(m_cs->cloakWeight, cloaker, 0.03f, 0.001f);
+            m_cloakTime -= timerGetFieldsLastFrame();
+            if (m_cloakTime <= 0)
+                setCloakOff();
+        }
+        if ((*pf)[0]->f5C != 0)
+            Cameras::TogglePOV(m_cameraView);
+    }
+    updateReticle();
+    {
+        char *st = (char *)m_state;
+        char *vt = *(char **)(st + 0x10);
+
+        (*(void (**)(void *, void *))(vt + 0x1C))(st + *(short *)(vt + 0x18), st);
+    }
+    updateLookAt();
+    updateBoostAndRage();
+    updateBoundingSphere();
+    updateAnimContacts(true);
+    if (m_x6874 != 0) {
+        if (m_stamina.exhausted == 0 || m_dead != 0) {
+            *(int *)(m_x6874 + 0xC) = 0;
+        } else {
+            *(int *)(m_x6874 + 0xC) = 1;
+            *(QwData *)(m_x6874 + 0x10) = *(QwData *)((char *)this + 0x3E60);
+        }
+    }
+    if (m_okToGlow != 0) {
+        updatePowerUpGlow();
+        if (m_unk49 != 0 || m_dead != 0) {
+            m_cs->colorQuad.fVec[3] = 1.0f;
+        } else {
+            m_cs->colorQuad.fVec[3] = (timerGetFieldCount() % 6 >= 3) ? 0.0f : 1.0f;
+        }
+    }
+    ((MonsterSound *)((char *)this + 0x1A7C))->updateMonsterSound();
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", update__7Monster);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Monster", startCinema__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateCinema__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", endCinema__7Monster);
@@ -617,7 +744,7 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", isFullStamina__7Monster);
 bool Monster::isTargetPinning(void)
 {
     if (m_pinMode == 0)
-        return (*m_padFlags[0]).data[0x32] != 0;
+        return m_padFlags[0]->f32 != 0;
     return m_pinToggle != 0;
 }
 #else

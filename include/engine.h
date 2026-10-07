@@ -28,6 +28,7 @@ void mathfNormalizeQuaternion(_fvector *dst, _fvector *src);
 void mathfQuaternionToMatrix4x4(float (*m)[4], _fvector *q);
 void mathfRotAxisToQuaternion(_fvector *dst, _fvector *axis, float angle);
 void mathfConcatQuaternions(_fvector *dst, _fvector *a, _fvector *b);
+float smoothEasyIn(float cur, float target, float rate, float eps);
 float smoothEasyInTC(float cur, float target, float rate, float eps);
 
 /* ---- input ---- */

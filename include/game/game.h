@@ -60,6 +60,17 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    void updateDeathSequence(void);
+    void playerUpdateInputs(void);
+    void updateOnFire(void);
+    void updateBeingShocked(void);
+    void updateAirLegOverride(void);
+    void updateReticle(void);
+    void updateLookAt(void);
+    void updateBoostAndRage(void);
+    void updateBoundingSphere(void);
+    void updateAnimContacts(bool b);
+    void updatePowerUpGlow(void);
     void setCloakOn(void);
     void recomputeDynamics(void);
     bool isTargetPinning(void);
@@ -214,7 +225,8 @@ public:
     int * m_prevState;   /* 0x38 */
     int m_winsThisGame;   /* 0x3C */
     float m_runTime;   /* 0x40 */
-    char pad44[0x49 - 0x44];
+    int m_frameTime;   /* 0x44 */
+    char pad48[0x49 - 0x48];
     signed char m_unk49;   /* 0x49 */
     signed char m_attacksEnabled;   /* 0x4A */
     char pad4B[0xB0 - 0x4B];
@@ -230,7 +242,8 @@ public:
     char padE4[0xE8 - 0xE4];
     signed char m_dead;   /* 0xE8 */
     unsigned char m_godMode;   /* 0xE9 */
-    char padEA[0xEC - 0xEA];
+    signed char m_unkEA;   /* 0xEA */
+    signed char m_unkEB;   /* 0xEB */
     unsigned char m_unkEC;   /* 0xEC */
     char padED[0xEF - 0xED];
     signed char m_cloaked;   /* 0xEF */
@@ -238,7 +251,8 @@ public:
     signed char m_turning;   /* 0xF1 */
     char padF2[0xF3 - 0xF2];
     unsigned char m_specialWeapon;   /* 0xF3 */
-    char padF4[0xF6 - 0xF4];
+    char padF4[0xF5 - 0xF4];
+    signed char m_unkF5;   /* 0xF5 */
     signed char m_unkF6;   /* 0xF6 */
     signed char m_unkF7;   /* 0xF7 */
     char padF8[0xF9 - 0xF8];
@@ -282,7 +296,9 @@ public:
     PadFlags m_padFlags;   /* 0x5040 */
     char pad6854[0x6868 - 0x6854];
     int m_hudTexture;   /* 0x6868 */
-    char pad686C[0x68A0 - 0x686C];
+    char pad686C[0x6874 - 0x686C];
+    char * m_x6874;   /* 0x6874 */
+    char pad6878[0x68A0 - 0x6878];
     int m_reticleState;   /* 0x68A0 */
     int m_pickup;   /* 0x68A4 */
     int m_impaler;   /* 0x68A8 */
@@ -294,7 +310,9 @@ public:
     char pad68C0[0x697C - 0x68C0];
     int m_launchDelay;   /* 0x697C */
     int m_launchCounter;   /* 0x6980 */
-    char pad6984[0x69A8 - 0x6984];
+    char pad6984[0x69A0 - 0x6984];
+    float m_padScale;   /* 0x69A0 */
+    char pad69A4[0x69A8 - 0x69A4];
     float m_damageModifier;   /* 0x69A8 */
     float m_dpDamage;   /* 0x69AC */
     float m_dpDuration;   /* 0x69B0 */
@@ -342,7 +360,9 @@ public:
     float m_landingShakeMag;   /* 0x6CEC */
     char pad6CF0[0x7970 - 0x6CF0];
     int m_camUnify;   /* 0x7970 */
-    char pad7974[0x7980 - 0x7974];
+    char pad7974[0x7978 - 0x7974];
+    int * m_stateRef;   /* 0x7978 */
+    char pad797C[0x7980 - 0x797C];
     int * m_specialState;   /* 0x7980 */
     char pad7984[0x7DD0 - 0x7984];
     int m_blockFlag1B;   /* 0x7DD0 */
@@ -458,6 +478,7 @@ public:
     static void Update(void);
     static void SetCameraToFollowMonster(int view, Monster *m);
     static void SetCameraPOV(int view, Camera::CameraPOV pov);
+    static void TogglePOV(int view);
 };
 
 void fontSetColor(int font, int r, int g, int b, int a);

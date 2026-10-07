@@ -8,6 +8,7 @@ class MonsterSound {
 public:
     void updateFireBreath(void);
     void playCloakingSound(void);
+    void updateMonsterSound(void);
 };
 
 class StateFireBreath {

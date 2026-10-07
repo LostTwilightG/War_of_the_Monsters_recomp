@@ -1369,7 +1369,7 @@ game/Monster,getWaterLevel__Fv,0x15b3e8,8,asm
 game/Monster,isUnderwater__Ff,0x15b3f0,32,asm
 game/Monster,recomputeDynamics__7Monster,0x15b410,80,matched
 game/Monster,playerUpdateInputs__7Monster,0x15b460,36,asm
-game/Monster,update__7Monster,0x15b488,1216,asm
+game/Monster,update__7Monster,0x15b488,1216,equivalent
 game/Monster,startCinema__7Monster,0x15b948,200,asm
 game/Monster,updateCinema__7Monster,0x15ba10,308,asm
 game/Monster,endCinema__7Monster,0x15bb48,28,asm
