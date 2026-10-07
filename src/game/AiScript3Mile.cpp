@@ -1,14 +1,9 @@
 #include "common.h"
+#include "task_manager.h"
 #include "game/game.h"
 #include "engine.h"
 
 struct _animHandle;
-
-class TaskManager {
-public:
-    static TaskManager global;
-    int add(unsigned (*func)(void *), void *arg, int n);
-};
 
 class AiScript3Mile {
 public:

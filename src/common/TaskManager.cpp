@@ -1,11 +1,7 @@
 #include "common.h"
+#include "task_manager.h"
 
 unsigned timerGetFieldCount(void);
-
-struct BidirLink {
-    BidirLink *prev;
-    BidirLink *next;
-};
 
 static inline void bidirUnlink(BidirLink *l)
 {
@@ -27,31 +23,6 @@ static inline void bidirInsertAfter(BidirLink *head, BidirLink *l)
     if (l->next)
         l->next->prev = l;
 }
-
-class TaskManager {
-public:
-    struct TaskConfig {
-        TaskConfig *prev;
-        TaskConfig *next;
-        unsigned time;
-        unsigned (*func)(void *);
-        void *arg;
-    };
-
-    int unk0;
-    TaskConfig *head;
-    BidirLink freeList;
-
-    TaskManager();
-    void init(unsigned n);
-    TaskConfig *add(unsigned (*f)(void *), void *arg, int delay);
-    TaskConfig *add(unsigned (*f)(), int delay);
-    void remove(void *&handle);
-    int update(void);
-    void executeAndDeleteAll(void);
-    TaskConfig *createTask(void);
-    void deleteTask(TaskConfig *t);
-};
 
 INCLUDE_ASM("asm/nonmatchings/common/TaskManager", __11TaskManager);
 INCLUDE_ASM("asm/nonmatchings/common/TaskManager", init__11TaskManagerUi);

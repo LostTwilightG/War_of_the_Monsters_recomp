@@ -1,13 +1,8 @@
 #include "common.h"
+#include "game/shell.h"
 #include "hieri_types.h"
 #include "game/game.h"
 
-class Shell {
-public:
-    char *GetLevelName(void);
-    static void formatFilename(char *dst, const char *a, const char *b, const char *c);
-};
-extern Shell *shell;
 extern char D_006F8320[];
 extern char D_006F8328[];
 extern float quantizer;

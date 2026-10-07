@@ -1,4 +1,5 @@
 #include "common.h"
+#include "game/shell.h"
 #include "hieri_types.h"
 #include "game/game.h"
 
@@ -9,12 +10,6 @@ struct PowerUpPoint {
     char pad2E[0x40 - 0x2E];
 };
 
-class Shell {
-public:
-    char *GetLevelName(void);
-    static void formatFilename(char *dst, const char *a, const char *b, const char *c);
-};
-extern Shell *shell;
 extern char D_006F7E10[];
 extern char D_006F7E18[];
 __asm__("#SNFIX_SMALL shell");

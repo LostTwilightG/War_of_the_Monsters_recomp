@@ -1,4 +1,5 @@
 #include "common.h"
+#include "bidir_link.h"
 
 INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", __12AiPathFinderR9AiPathNetR7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", computePath__12AiPathFinderPP6AiPathR8_fvectorR6AiPath);
@@ -11,14 +12,8 @@ INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", adjust__Q212AiPathFinder8OpenL
 INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", popBest__Q212AiPathFinder8OpenList);
 INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", find__Q212AiPathFinder8OpenListP6AiPath);
 INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", init__Q212AiPathFinder10GlobalListi);
-class BidirLink {
-public:
-    int next, prev;
-
-    void init(void);
-};
 void BidirLink::init(void)
 {
-    prev = 0;
     next = 0;
+    prev = 0;
 }

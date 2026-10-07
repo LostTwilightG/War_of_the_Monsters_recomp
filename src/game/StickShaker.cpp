@@ -1,4 +1,5 @@
 #include "common.h"
+#include "task_manager.h"
 #include "hieri_types.h"
 #include "game/game.h"
 #include "vecmath.h"
@@ -25,12 +26,6 @@ public:
 };
 
 struct StickShakerConfig;
-
-class TaskManager {
-public:
-    static TaskManager global;
-    int add(unsigned (*func)(void *), void *arg, int n);
-};
 
 /* Layout of the retail config: ring count, 20 rings of two actuators, 20 reach thresholds, time scale. */
 template <class T>
