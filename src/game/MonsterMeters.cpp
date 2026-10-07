@@ -53,15 +53,10 @@ HealthMeter::HealthMeter()
 {
     init();
 }
-#ifdef NON_MATCHING
-/* 10/18 words, untuned: store order */
 void HealthMeter::init(void)
 {
     max = 100.0f;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/game/MonsterMeters", init__12StaminaMeter);
-#endif
 void HealthMeter::reset(void)
 {
     int i;
@@ -75,17 +70,12 @@ void HealthMeter::creditFull(void)
 {
     credit(max);
 }
-#ifdef NON_MATCHING
-/* 13/48 words, untuned: duplicate of creditBaseOnly in retail */
 void HealthMeter::credit(float amount)
 {
     cur += amount * (max * 0.01f);
     if (max < cur)
         cur = max;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/game/MonsterMeters", credit__12StaminaMeterf);
-#endif
 void HealthMeter::drain(float amount)
 {
     if (--idx < 0)
@@ -99,6 +89,8 @@ StaminaMeter::StaminaMeter()
 {
     init();
 }
+#ifdef NON_MATCHING
+/* 10/18 words, untuned: store order */
 void StaminaMeter::init(void)
 {
     enabled = 1;
@@ -108,6 +100,9 @@ void StaminaMeter::init(void)
     fC = 0.5f;
     exhaustTime = 360;
 }
+#else
+INCLUDE_ASM("asm/nonmatchings/game/MonsterMeters", init__12StaminaMeter);
+#endif
 void StaminaMeter::reset(void)
 {
     cur = max;
@@ -165,6 +160,8 @@ void StaminaMeter::creditBaseOnly(float amount)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/MonsterMeters", creditBaseOnly__12StaminaMeterf);
 #endif
+#ifdef NON_MATCHING
+/* 13/48 words, untuned: duplicate of creditBaseOnly in retail */
 void StaminaMeter::credit(float amount)
 {
     if (cur < max) {
@@ -194,6 +191,9 @@ void StaminaMeter::credit(float amount)
         }
     }
 }
+#else
+INCLUDE_ASM("asm/nonmatchings/game/MonsterMeters", credit__12StaminaMeterf);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/MonsterMeters", drain__12StaminaMeterfbT2);
 int StaminaMeter::hasEnough(float amount)
 {

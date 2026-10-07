@@ -11,13 +11,17 @@ import sys
 from pathlib import Path
 
 path, mangled, note = sys.argv[1:4]
+qualified = sys.argv[4] if len(sys.argv) > 4 else None  # e.g. StaminaMeter::init when several classes share a method name
 src = Path(path)
 tu = src.with_suffix('').as_posix().split('src/', 1)[1]
 name = mangled.split('__')[0] if '__' in mangled[1:] else mangled
 if mangled.startswith('__'):
     name = mangled[2:].split('_')[0]
+if qualified:
+    name = qualified
 lines = src.read_text().split('\n')
-start = next(i for i, l in enumerate(lines) if re.match(r'^[A-Za-z_].*[ :*&]%s\(' % re.escape(name), l) and not l.rstrip().endswith(';'))
+pat = re.compile(r'^[A-Za-z_].*[ *&]%s\(' % re.escape(name)) if qualified else re.compile(r'^[A-Za-z_].*[ :*&]%s\(' % re.escape(name))
+start = next(i for i, l in enumerate(lines) if pat.match(l) and not l.rstrip().endswith(';'))
 # include a preceding `extern "C"`-style linkage/`__asm__` marker lines directly above
 while start > 0 and lines[start - 1].startswith('__asm__('):
     start -= 1
