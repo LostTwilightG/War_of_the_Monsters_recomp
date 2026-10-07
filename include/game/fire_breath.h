@@ -1,7 +1,15 @@
 #ifndef FIRE_BREATH_H
 #define FIRE_BREATH_H
 
+#include "hieri_types.h"
+
 class Monster;
+
+class FireSound {
+public:
+    void updateFireSound(_fvector *pos);
+    void terminateFireSound(void);
+};
 
 /* Per-monster fire breath effect (embedded in Monster at 0x68C0). */
 class MonsterSound {
@@ -9,6 +17,7 @@ public:
     void updateFireBreath(void);
     void playCloakingSound(void);
     void updateMonsterSound(void);
+    void updateMonsterCinemaSound(void);
 };
 
 class StateFireBreath {

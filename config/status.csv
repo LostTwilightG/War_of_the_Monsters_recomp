@@ -1371,7 +1371,7 @@ game/Monster,recomputeDynamics__7Monster,0x15b410,80,matched
 game/Monster,playerUpdateInputs__7Monster,0x15b460,36,asm
 game/Monster,update__7Monster,0x15b488,1216,equivalent
 game/Monster,startCinema__7Monster,0x15b948,200,asm
-game/Monster,updateCinema__7Monster,0x15ba10,308,asm
+game/Monster,updateCinema__7Monster,0x15ba10,308,equivalent
 game/Monster,endCinema__7Monster,0x15bb48,28,asm
 game/Monster,updateBoundingSphere__7Monster,0x15bb68,956,asm
 game/Monster,updateReticle__7Monster,0x15bf28,1004,asm
@@ -1428,7 +1428,7 @@ game/Monster,creditStamina__7Monsterfb,0x162438,312,asm
 game/Monster,creditHealth__7Monsterf,0x162570,112,asm
 game/Monster,breathFire__7Monster,0x1625e0,76,asm
 game/Monster,lightOnFire__7Monsterffi,0x162630,124,asm
-game/Monster,updateOnFire__7Monster,0x1626b0,260,asm
+game/Monster,updateOnFire__7Monster,0x1626b0,260,matched
 game/Monster,startShocking__7Monsterff,0x1627b8,12,matched
 game/Monster,updateBeingShocked__7Monster,0x1627c8,608,asm
 game/Monster,startBeingImpaled__7Monsterff,0x162a28,8,asm

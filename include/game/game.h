@@ -343,10 +343,11 @@ public:
     int m_aimHeadingEnabled;   /* 0x6C3C */
     float m_aimHeading;   /* 0x6C40 */
     float m_aimPitch;   /* 0x6C44 */
-    char pad6C48[0x6CB8 - 0x6C48];
+    char pad6C48[0x6CB4 - 0x6C48];
+    int m_fireFx;   /* 0x6CB4 */
     float m_onFireCount;   /* 0x6CB8 */
     float m_onFireDamage;   /* 0x6CBC */
-    char pad6CC0[0x6CC4 - 0x6CC0];
+    Monster * m_fireSource;   /* 0x6CC0 */
     float m_beingShockedCount;   /* 0x6CC4 */
     float m_beingShockedDamage;   /* 0x6CC8 */
     int m_cloakTime;   /* 0x6CCC */
@@ -436,6 +437,7 @@ public:
     int GetNumAIsAlive(void);
     float GetCameraMaxHeight(_fvector *pos);
     void gameInitCamera(int view, int slot);
+    void fadeOutAndIn(int n);
     void UpdatePadTweaks(void);
     static void traversalCallback(_cs *cs, unsigned a, unsigned b, float (&m)[4][4], _fvector *eo);
     static void genericEventHandler(unsigned event);

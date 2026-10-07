@@ -18,6 +18,17 @@ public:
     void updateInputs(void);
 };
 extern float cloaker;
+extern int moviePlaying;
+extern int movieAborted;
+class DbInteractive;
+class AnimPappy {
+public:
+    void update(DbInteractive &d);
+};
+class ActionDispatch {
+public:
+    static unsigned stopAllActiveActions(void) __asm__("stopAllActiveActions__14ActionDispatchv");
+};
 unsigned timerGetFieldCount(void);
 
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setWaterLevel__Ff);
@@ -143,7 +154,44 @@ void Monster::update(void)
 INCLUDE_ASM("asm/nonmatchings/game/Monster", update__7Monster);
 #endif
 INCLUDE_ASM("asm/nonmatchings/game/Monster", startCinema__7Monster);
+#ifdef NON_MATCHING
+/* 4/90 words, untuned: written from the m2c draft */
+void Monster::updateCinema(void)
+{
+    float f = 0.0f;
+    float *p = *(float **)((char *)this + 0x2FD8);
+
+    if (p)
+        f = *p;
+    if (f != 0.0f) {
+        QwData *cs = (QwData *)((char *)m_cs + 0x20);
+        QwData *d = (QwData *)((char *)this + 0x50);
+
+        ((AnimPappy *)((char *)this + 0x2FB0))->update(*(DbInteractive *)this);
+        d[0] = cs[0];
+        d[1] = cs[1];
+        d[2] = cs[2];
+        d[3] = cs[3];
+        d[4] = *(QwData *)((char *)m_cs + 0x10);
+    } else {
+        updateReticle();
+    }
+    updateBoundingSphere();
+    updateAnimContacts(false);
+    if (moviePlaying != 0) {
+        int aborted = movieAborted;
+
+        if ((inputGetInput(8, 0) != 0 || inputGetInput(8, 1) != 0) && aborted == 0 && game->f120454 == 0 && game->f120458 == 0) {
+            movieAborted = 1;
+            game->fadeOutAndIn(4);
+            TaskManager::global.add(ActionDispatch::stopAllActiveActions, 30);
+        }
+    }
+    ((MonsterSound *)((char *)this + 0x1A7C))->updateMonsterCinemaSound();
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateCinema__7Monster);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Monster", endCinema__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateBoundingSphere__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateReticle__7Monster);
@@ -210,7 +258,20 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", creditStamina__7Monsterfb);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", creditHealth__7Monsterf);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", breathFire__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", lightOnFire__7Monsterffi);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", updateOnFire__7Monster);
+void Monster::updateOnFire(void)
+{
+    if (m_onFireCount > 0.0f) {
+        m_onFireCount = m_onFireCount - (float)timerGetFieldsLastFrame();
+        if (m_fireFx == -1)
+            m_fireFx = particleCreateFx((_fvector *)((char *)this + 0x3E30), (float (*)[4])((char *)this + 0x3340), 0x2C, 3.0f, 0, 0, false, 0.0f);
+        takeDamage(m_onFireDamage / (float)(timerGetFieldsLastFrame() * 60), true, m_fireSource);
+        ((FireSound *)((char *)this + 0x1A7C))->updateFireSound((_fvector *)((char *)m_cs + 0x10));
+    } else if (m_fireFx != -1) {
+        particleKillFx(m_fireFx);
+        ((FireSound *)((char *)this + 0x1A7C))->terminateFireSound();
+        m_fireSource = 0;
+    }
+}
 void Monster::startShocking(float a, float b)
 {
     m_beingShockedCount = a;

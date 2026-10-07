@@ -32,6 +32,7 @@ float smoothEasyIn(float cur, float target, float rate, float eps);
 float smoothEasyInTC(float cur, float target, float rate, float eps);
 
 /* ---- input ---- */
+int inputGetInput(int pad, int button);
 void inputUseActuator(int pad, bool enable);
 
 /* ---- timers ---- */
@@ -45,6 +46,7 @@ void hierSetTraversalCallback(void (*cb)(_cs *, unsigned, unsigned, float (&)[4]
 int timerGetMinUpdateRate(void);
 extern int m_minUpdateRate;
 void particleKillFx(int &handle);
+int particleCreateFx(_fvector *pos, float (*m)[4], int type, float f, _fvector *pos2, float (*m2)[4], bool b, float f2);
 void hierSetCsEpNode(_cs *cs, _hierhead *ep);
 void hdReparentCsGrid(_cs *cs);
 
