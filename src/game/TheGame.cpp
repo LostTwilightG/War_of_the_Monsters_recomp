@@ -4,6 +4,7 @@
 #include "game/power_ups.h"
 #include "game/crush_level.h"
 #include "game/levels.h"
+#include "game/level_pickups.h"
 #include "game/streaming_sound.h"
 #include "task_manager.h"
 
@@ -106,23 +107,56 @@ void TheGame::Update(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", Update__7TheGame);
 #endif
-INCLUDE_ASM("asm/nonmatchings/game/TheGame", Update2__7TheGame);
+void TheGame::Update2(void)
+{
+    gameResolveCollisions();
+    TaskManager::global.update();
+    getWeapons()->UpdateWeapons();
+    if (m_playerMask & 4)
+        LevelPickups::update();
+}
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", MonsterParse__7TheGameP9_hierheadP8_fvector);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", AddMonster__7TheGameP3_csii);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", GetMonsterFromName__7TheGameii);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", SetPlayerMonster__7TheGameiiiii);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", SetAIMonster__7TheGameiiii);
-INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameInitCamera__7TheGameii);
-INCLUDE_ASM("asm/nonmatchings/game/TheGame", GetCameraMaxHeight__7TheGameP8_fvector);
+void TheGame::gameInitCamera(int view, int slot)
+{
+    m_viewSlot[view] = slot;
+    Cameras::SetCameraToFollowMonster(view, &m_slots[slot]);
+}
+float TheGame::GetCameraMaxHeight(_fvector *pos)
+{
+    return 10000.0f;
+}
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameResolveCollisions__7TheGame);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameResolveLifeAndDeath__7TheGame);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameCheckForCloseCombat__7TheGame);
-INCLUDE_ASM("asm/nonmatchings/game/TheGame", SetGravity__7TheGamef);
-INCLUDE_ASM("asm/nonmatchings/game/TheGame", SetOkToUnify__7TheGame);
+void TheGame::SetGravity(float g)
+{
+    m_gravity = g;
+}
+void TheGame::SetOkToUnify(void)
+{
+    int i;
+
+    for (i = 0; i < m_numSlots; i++)
+        m_slots[i].m_camUnify = 1;
+}
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameGetStartPoint__7TheGameP7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", getClosestMonster__7TheGameR8_fvectorfRf);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", getClosestPlayer__7TheGameR8_fvectorfRf);
-INCLUDE_ASM("asm/nonmatchings/game/TheGame", GetNumAIsAlive__7TheGame);
+int TheGame::GetNumAIsAlive(void)
+{
+    int i;
+
+    m_numAIsAlive = 0;
+    for (i = 0; i < m_numAIs; i++) {
+        if (m_monsters[4 + i]->m_dead == 0)
+            m_numAIsAlive++;
+    }
+    return m_numAIsAlive;
+}
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", ResetLevel__7TheGame);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", UnpauseLevel__7TheGame);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", UpdatePadTweaks__7TheGame);

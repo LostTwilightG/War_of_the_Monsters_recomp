@@ -1,9 +1,5 @@
 #include "common.h"
-
-class LevelPickups {
-public:
-    static void turnOffMilitary(void);
-};
+#include "game/level_pickups.h"
 
 extern int vegasSpawnMilitary;
 extern int whichAction_006F8550;

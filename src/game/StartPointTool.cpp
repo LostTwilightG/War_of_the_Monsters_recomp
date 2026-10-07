@@ -42,7 +42,7 @@ void StartPointTool::loadPoints(void)
 void StartPointTool::init(int i)
 {
     PointToolKit::init(0);
-    levelData = gameSlotBase(game->m_levelIdx);
+    levelData = gameSlotBase(game->m_viewSlot[0]);
 }
 void StartPointTool::exportPoints(void)
 {

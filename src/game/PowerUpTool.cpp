@@ -39,7 +39,7 @@ void PowerUpTool::loadPoints(char *name, bool b)
 void PowerUpTool::init(int i)
 {
     PointToolKit::init(0);
-    levelData = gameSlotBase(game->m_levelIdx);
+    levelData = gameSlotBase(game->m_viewSlot[0]);
 }
 void PowerUpTool::exportPoints(void)
 {

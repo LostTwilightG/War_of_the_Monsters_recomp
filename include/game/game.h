@@ -27,7 +27,9 @@ public:
     int m_playerNum;      /* 0x18: 0 = unused slot, 1/2 = controlling player (inferred from Update) */
     char pad1C[4];
     int m_id;             /* 0x20: player/monster id used by hit histories and pickups */
-    char pad24[0xEC - 0x24];
+    char pad24[0xE8 - 0x24];
+    signed char m_dead;   /* 0xE8: nonzero once dead (GetNumAIsAlive counts the zeros) */
+    char padE9[3];
     unsigned char m_unkEC; /* 0xEC */
     char padED[0xF7 - 0xED];
     unsigned char m_unkF7; /* 0xF7 */
@@ -69,9 +71,11 @@ public:
     int m_levelId;                   /* 0x1203D0: level id (1 central, 2 vegas, 3 canyon2, 5 airport, 6 threemile, 7 sanfran, 8/15 island, 9 tokyo, 10 ufo, 11 final boss, 26 bigshot, 27 crush) */
     int m_numSlots;                  /* 0x1203D4: loop bound over the per-player blocks (gameSlotBase) */
     int m_numMonsters;               /* 0x1203D8: loop bound over m_monsters */
-    char pad1203DC[0x1203E8 - 0x1203DC];
-    int m_levelIdx;                  /* 0x1203E8: selects the level block (gameSlotBase) */
-    char pad1203EC[0x12043C - 0x1203EC];
+    char pad1203DC[0x1203E0 - 0x1203DC];
+    int m_numAIs;                    /* 0x1203E0: AI monsters, stored in m_monsters[4..] */
+    int m_numAIsAlive;               /* 0x1203E4: cached by GetNumAIsAlive */
+    int m_viewSlot[2];               /* 0x1203E8: monster slot each view follows (gameInitCamera); [0] also selects the level data block */
+    char pad1203F0[0x12043C - 0x1203F0];
     int m_won[2];                    /* 0x12043C */
     int m_playerMask;                /* 0x120444: bit 0 = player 1 active, bit 1 = player 2 active (inferred) */
 
@@ -85,6 +89,13 @@ public:
     void gameResolveCollisions(void);
     void gameResolveLifeAndDeath(void);
     void gameCheckForCloseCombat(void);
+    void SetGravity(float g);
+    void SetOkToUnify(void);
+    int GetNumAIsAlive(void);
+    float GetCameraMaxHeight(_fvector *pos);
+    void gameInitCamera(int view, int slot);
+
+    Weapons *getWeapons(void) { return (Weapons *)((char *)this + 0x112490); }
 };
 
 extern TheGame *game;
@@ -114,6 +125,7 @@ public:
     static Cameras m_cameras;
     static void InitCrushMonsters(Monster *a, Monster *b);
     static void Update(void);
+    static void SetCameraToFollowMonster(int view, Monster *m);
 };
 
 void fontSetColor(int font, int r, int g, int b, int a);
