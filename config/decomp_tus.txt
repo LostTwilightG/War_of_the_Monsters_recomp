@@ -23,3 +23,5 @@ common/GenRand
 common/str
 common/videocb
 common/ShiftJIS
+common/timer
+common/CsPool

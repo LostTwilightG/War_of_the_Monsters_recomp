@@ -204,7 +204,7 @@ segments:
       - [0x0F6678, cpp, common/bound]  # c++, 3 funcs, name: guess
       - [0x0F67C0, cpp, common/chain]  # c++, 3 funcs, name: guess
       - [0x0F6960, asm, common/SoundBank]  # c++, 15 funcs, name: manual
-      - [0x0F74D0, asm, common/CsPool]  # c++, 7 funcs, name: guess
+      - [0x0F74D0, cpp, common/CsPool]  # c++, 7 funcs, name: guess
       - [0x0F78C0, asm, common/dbs]  # c++, 5 funcs, name: guess
       - [0x0F8A58, asm, common/disp]  # c++, 15 funcs, name: manual
       - [0x0F9290, asm, common/electric]  # c++, 5 funcs, name: guess
@@ -252,7 +252,7 @@ segments:
       - [0x121EF8, asm, common/TaskManager]  # c++, 11 funcs, name: guess
       - [0x1223B0, cpp, common/td]  # c++, 2 funcs, name: guess
       - [0x122500, asm, common/tex]  # c++, 20 funcs, name: guess
-      - [0x123328, asm, common/timer]  # c++, 16 funcs, name: guess
+      - [0x123328, cpp, common/timer]  # c++, 16 funcs, name: guess
       - [0x123858, asm, common/tod]  # c++, 25 funcs, name: guess
       - [0x125708, asm, common/blit]  # c++, 11 funcs, name: guess
       - [0x126370, asm, common/vi]  # c++, 18 funcs, name: guess
@@ -594,7 +594,7 @@ segments:
       - [0x5F32E0, rodata, common/AnimCurve]
       - [0x5F3620, rodata, common/AnimQueue]
       - [0x5F36A0, rodata, common/SoundBank]
-      - [0x5F37D0, rodata, common/CsPool]
+      - [0x5F37D0, .rodata, common/CsPool]
       - [0x5F3870, rodata, common/dbs]
       - [0x5F3B30, rodata, common/file]
       - [0x5F3D80, rodata, common/font]
