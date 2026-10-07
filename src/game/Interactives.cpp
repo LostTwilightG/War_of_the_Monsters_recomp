@@ -1,4 +1,5 @@
 #include "common.h"
+#include "game/hit_history.h"
 
 extern "C" int printf(const char *, ...);
 
@@ -13,15 +14,6 @@ public:
     static void addInteractive(DbInteractive *p);
     static void setInteractive(int i, DbInteractive *p);
     static DbInteractive *getInteractive(int i);
-};
-
-class HitHistory {
-public:
-    int f0;
-    int f4;
-
-    HitHistory();
-    void reset(void);
 };
 
 #ifdef NON_MATCHING

@@ -1,15 +1,11 @@
 #include "common.h"
+#include "game/pickup.h"
 #include "hieri_types.h"
 #include "cs_pool.h"
 
 struct MilitaryFormation;
 
 /* Pickup is the (virtual) base in retail; only the fields used here are laid out. */
-class Pickup {
-public:
-    void grab(int i);
-};
-
 class MilitaryPickup {
 public:
     char pad0[4];

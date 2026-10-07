@@ -2,6 +2,8 @@
 #define GAME_H
 
 #include "engine.h"
+#include "game/hud.h"
+#include "game/weapons.h"
 
 /* Partial class layouts recovered from usage. Unknown regions are padding until identified. */
 
@@ -51,6 +53,16 @@ public:
 };
 
 extern TheGame *game;
+
+/* The Hud array sits at the start of TheGame (stride 0x2E0); the weapon spawner at 0x112490. */
+static inline Hud *gameHud(int i)
+{
+    return (Hud *)((char *)game + i * 0x2E0);
+}
+static inline Weapons *gameWeapons(void)
+{
+    return (Weapons *)((char *)game + 0x112490);
+}
 
 /* Per-level data block: game + idx * 0x11190 + 0xB80. Kept as one offset so the add order matches retail. */
 static inline void *gameSlotBase(int idx)

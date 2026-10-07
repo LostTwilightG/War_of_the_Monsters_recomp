@@ -18,11 +18,6 @@ public:
 
 extern float gLowStaminaThreshold;
 
-class Hud {
-public:
-    void addTextBoxMessage(int id);
-};
-
 /* Stamina bar. `exhausted` is set when it hits zero; while exhausted the bar refills through a separate pool
    (recoverPool) and a countdown (exhaustTimer) until it passes gLowStaminaThreshold * max. */
 class StaminaMeter {
@@ -205,6 +200,6 @@ int StaminaMeter::hasEnough(float amount)
     exhausted = 1;
     cur = 0;
     if (game->m_gameMode == 1 && game->m_phase == 1 && *(int *)(owner + 0x18) == 1)
-        ((Hud *)game)->addTextBoxMessage(0x19);
+        gameHud(0)->addTextBoxMessage(0x19);
     return 1;
 }

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "game/power_ups.h"
 #include "point_tool_kit.h"
 #include "game/shell.h"
 #include "hieri_types.h"
@@ -14,13 +15,6 @@ struct PowerUpPoint {
 extern char D_006F7E10[];
 extern char D_006F7E18[];
 __asm__("#SNFIX_SMALL shell");
-
-class PowerUps {
-public:
-    static PowerUps instance;
-    void KillPowerUps(void);
-    void CreatePowerUp(int type, unsigned char arg, _fvector *pos);
-};
 
 class PowerUpTool : public PointToolKit {
 public:

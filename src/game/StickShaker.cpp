@@ -1,4 +1,5 @@
 #include "common.h"
+#include "game/hit_history.h"
 #include "task_manager.h"
 #include "hieri_types.h"
 #include "game/game.h"
@@ -14,16 +15,6 @@ struct ActuatorData {
 };
 
 void inputSetActuator(int pad, ActuatorData *a);
-
-class HitHistory {
-public:
-    int f0;
-    int f4;
-
-    HitHistory();
-    void reset(void);
-    int newHit(int id, bool b);
-};
 
 struct StickShakerConfig;
 

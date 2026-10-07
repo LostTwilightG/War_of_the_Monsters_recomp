@@ -1,4 +1,5 @@
 #include "common.h"
+#include "game/game.h"
 #include "hieri_types.h"
 #include "engine.h"
 
@@ -19,21 +20,6 @@ extern int D_006F8C1C;
 extern int D_006F8C08;
 extern int D_006F8C0C;
 
-class Hud {
-public:
-    void addMessage(int a, int b);
-};
-
-class Weapons {
-public:
-    void CreateLavaBall(_fvector *pos, _fvector *dir, _fvector *target, int a, int b);
-};
-class TheGameW {
-public:
-    char pad0[0x112490];
-    Weapons weapons;
-};
-extern TheGameW *game;
 void islandFireLava(_fvector *target, int owner);
 __asm__("#SNFIX_SMALL D_006F8C20");
 
@@ -71,11 +57,11 @@ void islandEruptVolcano(int type, int id)
         D_006F8C20 = 1;
         animationStart(D_0070B5B0, true);
     }
-    for (i = 0; i < *(int *)((char *)game + 0x1203D4); i++) {
-        char *pl = (char *)game + 0xB80 + i * 0x11190;
+    for (i = 0; i < game->m_numSlots; i++) {
+        char *pl = (char *)gameSlotBase(i);
 
         if (*(int *)(pl + 0x20) == D_006F8C14) {
-            ((Hud *)((char *)game + *(int *)(pl + 0x6CD8) * 0x2E0))->addMessage(0xE, 1);
+            gameHud(*(int *)(pl + 0x6CD8))->addMessage(0xE, 1);
         } else {
             _fvector v;
 
@@ -100,7 +86,7 @@ void islandFireLava(_fvector *target, int owner)
     dir.y = 0.0f;
     if (D_006F8C10 < 10) {
         dir.z = mathfHeadingFromPointToPoint(&pos, target);
-        game->weapons.CreateLavaBall(&pos, &dir, target, D_006F8C14, owner);
+        gameWeapons()->CreateLavaBall(&pos, &dir, target, D_006F8C14, owner);
     }
     D_006F8C10++;
 }

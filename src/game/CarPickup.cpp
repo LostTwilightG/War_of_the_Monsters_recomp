@@ -1,4 +1,5 @@
 #include "common.h"
+#include "game/pickup.h"
 #include "hieri_types.h"
 #include "engine.h"
 
@@ -8,14 +9,6 @@
 class CarSound {
 public:
     void terminateCarSound(void);
-};
-
-class Pickup {
-public:
-    void kill(void);
-    void grab(int i);
-    void setVisualState(int s);
-    void hatCheck(void);
 };
 
 class CarPickup : public Pickup {
