@@ -48,6 +48,17 @@ public:
     void startHealthPowerUpGlow(int a, int b);
     void startShocking(float a, float b);
     void startStaminaPowerUpGlow(int a, int b);
+    bool isFullHealth(void);
+    bool isFullStamina(void);
+    bool isOnFire(void);
+    bool isBeingShocked(void);
+    bool isHolding(void);
+    bool lyingOnGround(void);
+    bool hasPinTarget(void);
+    bool inSpecialState(void);
+    void stopFireBreath(void);
+    void setCloakOff(void);
+    void clearEnvMapping(void);
     void update(void);
     void updateCinema(void);
     void updatePosition(void);
@@ -302,7 +313,8 @@ public:
     char pad6CC0[0x6CC4 - 0x6CC0];
     float m_beingShockedCount;   /* 0x6CC4 */
     float m_beingShockedDamage;   /* 0x6CC8 */
-    char pad6CCC[0x6CD4 - 0x6CCC];
+    int m_cloakTime;   /* 0x6CCC */
+    char pad6CD0[0x6CD4 - 0x6CD0];
     int m_cameraFollows;   /* 0x6CD4 */
     int m_cameraView;   /* 0x6CD8 */
     float m_landingShakeAmp;   /* 0x6CDC */
@@ -312,7 +324,9 @@ public:
     float m_landingShakeMag;   /* 0x6CEC */
     char pad6CF0[0x7970 - 0x6CF0];
     int m_camUnify;   /* 0x7970 */
-    char pad7974[0x846C - 0x7974];
+    char pad7974[0x7980 - 0x7974];
+    int * m_specialState;   /* 0x7980 */
+    char pad7984[0x846C - 0x7984];
     Monster * m_killer;   /* 0x846C */
     char pad8470[0x10E70 - 0x8470];
     char m_victoryState[1];   /* 0x10E70 */

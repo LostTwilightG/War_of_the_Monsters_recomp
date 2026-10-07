@@ -26,6 +26,7 @@ EXISTING = {
     0x5040: ('PadFlags', 'm_padFlags', 0x1814), 0x68B4: ('void *', 'm_target', 4), 0x7970: ('int', 'm_camUnify', 4),
     0x10E70: ('char', 'm_victoryState[1]', 1),
     0x4A: ('signed char', 'm_attacksEnabled', 1), 0xF1: ('signed char', 'm_turning', 1), 0x280: ('signed char', 'm_freeFalling', 1),
+    0x6CB8: ('float', 'm_onFireCount', 4), 0x6CCC: ('int', 'm_cloakTime', 4), 0x7980: ('int *', 'm_specialState', 4),
     0x34: ('int *', 'm_state', 4), 0x38: ('int *', 'm_prevState', 4), 0xB4: ('float', 'm_bodyHeight', 4),
     0xEF: ('signed char', 'm_cloaked', 1), 0x1A3C: ('_cs *', 'm_shadow', 4), 0x846C: ('Monster *', 'm_killer', 4),
     0x4B0: ('int', 'm_healthGlow[3]', 12), 0x4BC: ('int', 'm_staminaGlow[3]', 12),

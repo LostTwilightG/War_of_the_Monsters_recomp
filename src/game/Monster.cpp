@@ -1,5 +1,6 @@
 #include "common.h"
 #include "game/game.h"
+#include "game/fire_breath.h"
 
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setWaterLevel__Ff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getWaterLevel__Fv);
@@ -73,16 +74,29 @@ void Monster::startShocking(float a, float b)
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateBeingShocked__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", startBeingImpaled__7Monsterff);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", isHolding__7Monster);
+bool Monster::isHolding(void)
+{
+    return m_pickup != 0 || m_target != 0;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isHoldingLarge__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isBlocking__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isIdle__7MonsterUi);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", inCameraFov__7MonsterR8_fvectorT1);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", hasPinTarget__7Monster);
+bool Monster::hasPinTarget(void)
+{
+    char *pin = (char *)m_pinTarget;
+
+    return pin && (*(unsigned short *)(pin + 4) & 2);
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateClosestPath__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", okToDrawReticle__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setCloakOn__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setCloakOff__7Monster);
+void Monster::setCloakOff(void)
+{
+    m_cloaked = 0;
+    m_cloakTime = 0;
+    clearEnvMapping();
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", attachFxToHandle__FPiP8_fvectorUi);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateWaterWake__7Monsterfb);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", cleanUpForMovie__7Monster);
@@ -97,7 +111,10 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", __tf7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", __7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateTurn__7Monsterb);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateMove__7Monsterb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", stopFireBreath__7Monster);
+void Monster::stopFireBreath(void)
+{
+    ((FireBreath *)((char *)this + 0x68C0))->ApplyMint();
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", putOutFire__7Monster);
 void *Monster::getMotionRot(void)
 {
@@ -506,12 +523,37 @@ bool Monster::ranVictorySequence(void) const
 {
     return m_unkF7 != 0;
 }
+#ifdef NON_MATCHING
+/* 6/9 words, untuned: branch shape */
+bool Monster::isFullHealth(void)
+{
+    return m_maxHealth <= m_health;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isFullHealth__7Monster);
+#endif
+#ifdef NON_MATCHING
+/* 7/10 words, untuned: branch shape */
+bool Monster::isFullStamina(void)
+{
+    return m_stamina.maxLevel <= m_stamina.cur;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isFullStamina__7Monster);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isTargetPinning__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", isOnFire__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", isBeingShocked__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", inSpecialState__7Monster);
+bool Monster::isOnFire(void)
+{
+    return m_onFireCount > 0.0f;
+}
+bool Monster::isBeingShocked(void)
+{
+    return m_beingShockedCount > 0.0f;
+}
+bool Monster::inSpecialState(void)
+{
+    return m_state == m_specialState;
+}
 void Monster::setCameraFollowsMonster(int view, bool follows)
 {
     m_cameraView = view;
@@ -717,7 +759,15 @@ void Monster::setStickyReticleCS(_cs * v)
 {
     m_stickyReticleCS = v;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", lyingOnGround__7Monster);
+bool Monster::lyingOnGround(void)
+{
+    int *st = m_state;
+    bool r = false;
+
+    if (st[1] & 0x10)
+        r = *(int *)((char *)st + 0x260) == 2;
+    return r;
+}
 void *Monster::getFootHDResult(void)
 {
     return (char *)this + 0x3B0;
