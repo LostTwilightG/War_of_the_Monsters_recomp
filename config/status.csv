@@ -619,7 +619,7 @@ game/db,dbInitDb__FP9_dbheader10_vramAddrs,0x12e418,480,asm
 game/db,dbProcInteractive__FP9_hierheadP8_fvectorPA3_f,0x12e5f8,1088,asm
 game/db,dbGetCSForModel__FP9_hierhead,0x12ea38,72,matched
 game/db,dbGetHPCSForModel__FP9_hierhead,0x12ea80,72,matched
-game/DodgeBallLevel,initAfterDbLoad__14DodgeBallLevel,0x12eac8,268,asm
+game/DodgeBallLevel,initAfterDbLoad__14DodgeBallLevel,0x12eac8,268,equivalent
 game/DodgeBallLevel,update__14DodgeBallLeveli,0x12ebd8,1172,asm
 game/DodgeBallLevel,ResetCountdown__14DodgeBallLevel,0x12f070,212,matched
 game/DodgeBallLevel,__static_initialization_and_destruction_0,0x12f148,76,asm
@@ -908,7 +908,7 @@ game/Interactives,__10HitHistory,0x1472d8,16,matched
 game/Interactives,reset__10HitHistory,0x1472e8,12,equivalent
 game/Interactives,newHit__10HitHistoryib,0x1472f8,208,asm
 game/Interactives,creditHit__11HurtHistoryif,0x1473c8,132,asm
-game/island,islandInitBefore__Fv,0x147450,48,asm
+game/island,islandInitBefore__Fv,0x147450,48,matched
 game/island,islandInitAfter__Fv,0x147480,272,asm
 game/island,islandUpdate__Fv,0x147590,656,asm
 game/island,islandEruptVolcano__Fii,0x147820,452,asm
