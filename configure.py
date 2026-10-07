@@ -37,10 +37,12 @@ def fix_splat_quirks():
     the VU0 accumulator is written as bare `ACC` (gas needs `$ACC`), and `%lo(sym + 0x44000)` comes out as
     `%lo(sym + (0x44000 & 0xFFFF))`, which loses the carry that the matching `%hi` needs."""
     acc = re.compile(r'(?<![$\w])ACC(?!\w)')
+    # VU0 special registers (Q, I, P, R) in the last operand of a vector op, e.g. `vmaddq.xyzw $vf11, $vf10, Q`
+    vureg = re.compile(r'^(\s*(?:/\*.*?\*/)?\s*v[a-z0-9.]+\s+(?:[^\n]*,\s*)?)([QIPR])(?=\s*(?:,|$|/\*))', re.M)
     lo = re.compile(r'(%lo\([^()]*?\+\s*)\((0x[0-9A-Fa-f]+) & 0xFFFF\)\)')
     for f in (ROOT / 'asm/nonmatchings').rglob('*.s'):
         text = f.read_text()
-        fixed = lo.sub(r'\g<1>\g<2>)', acc.sub('$ACC', text))
+        fixed = vureg.sub(r'\g<1>$\g<2>',lo.sub(r'\g<1>\g<2>)', acc.sub('$ACC', text)))
         if fixed != text:
             f.write_text(fixed)
 

@@ -35,9 +35,7 @@ for tu in tus:
         continue  # already hand-written (splat writes its own stubs, with real bodies for trivial functions; replace those)
     funcs = []
     for f in (ROOT / 'asm/nonmatchings' / tu).glob('*.s'):
-        m = re.search(r'glabel [^
-]*
-\s*/\* [0-9A-F]+ ([0-9A-F]{8}) ', f.read_text())  # not the rodata lines above it
+        m = re.search(r'glabel [^\n]*\n\s*/\* [0-9A-F]+ ([0-9A-F]{8}) ', f.read_text())  # not the rodata lines above it
         if not m:
             print(f'WARNING {tu}: {f.name} has no code (data-only, e.g. a vtable): add its INCLUDE_ASM by hand, between the '
                   'functions whose rodata surrounds its address (see tools/wsl/check.sh)')

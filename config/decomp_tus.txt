@@ -29,3 +29,11 @@ common/TaskManager
 common/AnimQueue
 common/PointToolKit
 common/hoser
+common/hieri
+common/bsp
+common/hdSphere
+common/DebugDraw
+common/PointLight
+common/smooth
+common/fog
+common/plight
