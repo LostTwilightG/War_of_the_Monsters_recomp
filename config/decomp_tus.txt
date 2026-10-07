@@ -39,3 +39,15 @@ common/fog
 common/plight
 common/audio
 common/peds
+game/AiTweaks
+game/MonsterTweaks
+game/GamePadClipPlayer
+game/central
+game/StartPoints
+game/TankVehicle
+game/MilitaryPickup
+game/PowerUpTool
+game/ufo
+game/AiPadClips
+game/BoneSpring
+game/StartPointTool
