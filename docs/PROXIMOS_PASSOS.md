@@ -33,6 +33,13 @@ Regra: uma classe/API usada por mais de um TU mora num header; não redeclarar p
 - Pontuação antes/depois: `sh tools/wsl/scoreall.sh A B C > novo.txt; diff base.txt novo.txt`.
 - Funções que o retail chama com `this` mesmo sem usá-lo (ex.: `StartPoints::getNumPoints`) só batem se declaradas não-estáticas; `isThisTypeFull` é estática.
 
+## Método para funções grandes (a partir de 2026-10-07)
+- Escopo: `python3 tools/callgraph.py Update__7TheGame,InitBeforeDbLoad__7TheGame,InitAfterDbLoad__7TheGame,ResetLevel__7TheGame --no-libs`
+  gera `config/callgraph.csv` (~1000 funções, ~310 KB alcançáveis por chamadas diretas). Priorizar esse conjunto, de cima para baixo; hardware (`config/hw_funcs.txt`) fica de fora.
+- Funções com mais de ~30 instruções: começar por `sh tools/m2c.sh <tu> <função>` (rascunho), conferir contra o assembly, trocar `unkNNN` por campos nomeados dos headers,
+  escrever como C++ natural, `scoreall.sh`, embrulhar com `nm_wrap.py` se não bater, `gate.sh` antes de commitar. Funções curtas: escrever direto.
+- `TheGame`/`Monster`: `game->m_slots[16]` são os `Monster` (0x11190 cada, em 0xB80); `m_huds[4]` no início; `game->m_monsters[]` são ponteiros para eles.
+
 ## Armadilhas já vistas
 - **Gate de commit**: `sh tools/wsl/gate.sh && git commit ...` (gate.sh sai com erro se a ROM não bater; `check.sh; git commit` ou `| tail` commitam builds quebrados). `check.sh | tail && git commit` commita mesmo com `BUILD FAILED` (aconteceu no PathTool).
 - Ao reescrever o fim de um `.cpp` com script, conferir que as linhas `INCLUDE_ASM` finais (static init, `__tf`, ctor, `_GLOBAL_$I$`) continuam lá.
