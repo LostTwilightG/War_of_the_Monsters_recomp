@@ -22,6 +22,7 @@ Rules reproduced:
     python3 tools/snfix.py in.s out.s
 """
 import re
+import struct
 import sys
 
 INSN = re.compile(r'^(\s*)([a-z][a-z0-9.]*)\s+(.*?)\s*(#.*)?$')
@@ -55,11 +56,15 @@ def expand_dli(rd, value):
         return [f'li {rd},{signed:#x}']  # 32-bit li: same expansion in both assemblers
     if value == 0xFFFFFFFF:
         return [f'addiu {rd},$0,-1', f'dsrl32 {rd},{rd},0']
-    h = value.bit_length() - 1
-    if value > 0 and h >= 15 and value & ((1 << (h - 15)) - 1) == 0:
-        # a 16-bit constant (top bit set) shifted left: ps2eeas emits ori + dsll/dsll32, e.g. 1 << 36 -> 0x8000 << 21
-        k, n = value >> (h - 15), h - 15
-        return [f'ori {rd},$0,{k:#x}', f'dsll {rd},{rd},{n}' if n < 32 else f'dsll32 {rd},{rd},{n - 32}']
+    lo = value & 0xFFFF
+    rest = value & ~0xFFFF
+    h = rest.bit_length() - 1
+    if rest > 0 and h >= 15 and rest & ((1 << (h - 15)) - 1) == 0:
+        # a 16-bit constant (top bit set) shifted left, then ori of the low half: ps2eeas emits ori + dsll/dsll32 [+ ori],
+        # e.g. 1 << 36 -> 0x8000 << 21
+        k, n = rest >> (h - 15), h - 15
+        out = [f'ori {rd},$0,{k:#x}', f'dsll {rd},{rd},{n}' if n < 32 else f'dsll32 {rd},{rd},{n - 32}']
+        return out + ([f'ori {rd},{rd},{lo:#x}'] if lo else [])
     raise ValueError(f'snfix: no known SN expansion for dli {rd},{value:#x}')
 
 
@@ -130,6 +135,18 @@ class Fixer:
             # GNU as would pull the last instruction of the asm into it
             return [f'{indent}.set	noreorder', line, f'{indent}nop', f'{indent}.set	reorder']
         ops = [a.strip() for a in args.split(',')] if args else []
+        if op == 'li.s' and len(ops) == 2 and float(ops[1]) != 0.0:
+            # ps2eeas loads every float constant as immediates through $at; GNU as would use a .lit4 pool entry
+            bits = struct.unpack('<I', struct.pack('<f', float(ops[1])))[0]
+            out = [f'{indent}.set	noat', f'{indent}lui	$1,{bits >> 16:#x}']
+            if bits & 0xFFFF:
+                out.append(f'{indent}ori	$1,$1,{bits & 0xFFFF:#x}')
+            return out + [f'{indent}mtc1	$1,{ops[0]}', f'{indent}.set	at']
+        if op == 'cvt.w.s' and len(ops) == 2:
+            fd, fs = (int(o.lstrip('$f')) for o in ops)
+            return [f'{indent}.word	{0x46000024 | fs << 11 | fd << 6:#x}']  # r5900 gas has no cvt.w.s
+        if op == 'break' and len(ops) == 1:
+            return [f'{indent}break	0,{ops[0]}']  # SN encodes the code in the second field (gcc's divide-by-zero trap)
         if op == 'move' and len(ops) == 2:
             return [f'{indent}daddu\t{ops[0]},{ops[1]},$0']
         if op == 'dli' and len(ops) == 2:
@@ -206,6 +223,7 @@ def main():
         except ValueError as e:
             sys.exit(f'{src}:{n}: {e}')
     out = pad_short_loops(out)
+    out += ['	.text', '	.align 3']  # retail text objects end 8-aligned (the padding is nops, not part of the next object)
     open(dst, 'w', encoding='latin1', newline='\n').write('\n'.join(out) + '\n')
 
 
