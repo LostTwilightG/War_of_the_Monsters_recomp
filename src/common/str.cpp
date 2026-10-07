@@ -65,3 +65,7 @@ void strFileWait(int x)
 {
     snd_StreamSafeCdSync(x);
 }
+/* retail rodata keeps an empty string plus alignment after the last literal of this TU */
+__asm__(".section .rodata
+	.word 0
+	.text");
