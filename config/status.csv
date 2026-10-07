@@ -911,8 +911,8 @@ game/Interactives,creditHit__11HurtHistoryif,0x1473c8,132,asm
 game/island,islandInitBefore__Fv,0x147450,48,matched
 game/island,islandInitAfter__Fv,0x147480,272,asm
 game/island,islandUpdate__Fv,0x147590,656,asm
-game/island,islandEruptVolcano__Fii,0x147820,452,asm
-game/island,islandFireLava__FP8_fvectori,0x1479e8,300,asm
+game/island,islandEruptVolcano__Fii,0x147820,452,equivalent
+game/island,islandFireLava__FP8_fvectori,0x1479e8,300,matched
 game/island,__static_initialization_and_destruction_0,0x147b18,48,asm
 game/island,_GLOBAL_$I$islandInitBefore__Fv,0x147b48,32,asm
 game/McFile,__9McMessage,0x147b68,60,asm
