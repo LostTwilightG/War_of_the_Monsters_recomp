@@ -20,11 +20,18 @@ SIZE = 0x11190
 # Fields already declared by hand in game.h: offset -> (ctype, name, size). Kept as they are.
 EXISTING = {
     0xC: ('_cs *', 'm_cs', 4), 0x14: ('int', 'm_typeBits', 4), 0x18: ('int', 'm_playerNum', 4), 0x20: ('int', 'm_id', 4),
-    0x3C: ('int', 'm_unk3C', 4), 0x49: ('unsigned char', 'm_unk49', 1), 0xE8: ('signed char', 'm_dead', 1),
-    0xEC: ('unsigned char', 'm_unkEC', 1), 0xF6: ('unsigned char', 'm_unkF6', 1), 0xF7: ('unsigned char', 'm_unkF7', 1),
+    0x3C: ('int', 'm_winsThisGame', 4), 0x49: ('signed char', 'm_unk49', 1), 0xE8: ('signed char', 'm_dead', 1),
+    0xEC: ('unsigned char', 'm_unkEC', 1), 0xF6: ('signed char', 'm_unkF6', 1), 0xF7: ('signed char', 'm_unkF7', 1),
     0xF9: ('unsigned char', 'm_unkF9', 1), 0x44C: ('float', 'm_health', 4), 0x460: ('StaminaMeter', 'm_stamina', 0x2C),
     0x5040: ('PadFlags', 'm_padFlags', 0x1814), 0x68B4: ('void *', 'm_target', 4), 0x7970: ('int', 'm_camUnify', 4),
     0x10E70: ('char', 'm_victoryState[1]', 1),
+    0x34: ('int *', 'm_state', 4), 0x38: ('int *', 'm_prevState', 4), 0xB4: ('float', 'm_bodyHeight', 4),
+    0xEF: ('signed char', 'm_cloaked', 1), 0x1A3C: ('char *', 'm_shadow', 4), 0x846C: ('Monster *', 'm_killer', 4),
+    0x4B0: ('int', 'm_healthGlow[3]', 12), 0x4BC: ('int', 'm_staminaGlow[3]', 12),
+    0x6CC4: ('float', 'm_beingShockedCount', 4), 0x6CC8: ('float', 'm_beingShockedDamage', 4), 0x6CD4: ('int', 'm_cameraFollows', 4),
+    0x6CD8: ('int', 'm_cameraView', 4),
+    0x69C8: ('float', 'm_puPunchDamageMod[28]', 0x70), 0x6A38: ('float', 'm_puLaunchDamageMod[28]', 0x70),
+    0x6B18: ('float', 'm_puDurationMod[28]', 0x70), 0x6B88: ('float', 'm_puSpeedMod[28]', 0x70),
 }
 
 LOADS = {'lw': ('int', 4), 'lwc1': ('float', 4), 'lbu': ('unsigned char', 1), 'lb': ('signed char', 1),

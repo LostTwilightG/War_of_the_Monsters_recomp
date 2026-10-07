@@ -66,7 +66,11 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", creditHealth__7Monsterf);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", breathFire__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", lightOnFire__7Monsterffi);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateOnFire__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", startShocking__7Monsterff);
+void Monster::startShocking(float a, float b)
+{
+    m_beingShockedCount = a;
+    m_beingShockedDamage = b;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateBeingShocked__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", startBeingImpaled__7Monsterff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isHolding__7Monster);
@@ -133,7 +137,15 @@ int Monster::getBeamVictim(void)
 {
     return m_beamVictim;
 }
+#ifdef NON_MATCHING
+/* 2/4 words, untuned: retail splits the offset as 0x8450 + 0x1C */
+Monster *Monster::getKiller(void)
+{
+    return m_killer;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getKiller__7Monster);
+#endif
 int Monster::getPinTarget(void)
 {
     return m_pinTarget;
@@ -155,7 +167,7 @@ int Monster::getStickyReticleCS(void)
 {
     return m_stickyReticleCS;
 }
-int Monster::getShadow(void)
+char *Monster::getShadow(void)
 {
     return m_shadow;
 }
@@ -179,12 +191,18 @@ int Monster::getReticleState(void) const
     return m_reticleState;
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getEnemyInfo__7MonsterR7Monster);
-int Monster::getState(void)
+int *Monster::getState(void)
 {
     return m_state;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getStateId__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPrevStateId__7Monster);
+int Monster::getStateId(void)
+{
+    return *m_state;
+}
+int Monster::getPrevStateId(void)
+{
+    return *m_prevState;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getCameraData__7MonsteriQ26Camera9CameraPOV);
 int Monster::getType(void) const
 {
@@ -227,18 +245,21 @@ float Monster::getMaxHealth(void)
     return m_maxHealth;
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getStamina__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getHeight__C7Monster);
+float Monster::getHeight(void) const
+{
+    return m_bodyHeight + m_heightAboveCOG;
+}
 float Monster::getWidth(void) const
 {
     return m_width;
 }
 int Monster::getCameraThatFollows(void) const
 {
-    return m_cameraThatFollows;
+    return m_cameraView;
 }
 int Monster::getWinsThisGame(void) const
 {
-    return m_unk3C;
+    return m_winsThisGame;
 }
 float Monster::getClimbSpeed(void) const
 {
@@ -252,7 +273,10 @@ int Monster::getFallTime(void) const
 {
     return m_fallTime;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getGroundHeight__C7Monster);
+float Monster::getGroundHeight(void) const
+{
+    return *(float *)(m_shadow + 0x18);
+}
 float Monster::getHeightAboveCOG(void) const
 {
     return m_heightAboveCOG;
@@ -267,12 +291,24 @@ int Monster::getPlayerAiOrFodderNum(void) const
 }
 int Monster::getIsCameraFollowingThisMonster(void)
 {
-    return m_isCameraFollowingThisMonster;
+    return m_cameraFollows;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", puPunchDamageMod__C7Monster11ePickupType);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", puLaunchDamageMod__C7Monster11ePickupType);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", puDurationMod__C7Monster11ePickupType);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", puSpeedMod__C7Monster11ePickupType);
+float Monster::puPunchDamageMod(ePickupType t) const
+{
+    return m_puPunchDamageMod[t];
+}
+float Monster::puLaunchDamageMod(ePickupType t) const
+{
+    return m_puLaunchDamageMod[t];
+}
+float Monster::puDurationMod(ePickupType t) const
+{
+    return m_puDurationMod[t];
+}
+float Monster::puSpeedMod(ePickupType t) const
+{
+    return m_puSpeedMod[t];
+}
 float Monster::getDpDamage(void) const
 {
     return m_dpDamage;
@@ -393,21 +429,49 @@ int Monster::getLaunchDelay(void) const
 {
     return m_launchDelay;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", isVulnerable__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", isDead__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", isCloaked__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", isTurning__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", isFalling__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", attacksEnabled__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", ranDeathSequence__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", ranVictorySequence__C7Monster);
+bool Monster::isVulnerable(void) const
+{
+    return m_unk49 != 0;
+}
+bool Monster::isDead(void) const
+{
+    return m_dead != 0;
+}
+bool Monster::isCloaked(void) const
+{
+    return m_cloaked != 0;
+}
+bool Monster::isTurning(void) const
+{
+    return m_turning != 0;
+}
+bool Monster::isFalling(void) const
+{
+    return m_freeFalling != 0;
+}
+bool Monster::attacksEnabled(void) const
+{
+    return m_attacksEnabled != 0;
+}
+bool Monster::ranDeathSequence(void) const
+{
+    return m_unkF6 != 0;
+}
+bool Monster::ranVictorySequence(void) const
+{
+    return m_unkF7 != 0;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isFullHealth__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isFullStamina__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isTargetPinning__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isOnFire__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isBeingShocked__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", inSpecialState__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setCameraFollowsMonster__7Monsterib);
+void Monster::setCameraFollowsMonster(int view, bool follows)
+{
+    m_cameraView = view;
+    m_cameraFollows = follows;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setCs__7MonsterP3_cs);
 void Monster::setGodMode(bool v)
 {
@@ -415,7 +479,7 @@ void Monster::setGodMode(bool v)
 }
 void Monster::setWinsThisGame(int v)
 {
-    m_unk3C = v;
+    m_winsThisGame = v;
 }
 void Monster::setDamageModifier(float v)
 {
@@ -525,11 +589,24 @@ void Monster::enableSpecialWeapon(bool v)
 {
     m_specialWeapon = v;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", startHealthPowerUpGlow__7Monsterii);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", startStaminaPowerUpGlow__7Monsterii);
+void Monster::startHealthPowerUpGlow(int a, int b)
+{
+    m_healthGlow[0] = a;
+    m_healthGlow[2] = b;
+    m_healthGlow[1] = b;
+}
+void Monster::startStaminaPowerUpGlow(int a, int b)
+{
+    m_staminaGlow[0] = a;
+    m_staminaGlow[2] = b;
+    m_staminaGlow[1] = b;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", startSpecialPowerUpGlow__7Monsteri);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", endSpecialPowerUpGlow__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", incrementWinsThisGame__7Monsteri);
+void Monster::incrementWinsThisGame(int n)
+{
+    m_winsThisGame += n;
+}
 int Monster::getHudTexture(void)
 {
     return m_hudTexture;
@@ -544,9 +621,17 @@ void Monster::okToUnify(bool v)
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateClosestPath__7MonsterPv);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", restoreVulnerability__7MonsterPv);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", restoreVulnerability__7Monster);
+int Monster::restoreVulnerability(void)
+{
+    m_unk49 = 1;
+    return 0;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", restoreAttacksEnabled__7MonsterPv);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", restoreAttacksEnabled__7Monster);
+int Monster::restoreAttacksEnabled(void)
+{
+    m_attacksEnabled = 1;
+    return 0;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setShadow__7MonsterP3_cs);
 void Monster::setHudTexture(int v)
 {

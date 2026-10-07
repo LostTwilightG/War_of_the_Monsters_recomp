@@ -13,15 +13,42 @@
 
 class MonsterState;
 
+enum ePickupType { PICKUP_TYPE_0 };
+
 class Monster {
 public:
     void drainSpecial();
     void enterNewState(MonsterState *state);
     void takeDamage(float dmg, bool b, Monster *src);
     void initAfterDbLoad(void);
+    bool attacksEnabled(void) const;
+    float getHeight(void) const;
+    float getGroundHeight(void) const;
+    Monster *getKiller(void);
+    int getPrevStateId(void);
+    int getStateId(void);
+    void incrementWinsThisGame(int n);
+    bool isCloaked(void) const;
+    bool isDead(void) const;
+    bool isFalling(void) const;
+    bool isTurning(void) const;
+    bool isVulnerable(void) const;
+    bool ranDeathSequence(void) const;
+    bool ranVictorySequence(void) const;
+    float puDurationMod(ePickupType t) const;
+    float puLaunchDamageMod(ePickupType t) const;
+    float puPunchDamageMod(ePickupType t) const;
+    float puSpeedMod(ePickupType t) const;
+    int restoreAttacksEnabled(void);
+    int restoreVulnerability(void);
+    void setCameraFollowsMonster(int view, bool follows);
+    void startHealthPowerUpGlow(int a, int b);
+    void startShocking(float a, float b);
+    void startStaminaPowerUpGlow(int a, int b);
     void update(void);
     void updateCinema(void);
     void updatePosition(void);
+    char * getShadow(void);
     float getAimHeading(void) const;
     float getAimPitch(void) const;
     float getBeingShockedCount(void) const;
@@ -57,6 +84,7 @@ public:
     float getSpeed(void);
     float getTargetingMod(void) const;
     float getWidth(void) const;
+    int * getState(void);
     int getAutoLeadMovesReticle(void);
     int getBeamVictim(void);
     int getCamIdleCircuitTime(void) const;
@@ -84,9 +112,7 @@ public:
     int getReticleCS(void);
     int getReticleState(void) const;
     int getReverseImpaler(void);
-    int getShadow(void);
     int getSkinNum(void) const;
-    int getState(void);
     int getStickyReticleCS(void);
     int getType(void) const;
     int getWinsThisGame(void) const;
@@ -131,16 +157,16 @@ public:
     int m_monsterNum;   /* 0x28 */
     int m_numInits;   /* 0x2C */
     int m_skinNum;   /* 0x30 */
-    int m_state;   /* 0x34 */
-    char pad38[0x3C - 0x38];
-    int m_unk3C;   /* 0x3C */
+    int * m_state;   /* 0x34 */
+    int * m_prevState;   /* 0x38 */
+    int m_winsThisGame;   /* 0x3C */
     float m_runTime;   /* 0x40 */
     char pad44[0x49 - 0x44];
-    unsigned char m_unk49;   /* 0x49 */
-    unsigned char m_attacksEnabled;   /* 0x4A */
+    signed char m_unk49;   /* 0x49 */
+    signed char m_attacksEnabled;   /* 0x4A */
     char pad4B[0xB0 - 0x4B];
     float m_maxHeadingChange;   /* 0xB0 */
-    char padB4[0xB8 - 0xB4];
+    float m_bodyHeight;   /* 0xB4 */
     float m_heightAboveCOG;   /* 0xB8 */
     char padBC[0xC0 - 0xBC];
     float m_rearOffset;   /* 0xC0 */
@@ -153,19 +179,21 @@ public:
     unsigned char m_godMode;   /* 0xE9 */
     char padEA[0xEC - 0xEA];
     unsigned char m_unkEC;   /* 0xEC */
-    char padED[0xF1 - 0xED];
-    unsigned char m_turning;   /* 0xF1 */
+    char padED[0xEF - 0xED];
+    signed char m_cloaked;   /* 0xEF */
+    char padF0[0xF1 - 0xF0];
+    signed char m_turning;   /* 0xF1 */
     char padF2[0xF3 - 0xF2];
     unsigned char m_specialWeapon;   /* 0xF3 */
     char padF4[0xF6 - 0xF4];
-    unsigned char m_unkF6;   /* 0xF6 */
-    unsigned char m_unkF7;   /* 0xF7 */
+    signed char m_unkF6;   /* 0xF6 */
+    signed char m_unkF7;   /* 0xF7 */
     char padF8[0xF9 - 0xF8];
     unsigned char m_unkF9;   /* 0xF9 */
     char padFA[0x250 - 0xFA];
     float m_speed;   /* 0x250 */
     char pad254[0x280 - 0x254];
-    unsigned char m_freeFalling;   /* 0x280 */
+    signed char m_freeFalling;   /* 0x280 */
     char pad281[0x284 - 0x281];
     int m_fallTimeBeforePitch;   /* 0x284 */
     int m_fallTime;   /* 0x288 */
@@ -181,12 +209,15 @@ public:
     StaminaMeter m_stamina;   /* 0x460 */
     char pad48C[0x4AC - 0x48C];
     unsigned char m_okToGlow;   /* 0x4AC */
-    char pad4AD[0x4D8 - 0x4AD];
+    char pad4AD[0x4B0 - 0x4AD];
+    int m_healthGlow[3];   /* 0x4B0 */
+    int m_staminaGlow[3];   /* 0x4BC */
+    char pad4C8[0x4D8 - 0x4C8];
     int m_playerInfo;   /* 0x4D8 */
     char pad4DC[0x1A10 - 0x4DC];
     int m_closestPath;   /* 0x1A10 */
     char pad1A14[0x1A3C - 0x1A14];
-    int m_shadow;   /* 0x1A3C */
+    char * m_shadow;   /* 0x1A3C */
     char pad1A40[0x5040 - 0x1A40];
     PadFlags m_padFlags;   /* 0x5040 */
     char pad6854[0x6868 - 0x6854];
@@ -212,7 +243,11 @@ public:
     float m_dpVertHomingFactor;   /* 0x69BC */
     float m_dpHeadingBreak;   /* 0x69C0 */
     float m_dpPitchBreak;   /* 0x69C4 */
-    char pad69C8[0x6BF8 - 0x69C8];
+    float m_puPunchDamageMod[28];   /* 0x69C8 */
+    float m_puLaunchDamageMod[28];   /* 0x6A38 */
+    char pad6AA8[0x6B18 - 0x6AA8];
+    float m_puDurationMod[28];   /* 0x6B18 */
+    float m_puSpeedMod[28];   /* 0x6B88 */
     int m_reticleCS;   /* 0x6BF8 */
     int m_stickyReticleCS;   /* 0x6BFC */
     char pad6C00[0x6C04 - 0x6C00];
@@ -236,8 +271,8 @@ public:
     float m_beingShockedCount;   /* 0x6CC4 */
     float m_beingShockedDamage;   /* 0x6CC8 */
     char pad6CCC[0x6CD4 - 0x6CCC];
-    int m_isCameraFollowingThisMonster;   /* 0x6CD4 */
-    int m_cameraThatFollows;   /* 0x6CD8 */
+    int m_cameraFollows;   /* 0x6CD4 */
+    int m_cameraView;   /* 0x6CD8 */
     float m_landingShakeAmp;   /* 0x6CDC */
     float m_landingShakeFreq;   /* 0x6CE0 */
     float m_landingShakeDur;   /* 0x6CE4 */
@@ -245,7 +280,9 @@ public:
     float m_landingShakeMag;   /* 0x6CEC */
     char pad6CF0[0x7970 - 0x6CF0];
     int m_camUnify;   /* 0x7970 */
-    char pad7974[0x10E70 - 0x7974];
+    char pad7974[0x846C - 0x7974];
+    Monster * m_killer;   /* 0x846C */
+    char pad8470[0x10E70 - 0x8470];
     char m_victoryState[1];   /* 0x10E70 */
     char pad10E71[0x11190 - 0x10E71];
 };

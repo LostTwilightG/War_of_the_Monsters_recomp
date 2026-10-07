@@ -77,7 +77,7 @@ void TheGame::InitAfterDbLoad(void)
     f12045C = 0;
     for (i = m_numSlots - 1; i >= 0; i--) {
         m_slots[i].initAfterDbLoad();
-        m_slots[i].m_unk3C = 0;
+        m_slots[i].m_winsThisGame = 0;
     }
     MemoryStack::global.pushMark();
     hierSetTraversalCallback(traversalCallback);
