@@ -1,12 +1,83 @@
 #include "common.h"
 
+extern "C" int printf(const char *, ...);
+
+struct DbInteractive;
+
+class Interactives {
+public:
+    static DbInteractive *s_dbInteractive[1024];
+    static int s_numInteractives;
+
+    static void init(void);
+    static void addInteractive(DbInteractive *p);
+    static void setInteractive(int i, DbInteractive *p);
+    static DbInteractive *getInteractive(int i);
+};
+
+class HitHistory {
+public:
+    int f0;
+    int f4;
+
+    HitHistory();
+    void reset(void);
+};
+
+#ifdef NON_MATCHING
+/* 10/14 words, untuned: zeroing loop shape */
+void Interactives::init(void)
+{
+    int i;
+
+    for (i = 1023; i >= 0; i--)
+        s_dbInteractive[i] = 0;
+    s_numInteractives = 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", init__12Interactives);
+#endif
+#ifdef NON_MATCHING
+/* 5/11 words, untuned: order of count update and store */
+void Interactives::addInteractive(DbInteractive *p)
+{
+    s_dbInteractive[s_numInteractives++] = p;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", addInteractive__12InteractivesP13DbInteractive);
-INCLUDE_ASM("asm/nonmatchings/game/Interactives", setInteractive__12InteractivesiP13DbInteractive);
-INCLUDE_ASM("asm/nonmatchings/game/Interactives", getInteractive__12Interactivesi);
+#endif
+void Interactives::setInteractive(int i, DbInteractive *p)
+{
+    s_dbInteractive[i] = p;
+}
+DbInteractive *Interactives::getInteractive(int i)
+{
+    if (i > 0 && i < s_numInteractives)
+        return s_dbInteractive[i];
+    printf("interact Error:  Bad index passed to GetInteractive %d numInteractives %d
+", i, s_numInteractives);
+    return s_dbInteractive[0];
+}
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", dispatchHit__12InteractivesP8_fvectorfii);
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", create__8HitEvent);
-INCLUDE_ASM("asm/nonmatchings/game/Interactives", __10HitHistory);
+HitHistory::HitHistory()
+{
+    f0 = 0;
+    f4 = 0;
+}
+#ifdef NON_MATCHING
+/* 1/3 words, untuned: store order */
+void HitHistory::reset(void)
+{
+    f0 = 0;
+    f4 = 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", reset__10HitHistory);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", newHit__10HitHistoryib);
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", creditHit__11HurtHistoryif);
+/* retail rodata keeps an empty string plus alignment after the last literal of this TU */
+__asm__(".section .rodata
+	.word 0
+	.text");
