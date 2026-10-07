@@ -115,7 +115,7 @@ segments:
       - [0x03B410, asm, game/Grapple]  # c++, 27 funcs, name: manual
       - [0x03CD38, asm, game/GrappleOHAttack]  # c++, 16 funcs, name: manual
       - [0x03DD00, asm, game/GrappleThrow]  # c++, 17 funcs, name: manual
-      - [0x03E928, asm, game/HeliPickup]  # c++, 12 funcs, name: guess
+      - [0x03E928, cpp, game/HeliPickup]  # c++, 12 funcs, name: guess
       - [0x03F6A0, cpp, game/HeliVehicle]  # c++, 10 funcs, name: guess
       - [0x03FD40, asm, game/HeliVehicleNav]  # c++, 25 funcs, name: guess
       - [0x041608, asm, game/HomingBug]  # c++, 25 funcs, name: guess
@@ -126,7 +126,7 @@ segments:
       - [0x049FC0, asm, game/McPage]  # c++, 70 funcs, name: manual
       - [0x04CA30, asm, game/MilitaryFormation]  # c++, 24 funcs, name: manual
       - [0x04D8E8, cpp, game/MilitaryPickup]  # c++, 13 funcs, name: guess
-      - [0x04DAB0, asm, game/MissileTruckPickup]  # c++, 16 funcs, name: guess
+      - [0x04DAB0, cpp, game/MissileTruckPickup]  # c++, 16 funcs, name: guess
       - [0x04E590, cpp, game/MonkeyChains]  # c++, 4 funcs, name: guess
       - [0x04EA90, asm, game/MonsterStates]  # c++, 263 funcs, name: manual
       - [0x05B3E0, asm, game/Monster]  # c++, 261 funcs, name: manual
@@ -167,16 +167,16 @@ segments:
       - [0x0CEB78, cpp, game/StartPointTool]  # c++, 9 funcs, name: guess
       - [0x0CEE10, cpp, game/StickShaker]  # c++, 7 funcs, name: guess
       - [0x0CF450, cpp, game/SubwayPickup]  # c++, 8 funcs, name: guess
-      - [0x0CF900, asm, game/TankPickup]  # c++, 16 funcs, name: guess
+      - [0x0CF900, cpp, game/TankPickup]  # c++, 16 funcs, name: guess
       - [0x0D0420, cpp, game/TankVehicle]  # c++, 2 funcs, name: guess
-      - [0x0D05C8, asm, game/TurretPickup]  # c++, 12 funcs, name: guess
+      - [0x0D05C8, cpp, game/TurretPickup]  # c++, 12 funcs, name: guess
       - [0x0D1070, asm, game/threemile]  # c++, 29 funcs, name: manual
       - [0x0D3248, asm, game/StateThrowBack]  # c++, 38 funcs, name: guess
       - [0x0D6598, cpp, game/TokenManager]  # c++, 9 funcs, name: guess
       - [0x0D6AD8, cpp, game/tokyo]  # c++, 12 funcs, name: guess
       - [0x0D74D8, cpp, game/ufo]  # c++, 3 funcs, name: guess
       - [0x0D7708, asm, game/UfoNav]  # c++, 17 funcs, name: guess
-      - [0x0D8560, asm, game/UfoPickup]  # c++, 13 funcs, name: guess
+      - [0x0D8560, cpp, game/UfoPickup]  # c++, 13 funcs, name: guess
       - [0x0D93D8, asm, game/ui]  # c++, 16 funcs, name: guess
       - [0x0DAF08, asm, game/uidev]  # c++, 81 funcs, name: manual
       - [0x0DD788, cpp, game/vegas]  # c++, 3 funcs, name: guess
@@ -540,7 +540,7 @@ segments:
       - [0x5E9590, rodata, game/Grapple]
       - [0x5E9650, rodata, game/GrappleOHAttack]
       - [0x5E9750, rodata, game/GrappleThrow]
-      - [0x5E98C0, rodata, game/HeliPickup]
+      - [0x5E98C0, .rodata, game/HeliPickup]
       - [0x5E9980, rodata, game/HeliVehicleNav]
       - [0x5E99A0, rodata, game/HomingBug]
       - [0x5EA8F0, rodata, game/Hud]
@@ -549,7 +549,7 @@ segments:
       - [0x5EAEF0, rodata, game/McPage]
       - [0x5EAF80, rodata, game/MilitaryFormation]
       - [0x5EB078, .rodata, game/MilitaryPickup]
-      - [0x5EB120, rodata, game/MissileTruckPickup]
+      - [0x5EB120, .rodata, game/MissileTruckPickup]
       - [0x5EB210, rodata, game/MonsterStates]
       - [0x5EBDA0, rodata, game/Monster]
       - [0x5EC750, rodata, game/MonsterMc]
@@ -572,14 +572,14 @@ segments:
       - [0x5F1450, .rodata, game/SpecFxAnim]
       - [0x5F1498, .rodata, game/StartPointTool]
       - [0x5F14D8, .rodata, game/SubwayPickup]
-      - [0x5F1560, rodata, game/TankPickup]
-      - [0x5F1640, rodata, game/TurretPickup]
+      - [0x5F1560, .rodata, game/TankPickup]
+      - [0x5F1640, .rodata, game/TurretPickup]
       - [0x5F1700, rodata, game/threemile]
       - [0x5F17B0, rodata, game/StateThrowBack]
       - [0x5F1A80, .rodata, game/TokenManager]
       - [0x5F1B08, .rodata, game/tokyo]
       - [0x5F1B60, rodata, game/UfoNav]
-      - [0x5F1B80, rodata, game/UfoPickup]
+      - [0x5F1B80, .rodata, game/UfoPickup]
       - [0x5F1C60, rodata, game/ui]
       - [0x5F2320, rodata, game/uidev]
       - [0x5F2820, rodata, game/VehicleNavigator]

@@ -1,0 +1,21 @@
+#include "common.h"
+
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", __18MissileTruckPickup);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", initAfterDbLoad__18MissileTruckPickup);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", setTrans__18MissileTruckPickupR8_fvector);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", takeHit__18MissileTruckPickupP8_fvectorfi);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", drop__18MissileTruckPickup);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", kill__18MissileTruckPickup);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", fire__18MissileTruckPickupR7GamePad);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", update__18MissileTruckPickup);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", updateLeadBehavior__18MissileTruckPickupR7GamePad);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", updateFollowBehavior__18MissileTruckPickupR7GamePad);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", updateAttackBehavior__18MissileTruckPickupR7GamePad);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", enterState__18MissileTruckPickupQ214MilitaryPickup5State);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", _vt$18MissileTruckPickup);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", leadFormation__18MissileTruckPickup);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", followFormation__18MissileTruckPickup);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", resignFormation__18MissileTruckPickup);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", func_0014E508);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", func_0014E518);
+INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", __tf18MissileTruckPickup);

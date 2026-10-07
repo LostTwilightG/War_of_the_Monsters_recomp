@@ -145,8 +145,8 @@ game/AiPadClips,getThrow__10AiPadClipsv,0x1062d0,12,matched
 game/AiPadClips,__static_initialization_and_destruction_0,0x1062e0,536,asm
 game/AiPadClips,_GLOBAL_$I$getTaunt__10AiPadClipsv,0x1064f8,32,asm
 game/AiPathNet,getRandPath__10AiPathNodeUs,0x106518,160,asm
-game/AiPathNet,getRandNode__9AiPathNet,0x1065b8,64,asm
-game/AiPathNet,getRandPath__9AiPathNet,0x1065f8,64,asm
+game/AiPathNet,getRandNode__9AiPathNet,0x1065b8,64,matched
+game/AiPathNet,getRandPath__9AiPathNet,0x1065f8,64,matched
 game/AiPathNet,getClosestNode__9AiPathNetR8_fvector,0x106638,116,asm
 game/AiPathNet,getClosestPath__9AiPathNetR8_fvectorUc,0x1066b0,300,asm
 game/AiPathNet,getPath__9AiPathNetR8_fvector,0x1067e0,116,asm
@@ -1832,7 +1832,7 @@ game/MonsterMeters,credit__12StaminaMeterf,0x16d500,192,equivalent
 game/MonsterMeters,drain__12StaminaMeterfbT2,0x16d5c0,356,asm
 game/MonsterMeters,hasEnough__12StaminaMeterf,0x16d728,148,matched
 game/MonsterTriggers,checkTriggerTree__Fv,0x16d7c0,472,asm
-game/MonsterTriggers,doDeathVolume__FP7MonsterP11TriggerHead,0x16d998,36,asm
+game/MonsterTriggers,doDeathVolume__FP7MonsterP11TriggerHead,0x16d998,36,matched
 game/MonsterTriggers,doSoundVolume__FP7MonsterP11TriggerHead,0x16d9c0,80,asm
 game/MonsterTriggers,doDamageVolume__FP7MonsterP11TriggerHead,0x16da10,220,asm
 game/MonsterTriggers,doHealthVolume__FP7MonsterP11TriggerHead,0x16daf0,80,asm
@@ -1840,7 +1840,7 @@ game/MonsterTriggers,doStaminaVolume__FP7MonsterP11TriggerHead,0x16db40,172,asm
 game/MonsterTriggers,doFireVolume__FP7MonsterP11TriggerHead,0x16dbf0,196,asm
 game/MonsterTriggers,doShockVolume__FP7MonsterP11TriggerHead,0x16dcb8,432,asm
 game/MonsterTriggers,doImpaleVolume__FP7MonsterP11TriggerHead,0x16de68,280,asm
-game/MonsterTriggers,doCamUnifyVolume__FP7MonsterP11TriggerHead,0x16df80,8,asm
+game/MonsterTriggers,doCamUnifyVolume__FP7MonsterP11TriggerHead,0x16df80,8,matched
 game/MonsterTriggers,doCamVolume__FP7MonsterP11TriggerHead,0x16df88,256,asm
 game/MonsterTweaks,init__13MonsterTweaks,0x16e088,32,asm
 game/MonsterTweaks,setActiveMonster__13MonsterTweaksP7Monsterb,0x16e0a8,88,asm
@@ -2834,8 +2834,8 @@ game/SpecFxAnim,__static_initialization_and_destruction_0,0x1ce9a8,100,asm
 game/SpecFxAnim,_GLOBAL_$I$_10SpecFxAnim$s_numFxs,0x1cea10,32,asm
 game/StartPoints,addPoint__11StartPointsUcP8_fvectorfb,0x1cea30,84,equivalent
 game/StartPoints,clear__11StartPoints,0x1cea88,52,matched
-game/StartPoints,getNumPoints__11StartPointsUc,0x1ceac0,28,equivalent
-game/StartPoints,getPoint__11StartPointsUci,0x1ceae0,36,equivalent
+game/StartPoints,getNumPoints__11StartPointsUc,0x1ceac0,28,matched
+game/StartPoints,getPoint__11StartPointsUci,0x1ceae0,36,matched
 game/StartPoints,isThisTypeFull__11StartPointsUc,0x1ceb08,44,matched
 game/StartPoints,getNextPoint__11StartPointsUc,0x1ceb38,60,equivalent
 game/StartPointTool,loadPoints__14StartPointTool,0x1ceb78,112,matched
@@ -3154,7 +3154,7 @@ game/WaterGrid,__9WaterGridP9_hierhead,0x1dff10,368,asm
 game/WaterGrid,reset__9WaterGrid,0x1e0080,60,asm
 game/WaterGrid,update__9WaterGrid,0x1e00c0,1000,asm
 game/WaterGrid,disturb__9WaterGridR8_fvectorff,0x1e04a8,448,asm
-game/WaterGrid,update__9WaterGridPv,0x1e0668,28,asm
+game/WaterGrid,update__9WaterGridPv,0x1e0668,28,matched
 game/Weapon,__Q26Weapon8Dynamics,0x1e0688,64,asm
 game/Weapon,InitWeaponsBefore__7Weapons,0x1e06c8,228,asm
 game/Weapon,InitWeaponsAfter__7Weapons,0x1e07b0,1136,asm

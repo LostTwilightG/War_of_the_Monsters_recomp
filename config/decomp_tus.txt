@@ -83,3 +83,8 @@ game/OgreMace
 game/MonsterTriggers
 game/AiPathFinder
 game/tokyo
+game/TurretPickup
+game/TankPickup
+game/MissileTruckPickup
+game/HeliPickup
+game/UfoPickup
