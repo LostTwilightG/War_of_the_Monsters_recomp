@@ -2847,12 +2847,12 @@ game/StartPointTool,__static_initialization_and_destruction_0,0x1ced60,40,asm
 game/StartPointTool,__tf14StartPointTool,0x1ced88,80,asm
 game/StartPointTool,__14StartPointTool,0x1cedd8,20,asm
 game/StartPointTool,_GLOBAL_$I$_14StartPointTool$instance,0x1cedf0,32,asm
-game/StickShaker,DefaultSetup__11StickShakerRt13ExpandingRing1Z17StickShakerConfig,0x1cee10,240,asm
-game/StickShaker,Init__11StickShaker,0x1cef00,52,asm
-game/StickShaker,Activate__11StickShakerP8_fvectorGt13ExpandingRing1Z17StickShakerConfigb,0x1cef38,580,asm
-game/StickShaker,update__11StickShaker,0x1cf180,536,asm
+game/StickShaker,DefaultSetup__11StickShakerRt13ExpandingRing1Z17StickShakerConfig,0x1cee10,240,equivalent
+game/StickShaker,Init__11StickShaker,0x1cef00,52,matched
+game/StickShaker,Activate__11StickShakerP8_fvectorGt13ExpandingRing1Z17StickShakerConfigb,0x1cef38,580,equivalent
+game/StickShaker,update__11StickShaker,0x1cf180,536,equivalent
 game/StickShaker,__static_initialization_and_destruction_0,0x1cf398,116,asm
-game/StickShaker,update__11StickShakerPv,0x1cf410,28,asm
+game/StickShaker,update__11StickShakerPv,0x1cf410,28,matched
 game/StickShaker,_GLOBAL_$I$DefaultSetup__11StickShakerRt13ExpandingRing1Z17StickShakerConfig,0x1cf430,32,asm
 game/SubwayPickup,__12SubwayPickup,0x1cf450,64,asm
 game/SubwayPickup,initAfterDbLoad__12SubwayPickup,0x1cf490,292,asm
