@@ -1,29 +1,36 @@
 #ifndef PAD_FLAGS_H
 #define PAD_FLAGS_H
 
-#include "bidir_link.h"
+#include "hieri_types.h"
 
 class GamePad;
 class Monster;
-struct _fvector;
+
+enum ButtonActions { BUTTON_ACTION_NONE = 20 };
+enum MappedActions { MAPPED_ACTION_NONE = 0 };
 
 /* Input interpretation state of one monster (embedded in Monster at 0x5040): a ring of 60 per-frame snapshots,
    a queue of pending button actions, combo/secret-code tracking and the pad tweak values copied from TheGame
-   by UpdatePadTweaks. Offsets are relative to the PadFlags object. */
+   by UpdatePadTweaks. Offsets are relative to the PadFlags object (sizeof == 0x1814). */
 class PadFlags {
 public:
     enum { RING_SIZE = 60, ENTRY_SIZE = 0x5E };
 
-    /* Action queue node (12 bytes): linked into the used list at 0x1794 or the free list at 0x17A0. */
+    /* Action queue node (12 bytes), linked into the used list (sentinel at 0x1794) or the free list (sentinel at 0x17A0). */
     struct ActionNode {
-        void *action;     /* 0x0: points at the {button, mapped, time} record of the action */
-        ActionNode *prev; /* 0x4 */
-        ActionNode *next; /* 0x8 */
+        struct Record {
+            int button;
+            int mapped;
+            int time;
+        };
+        Record *action; /* 0x0 */
+        ActionNode *next; /* 0x4 */
+        ActionNode *prev; /* 0x8 */
     };
 
     char ring[RING_SIZE * ENTRY_SIZE];  /* 0x0000 */
     char pad15F8[0x16C4 - RING_SIZE * ENTRY_SIZE];
-    int tweak16C4;                      /* 0x16C4: tweaks copied from TheGame (see UpdatePadTweaks) */
+    int tweak16C4;                      /* 0x16C4..0x16FC: tweaks copied from TheGame (see UpdatePadTweaks) */
     int tweak16C8;
     char pad16CC[4];
     float tweak16D0;
@@ -46,21 +53,29 @@ public:
     int curMappedAction;                /* 0x1714 */
     int curActionTime;                  /* 0x1718 */
     ActionNode nodes[10];               /* 0x171C */
-    char pad1794[0x1794 - 0x171C - 10 * 12];
-    BidirLink usedList;                 /* 0x1794: sentinel of pending actions (newest first) */
+    ActionNode usedList;                /* 0x1794: sentinel of pending actions (newest first) */
+    ActionNode freeList;                /* 0x17A0 */
     int tweak17AC;                      /* 0x17AC: delay before an action is superseded */
     int tweak17B0;                      /* 0x17B0: delay before an action expires */
     int actionsStarted;                 /* 0x17B4 */
+    char pad17B8[0x17E0 - 0x17B8];
+    int f17E0, f17E4, f17E8;
+    char pad17EC[4];
+    int f17F0, f17F4, f17F8, f17FC;     /* combo tracking, cleared by clearCombo */
+    char pad1800[4];
+    int f1804, f1808, f180C;
+    Monster *owner;                     /* 0x1810 */
 
+    PadFlags();
     void init(Monster *m);
     void clear(int idx, int value);
-    void saveAndClear(int unused);
+    void saveAndClear(int value);
     void clearModifiers(void);
     char *operator[](int back);         /* ring entry `back` frames before the current one */
-    void setCurrentAction(int button, int mapped);
-    void pushAction(int button, int mapped);
-    int nextButtonAction(void);
-    int nextMappedAction(void);
+    void setCurrentAction(ButtonActions button, MappedActions mapped);
+    void pushAction(ButtonActions button, MappedActions mapped);
+    ButtonActions nextButtonAction(void);
+    MappedActions nextMappedAction(void);
     void popAction(void);
     void interpretInputs(GamePad &pad);
     void computeMotionVec(_fvector &v);
@@ -73,5 +88,6 @@ public:
     void clearSecretCode(void);
     void clearCombo(void);
 };
+typedef char _size_PadFlags[sizeof(PadFlags) == 0x1814 ? 1 : -1];
 
 #endif
