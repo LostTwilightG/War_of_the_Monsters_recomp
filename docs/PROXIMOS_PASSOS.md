@@ -22,7 +22,7 @@ Estado: `python3 tools/progress.py` (WSL Ubuntu, venv `~/.venvs/wotm`). `common`
 - Para funções de `game` o fluxo é: escrever C++ natural, compilar, pontuar, embrulhar se não bater, **sem afinar**.
 
 ## Armadilhas já vistas
-- **Gate de commit**: `sh tools/wsl/check.sh > /tmp/chk.log 2>&1; grep -q "ROM OK" /tmp/chk.log && git commit ...`. `check.sh | tail && git commit` commita mesmo com `BUILD FAILED` (aconteceu no PathTool).
+- **Gate de commit**: `sh tools/wsl/gate.sh && git commit ...` (gate.sh sai com erro se a ROM não bater; `check.sh; git commit` ou `| tail` commitam builds quebrados). `check.sh | tail && git commit` commita mesmo com `BUILD FAILED` (aconteceu no PathTool).
 - Ao reescrever o fim de um `.cpp` com script, conferir que as linhas `INCLUDE_ASM` finais (static init, `__tf`, ctor, `_GLOBAL_$I$`) continuam lá.
 - `ccmatch.py` sem `-DNON_MATCHING` só compila as `INCLUDE_ASM` (tudo "MATCH"); para pontuar o C++ novo use `ccmatch.py src/x.cpp '-DNON_MATCHING' project`.
 - Layout do `PointToolKit` nas ferramentas (PowerUpTool/StartPointTool/PathTool): pontos 0x40 cada, `numPoints` em 0x4000, ponteiro de dados em 0x4050; `init` = `PointToolKit::init(0)` + `game + idx*0x11190 + 0xB80`.
