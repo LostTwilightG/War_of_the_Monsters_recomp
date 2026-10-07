@@ -13,6 +13,11 @@ extern float s_elevatorThrust;
 __asm__("#SNFIX_SMALL s_drag");
 __asm__("#SNFIX_SMALL s_elevatorThrust");
 
+float smoothEasyInTC(float cur, float target, float rate, float eps);
+void mathfRotAxisToQuaternion(_fvector *dst, _fvector *axis, float angle);
+void mathfConcatQuaternions(_fvector *dst, _fvector *a, _fvector *b);
+extern "C" float fabsf(float);
+
 class PointMass {
 public:
     _fvector *pos;
@@ -30,11 +35,15 @@ public:
     char pad4[0xC];
     _fvector quat;
     PointMass pm;
+    float headingRate;
+    char pad54[8];
+    float turnRate;
 
     void setCs(_cs *c);
     void updatePosition(void);
     void updateCollision(void);
     void updateElevator(float f);
+    void updateHeading(float f);
 };
 
 INCLUDE_ASM("asm/nonmatchings/game/HeliVehicle", __11HeliVehicle);
@@ -86,6 +95,24 @@ void HeliVehicle::updateElevator(float f)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/HeliVehicle", updateElevator__11HeliVehiclef);
 #endif
+#ifdef NON_MATCHING
+/* 3/49 words, untuned: prologue/abs scheduling */
+void HeliVehicle::updateHeading(float f)
+{
+    _fvector q;
+
+    if (fabsf(f) < 1e-10f) {
+        headingRate = 0.0f;
+    } else {
+        smoothEasyInTC(headingRate, f, 0.01f, 0.001f);
+        f *= -turnRate / (float)timerGetUpdateRate();
+        mathfRotAxisToQuaternion(&q, (_fvector *)((char *)cs + 0x40), f);
+        mathfConcatQuaternions(&quat, &quat, &q);
+        headingRate = f;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/HeliVehicle", updateHeading__11HeliVehiclef);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/HeliVehicle", updateTilt__11HeliVehicleff);
 INCLUDE_ASM("asm/nonmatchings/game/HeliVehicle", orientUpToNormal__11HeliVehicleR8_fvectorf);
