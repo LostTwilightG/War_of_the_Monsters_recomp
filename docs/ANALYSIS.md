@@ -126,3 +126,18 @@ Um decomp-permuter deve resolver boa parte desses casos.
 - Métodos (construtores, `operator=`) são descartados; só ficam dados, enums e typedefs. Tipos opacos (`ActHead`) ficam só com forward declaration.
 - `long long` e `long128` têm 128 bits no ee-gcc (`long` tem 64).
 - Cobrem só a engine em `common/hier*`; o resto do jogo (`game/`) segue sem tipos.
+
+## Convenções de status das funções
+Cada função do binário está em um destes estados (`python3 tools/progress.py`, tabela completa em `config/status.csv`):
+
+| Estado | Significado | Como aparece no código |
+|---|---|---|
+| `matched` | C/C++ que gera exatamente os mesmos bytes | função escrita em `src/`, sem `INCLUDE_ASM` |
+| `equivalent` | reescrita que se acredita equivalente, mas não bate byte a byte | dentro de `#ifdef NON_MATCHING`, com `INCLUDE_ASM` no `#else`; o comentário diz a pontuação e a causa |
+| `hw` | fala direto com o hardware do PS2 ou com serviços do SDK; será reescrita na camada de plataforma do port | listada em `config/hw_funcs.txt` (por TU ou por símbolo) |
+| `asm` | ainda só em assembly | `INCLUDE_ASM` simples |
+
+- O build padrão (`ninja`, `tools/wsl/check.sh`) usa o assembly original das funções `equivalent`, então a ROM sempre confere com o retail. Um build com `-DNON_MATCHING` compilaria todas as reescritas em C++ (base do port).
+- As funções `equivalent` **não foram verificadas** além da leitura do assembly. Quando o port rodar algo palpável, a verificação será por comparação de comportamento com o PCSX2, não por testes unitários.
+- Quem quiser continuar o trabalho byte a byte: `grep -rn NON_MATCHING src/`, o comentário ao lado de cada função diz onde parou. `tools/wsl/variants.py` e `tools/wsl/permute.py` testam muitas variações do fonte em paralelo.
+- Código `hw` e funções de biblioteca (`libs`) não precisam bater: não gastar esforço neles.

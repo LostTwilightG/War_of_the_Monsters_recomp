@@ -1,0 +1,23 @@
+# Code that talks to PS2 hardware or SDK services directly and will be replaced by the port's platform layer,
+# so nobody should spend time making it match. One entry per line:
+#   tu:<tu name>        every function of that translation unit
+#   <mangled symbol>    a single function
+# Initial guess from tools/hw_boundary.py output and reading the code; review as the port takes shape.
+tu:common/timer
+tu:common/audio
+tu:common/videodec
+tu:common/MpegMovie
+tu:common/GsPkt
+tu:common/ctx
+tu:common/pkt
+tu:common/disp
+tu:common/IncognitoEntertainmentGS
+tu:common/vu
+tu:common/videocb
+tu:common/str
+hierInit__Fv
+hierLoadVu0Ucode__Fv
+hierLoadVu1Ucode__Fv
+hierFlushObjQ__Fv
+hierSetDmaIntHandler__Fv
+hierDmaHandler__Fi
