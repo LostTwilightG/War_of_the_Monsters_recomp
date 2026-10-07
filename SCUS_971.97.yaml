@@ -119,7 +119,7 @@ segments:
       - [0x03F6A0, cpp, game/HeliVehicle]  # c++, 10 funcs, name: guess
       - [0x03FD40, asm, game/HeliVehicleNav]  # c++, 25 funcs, name: guess
       - [0x041608, asm, game/HomingBug]  # c++, 25 funcs, name: guess
-      - [0x043038, asm, game/Hud]  # c++, 26 funcs, name: guess
+      - [0x043038, cpp, game/Hud]  # c++, 26 funcs, name: guess
       - [0x047160, cpp, game/Interactives]  # c++, 10 funcs, name: guess
       - [0x047450, cpp, game/island]  # c++, 7 funcs, name: guess
       - [0x047B68, asm, game/McFile]  # c++, 59 funcs, name: manual
@@ -129,7 +129,7 @@ segments:
       - [0x04DAB0, cpp, game/MissileTruckPickup]  # c++, 16 funcs, name: guess
       - [0x04E590, cpp, game/MonkeyChains]  # c++, 4 funcs, name: guess
       - [0x04EA90, asm, game/MonsterStates]  # c++, 263 funcs, name: manual
-      - [0x05B3E0, asm, game/Monster]  # c++, 261 funcs, name: manual
+      - [0x05B3E0, cpp, game/Monster]  # c++, 261 funcs, name: manual
       - [0x063CF8, asm, game/MonsterAnimBlend]  # c++, 18 funcs, name: manual
       - [0x064778, asm, game/MonsterDynamics]  # c++, 21 funcs, name: guess
       - [0x065AC0, asm, game/MonsterInit]  # c++, 8 funcs, name: manual
@@ -183,7 +183,7 @@ segments:
       - [0x0DDB28, cpp, game/Vehicle]  # c++, 10 funcs, name: guess
       - [0x0DE0B8, asm, game/VehicleNavigator]  # c++, 27 funcs, name: guess
       - [0x0DFF10, cpp, game/WaterGrid]  # c++, 5 funcs, name: guess
-      - [0x0E0688, asm, game/Weapon]  # c++, 28 funcs, name: guess
+      - [0x0E0688, cpp, game/Weapon]  # c++, 28 funcs, name: guess
       - [0x0E5360, asm, gcc/libgcc2/do_global_dtors]  # c, 3 funcs, name: mdebug
       - [0x0E5488, asm, gcc/libgcc2/pure_virtual]  # c, 1 funcs, name: mdebug
       - [0x0E5490, asm, gcc/fp-bit]  # c, 15 funcs, name: mdebug
@@ -543,7 +543,7 @@ segments:
       - [0x5E98C0, .rodata, game/HeliPickup]
       - [0x5E9980, rodata, game/HeliVehicleNav]
       - [0x5E99A0, rodata, game/HomingBug]
-      - [0x5EA8F0, rodata, game/Hud]
+      - [0x5EA8F0, .rodata, game/Hud]
       - [0x5EAB50, .rodata, game/Interactives]
       - [0x5EABA0, rodata, game/McFile]
       - [0x5EAEF0, rodata, game/McPage]
@@ -551,7 +551,7 @@ segments:
       - [0x5EB078, .rodata, game/MilitaryPickup]
       - [0x5EB120, .rodata, game/MissileTruckPickup]
       - [0x5EB210, rodata, game/MonsterStates]
-      - [0x5EBDA0, rodata, game/Monster]
+      - [0x5EBDA0, .rodata, game/Monster]
       - [0x5EC750, rodata, game/MonsterMc]
       - [0x5ED3F0, rodata, game/MovementStates]
       - [0x5ED870, .rodata, game/PathTool]
@@ -583,7 +583,7 @@ segments:
       - [0x5F1C60, rodata, game/ui]
       - [0x5F2320, rodata, game/uidev]
       - [0x5F2820, rodata, game/VehicleNavigator]
-      - [0x5F2840, rodata, game/Weapon]
+      - [0x5F2840, .rodata, game/Weapon]
       - [0x5F2B80, rodata, gcc/cp/new]
       - [0x5F2BE0, rodata, gcc/cp/tinfo]
       - [0x5F2CE0, rodata, gcc/cp/exception]

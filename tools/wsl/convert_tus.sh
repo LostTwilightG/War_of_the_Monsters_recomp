@@ -12,12 +12,16 @@ for t in "$@"; do
         ok=1
     else
         # data-only stubs (vtables) must sit at their retail rodata position
+        $py tools/place_rodata.py "game/$t" > /dev/null 2>&1
+        if sh tools/wsl/gate.sh > /dev/null 2>&1; then ok=1; fi
+        [ $ok = 1 ] || {
         for f in asm/nonmatchings/game/$t/*.s; do
             if ! grep -q '^glabel' "$f"; then
                 $py tools/place_data.py "game/$t" "$(basename "$f" .s)" > /dev/null 2>&1
             fi
         done
         if sh tools/wsl/gate.sh > /dev/null 2>&1; then ok=1; fi
+        }
     fi
     if [ $ok = 1 ]; then
         echo "ok $t"

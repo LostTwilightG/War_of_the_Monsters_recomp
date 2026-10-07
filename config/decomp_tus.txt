@@ -92,3 +92,6 @@ game/TheGame
 game/PadFlags
 game/Cameras
 game/AiNavigator
+game/Hud
+game/Weapon
+game/Monster
