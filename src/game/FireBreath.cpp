@@ -3,6 +3,13 @@
 struct Monster;
 void particleKillFx(int &);
 
+int timerGetFieldsLastFrame(void);
+
+class MonsterSound {
+public:
+    void updateFireBreath(void);
+};
+
 class StateFireBreath {
 public:
     void handleApplyMint(void);
@@ -16,11 +23,13 @@ public:
     int fx0;
     int fx1;
     int fx2;
+    float timeLeft;
 
     FireBreath(Monster &m);
     void Init(void);
     unsigned Update(void);
     void ApplyMint(void);
+    int TestCollis(void);
     static unsigned Update(void *p);
 };
 
@@ -39,7 +48,23 @@ void FireBreath::Init(void)
         ApplyMint();
 }
 INCLUDE_ASM("asm/nonmatchings/game/FireBreath", Activate__10FireBreathfffffff);
-INCLUDE_ASM("asm/nonmatchings/game/FireBreath", Update__10FireBreath);
+unsigned FireBreath::Update(void)
+{
+    unsigned r = 0;
+
+    if (state) {
+        timeLeft -= (float)timerGetFieldsLastFrame();
+        if (timeLeft > 0.0f) {
+            TestCollis();
+            r = 1;
+        } else {
+            ApplyMint();
+            state = 0;
+        }
+    }
+    ((MonsterSound *)((char *)owner + 0x1A7C))->updateFireBreath();
+    return r;
+}
 void FireBreath::ApplyMint(void)
 {
     ((StateFireBreath *)((char *)owner + 0xF974))->handleApplyMint();

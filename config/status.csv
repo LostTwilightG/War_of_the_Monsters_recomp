@@ -668,13 +668,13 @@ game/FinalBoss,__static_initialization_and_destruction_0,0x134228,204,asm
 game/FinalBoss,__tf9FinalBoss,0x134330,80,asm
 game/FinalBoss,getPinTrans__9FinalBoss,0x134380,8,asm
 game/FinalBoss,_GLOBAL_$I$finalBoss,0x1343c8,32,asm
-game/FireBreath,__10FireBreathR7Monster,0x1343e8,32,asm
-game/FireBreath,Init__10FireBreath,0x134408,48,asm
+game/FireBreath,__10FireBreathR7Monster,0x1343e8,32,matched
+game/FireBreath,Init__10FireBreath,0x134408,48,matched
 game/FireBreath,Activate__10FireBreathfffffff,0x134438,352,asm
 game/FireBreath,Update__10FireBreath,0x134598,148,asm
-game/FireBreath,ApplyMint__10FireBreath,0x134630,72,asm
+game/FireBreath,ApplyMint__10FireBreath,0x134630,72,matched
 game/FireBreath,TestCollis__10FireBreath,0x134678,884,asm
-game/FireBreath,Update__10FireBreathPv,0x1349f0,28,asm
+game/FireBreath,Update__10FireBreathPv,0x1349f0,28,matched
 game/PedGroup,TurnOffAllPeds__8PedGroup,0x134a10,132,asm
 game/PedGroup,startCinema__8PedGroup,0x134a98,52,asm
 game/PedGroup,endCinema__8PedGroup,0x134ad0,64,asm
