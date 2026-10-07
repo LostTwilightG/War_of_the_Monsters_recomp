@@ -33,7 +33,7 @@ void PointToolKitLoad(AiPathTool *t, char *name, bool b) __asm__("loadPoints__12
 void AiPathTool::init(int i)
 {
     PointToolKitInit(this, 0);
-    levelData = (char *)game + (*(int *)((char *)game + 0x1203E8) * 0x11190 + 0xB80);
+    levelData = gameSlotBase(game->m_levelIdx);
 }
 void AiPathTool::loadPoints(char *n, bool b)
 {

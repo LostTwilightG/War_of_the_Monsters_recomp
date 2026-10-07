@@ -56,7 +56,7 @@ PowerUpPoint *PointToolKitGetPoint(PowerUpTool *t, int i) __asm__("getPoint__12P
 void PowerUpTool::init(int i)
 {
     PointToolKitInit(this, 0);
-    levelData = (char *)game + (*(int *)((char *)game + 0x1203E8) * 0x11190 + 0xB80);
+    levelData = gameSlotBase(game->m_levelIdx);
 }
 void PowerUpTool::exportPoints(void)
 {

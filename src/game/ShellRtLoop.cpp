@@ -1,6 +1,6 @@
 #include "common.h"
+#include "engine.h"
 
-void animationRunGlobal(void);
 
 class ShellRtLoop {
 public:

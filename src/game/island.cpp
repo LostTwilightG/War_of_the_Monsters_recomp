@@ -1,5 +1,6 @@
 #include "common.h"
 #include "hieri_types.h"
+#include "engine.h"
 
 extern int D_006F8C08;
 extern int D_006F8C0C;
@@ -9,14 +10,7 @@ extern int D_006F8C1C;
 extern int D_006F8C14;
 extern int D_006F8C20;
 extern _fvector D_0070B5C0;
-float mathfRandf(float lo, float hi);
-float mathfHeadingFromPointToPoint(_fvector *a, _fvector *b);
 
-struct _animHandle {
-    int a, b, c, d;
-};
-void animationStart(_animHandle h, bool b);
-int mathfRand(int lo, int hi);
 extern _animHandle D_0070B590;
 extern _animHandle D_0070B5A0;
 extern _animHandle D_0070B5B0;

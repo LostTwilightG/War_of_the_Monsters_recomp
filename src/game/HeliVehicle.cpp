@@ -2,20 +2,14 @@
 #include "hieri_types.h"
 #include "vecmath.h"
 #include "game/game.h"
+#include "engine.h"
 
-int timerGetUpdateRate(void);
-void mathfNormalizeQuaternion(_fvector *dst, _fvector *src);
-void mathfQuaternionToMatrix4x4(float (*m)[4], _fvector *q);
-void hdReparentCsGrid(_cs *cs);
 
 extern float s_drag;
 extern float s_elevatorThrust;
 __asm__("#SNFIX_SMALL s_drag");
 __asm__("#SNFIX_SMALL s_elevatorThrust");
 
-float smoothEasyInTC(float cur, float target, float rate, float eps);
-void mathfRotAxisToQuaternion(_fvector *dst, _fvector *axis, float angle);
-void mathfConcatQuaternions(_fvector *dst, _fvector *a, _fvector *b);
 extern "C" float fabsf(float);
 
 class PointMass {
@@ -66,7 +60,7 @@ void HeliVehicle::updatePosition(void)
     vecScale(&tmp, &pm.vel, -s_drag);
     vecAdd(&pm.force, fp, &tmp);
     rate = 1.0f / (float)timerGetUpdateRate();
-    p->force.z += *(float *)((char *)game + 0x1203C4);
+    p->force.z += game->m_gravity;
     p->resolveForcesEuler(rate);
     pm.force.x = 0.0f;
     fp->z = 0.0f;
@@ -88,7 +82,7 @@ void HeliVehicle::updateElevator(float f)
     _fvector tmp;
     float t = f * s_elevatorThrust;
 
-    t = -*(float *)((char *)game + 0x1203C4) + t;
+    t = -game->m_gravity + t;
     vecScale(&tmp, (_fvector *)((char *)cs + 0x40), t);
     vecAdd(&pm.force, &pm.force, &tmp);
 }

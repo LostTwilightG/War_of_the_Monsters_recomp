@@ -1,15 +1,7 @@
 #include "common.h"
 #include "game/game.h"
+#include "engine.h"
 
-struct _animHandle {
-    int a, b, c, d;
-};
-void animationGetHandle(_animHandle *h, unsigned a, unsigned b, unsigned c);
-void animationLoop(_animHandle h, bool b);
-void animationSetSpeed(_animHandle h, float f);
-void animationPause(_animHandle h);
-void animationSetToBeginning(_animHandle h, bool b);
-void animationStart(_animHandle h, bool b);
 
 class DodgeBallLevel {
 public:

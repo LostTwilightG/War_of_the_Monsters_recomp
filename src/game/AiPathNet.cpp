@@ -1,6 +1,6 @@
 #include "common.h"
+#include "engine.h"
 
-int mathfRand(int lo, int hi);
 
 struct AiPathNode {
     char data[0x30];

@@ -71,7 +71,7 @@ void PathTool::loadPoints(char *n, bool b)
 void PathTool::init(int i)
 {
     PointToolKitInit(this, 0);
-    levelData = (char *)game + (*(int *)((char *)game + 0x1203E8) * 0x11190 + 0xB80);
+    levelData = gameSlotBase(game->m_levelIdx);
 }
 #ifdef NON_MATCHING
 /* 7/99 words, untuned */

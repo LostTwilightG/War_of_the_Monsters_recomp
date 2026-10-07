@@ -1,12 +1,12 @@
 #include "common.h"
 #include "hieri_types.h"
+#include "engine.h"
 
 class CsPool {
 public:
     static _cs *csActivate(void);
     static _cs *csHPActivate(void);
 };
-void hierSetCsEpNode(_cs *cs, _hierhead *ep);
 
 INCLUDE_ASM("asm/nonmatchings/game/db", dbInitDb__FP9_dbheader10_vramAddrs);
 INCLUDE_ASM("asm/nonmatchings/game/db", dbProcInteractive__FP9_hierheadP8_fvectorPA3_f);

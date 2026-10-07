@@ -130,7 +130,7 @@ int StickShaker::update(void)
         active = 0;
         return 0;
     }
-    for (i = 0; i < *(int *)((char *)game + 0x1203D8); i++) {
+    for (i = 0; i < game->m_numMonsters; i++) {
         _fvector diff;
         char *mon = (char *)game->m_monsters[i];
 

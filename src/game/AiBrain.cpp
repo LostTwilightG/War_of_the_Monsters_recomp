@@ -1,7 +1,7 @@
 #include "common.h"
+#include "game/game.h"
 
 struct Ai;
-extern char *game;
 
 class AiActionGroup {
 public:
@@ -27,7 +27,7 @@ INCLUDE_ASM("asm/nonmatchings/game/AiBrain", init__7AiBrainR2Ai);
 void AiBrain::reset(Ai &ai)
 {
     AiActionGroup::reset();
-    if (*(int *)(game + 0x1203D0) == 7)
+    if (game->m_phase == 7)
         f_AAC = 500.0f;
 }
 #else

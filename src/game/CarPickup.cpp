@@ -1,9 +1,9 @@
 #include "common.h"
 #include "hieri_types.h"
+#include "engine.h"
 
 /* CarPickup is a virtual class (vtable, ctor and __tf stay as asm). The members below are written without the
    `virtual` keyword so that this file does not emit a second vtable; fields are reached by raw offset. */
-void hdReparentCsGrid(_cs *cs);
 
 class CarSound {
 public:

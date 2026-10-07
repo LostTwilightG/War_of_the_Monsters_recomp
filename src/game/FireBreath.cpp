@@ -1,9 +1,8 @@
 #include "common.h"
+#include "engine.h"
 
 struct Monster;
-void particleKillFx(int &);
 
-int timerGetFieldsLastFrame(void);
 
 class MonsterSound {
 public:

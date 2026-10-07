@@ -1,4 +1,6 @@
 #include "common.h"
+#include "game/game.h"
+#include "engine.h"
 
 struct DbInteractive;
 
@@ -52,13 +54,6 @@ public:
     void heavyPunch(void);
     void toss(void);
 };
-int mathfRand(int lo, int hi);
-class GameModeW {
-public:
-    char pad0[0x1203CC];
-    int mode;
-};
-extern GameModeW *game;
 
 class AiGrappleThrow {
 public:
@@ -157,7 +152,7 @@ void AiGrappleAttack::updateAction(Ai &ai)
     if (--timer > 0)
         return;
     timer = ai.getButtonMashDelay();
-    if (game->mode >= 0 && game->mode < 2) {
+    if (game->m_matchMode >= 0 && game->m_matchMode < 2) {
         if (mathfRand(0, 5) == 0) {
             ai.pad[0xE] = 0xFF;
             ai.toss();

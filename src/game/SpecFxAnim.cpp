@@ -1,10 +1,7 @@
 #include "common.h"
 #include "hieri_types.h"
+#include "engine.h"
 
-struct _animHandle {
-    int a, b, c, d;
-};
-void animationStart(_animHandle h, bool loop);
 
 struct Monster;
 

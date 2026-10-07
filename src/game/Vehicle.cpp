@@ -1,8 +1,8 @@
 #include "common.h"
 #include "hieri_types.h"
+#include "engine.h"
 
 int getHatField(void);
-float smoothEasyInTC(float cur, float target, float rate, float eps);
 
 /* Vehicle layout is only partly known; the class is virtual in retail (vtable/ctor stay asm), so the members
    below are declared non-virtual and fields are plain members at their retail offsets. */

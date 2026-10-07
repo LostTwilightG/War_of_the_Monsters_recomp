@@ -1,7 +1,7 @@
 #include "common.h"
 #include "hieri_types.h"
+#include "engine.h"
 
-int mathfRand(int lo, int hi);
 extern float D_006F7DC4; /* initial "closest distance squared" for node searches */
 
 struct PathLink {

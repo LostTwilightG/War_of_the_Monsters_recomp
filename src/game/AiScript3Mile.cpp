@@ -1,7 +1,8 @@
 #include "common.h"
+#include "game/game.h"
+#include "engine.h"
 
 struct _animHandle;
-void animationGetHandle(_animHandle *h, unsigned a, unsigned b, unsigned c);
 
 class TaskManager {
 public:
@@ -30,17 +31,11 @@ public:
     static unsigned update(void *p);
 };
 
-class GameLike {
-public:
-    char pad0[0x1203C8];
-    int mode;
-};
-extern GameLike *game;
 
 AiScript3Mile::AiScript3Mile()
 {
     TaskManager::global.add(update, this, 1);
-    if (game->mode == 1)
+    if (game->m_gameMode == 1)
         enterState(S0);
 }
 INCLUDE_ASM("asm/nonmatchings/game/AiScript3Mile", update__13AiScript3Mile);
