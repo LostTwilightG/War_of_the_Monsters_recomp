@@ -21,6 +21,18 @@ Estado: `python3 tools/progress.py` (WSL Ubuntu, venv `~/.venvs/wotm`). `common`
 - Priorizar lógica real (IA, monstros, fases, pickups). Não gastar esforço em código de hardware (`config/hw_funcs.txt`).
 - Para funções de `game` o fluxo é: escrever C++ natural, compilar, pontuar, embrulhar se não bater, **sem afinar**.
 
+## Headers compartilhados (include/)
+Regra: uma classe/API usada por mais de um TU mora num header; não redeclarar parcialmente dentro do `.cpp`.
+- `engine.h`: API do motor (matemática, timers, `_animHandle`/animation*, particleKillFx, hier/hd). `game/game.h` inclui.
+- `game/game.h`: `TheGame` com campos nomeados (`m_gravity`, `m_gameMode`, `m_matchMode`, `m_phase`, `m_numSlots`, `m_numMonsters`, `m_levelIdx`),
+  `gameSlotBase(idx)` (mantém a ordem `idx*0x11190 + 0xB80` do retail), `gameHud(i)`, `gameWeapons()`.
+- `point_tool_kit.h` (base das ferramentas; PathTool/PowerUpTool/StartPointTool/AiPathTool derivam e chamam `PointToolKit::init/loadPoints/getPoint`),
+  `task_manager.h`, `bidir_link.h`, `cs_pool.h` (tudo estático), `game/{shell,hit_history,pickup,hud,weapons,power_ups,start_points,stamina_meter}.h`.
+- Mover uma classe para header pode mudar `sizeof` e deslocar campos de structs parciais que a embutem (aconteceu com `StaminaMeter` em `GrappleMonster`):
+  depois de cada mudança rodar `sh tools/wsl/scoreall.sh <TUs>` e comparar com a linha de base, e `sh tools/wsl/gate.sh`.
+- Pontuação antes/depois: `sh tools/wsl/scoreall.sh A B C > novo.txt; diff base.txt novo.txt`.
+- Funções que o retail chama com `this` mesmo sem usá-lo (ex.: `StartPoints::getNumPoints`) só batem se declaradas não-estáticas; `isThisTypeFull` é estática.
+
 ## Armadilhas já vistas
 - **Gate de commit**: `sh tools/wsl/gate.sh && git commit ...` (gate.sh sai com erro se a ROM não bater; `check.sh; git commit` ou `| tail` commitam builds quebrados). `check.sh | tail && git commit` commita mesmo com `BUILD FAILED` (aconteceu no PathTool).
 - Ao reescrever o fim de um `.cpp` com script, conferir que as linhas `INCLUDE_ASM` finais (static init, `__tf`, ctor, `_GLOBAL_$I$`) continuam lá.
