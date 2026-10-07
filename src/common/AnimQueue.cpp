@@ -13,6 +13,14 @@ void animationStart(_animHandle h, bool b);
 void animationStartReverse(_animHandle h, bool b);
 float animationGetCurrentPercent(_animHandle h);
 
+extern "C" int printf(const char *, ...);
+
+class TaskManager {
+public:
+    void *add(unsigned (*f)(void *), void *arg, int delay);
+};
+extern TaskManager gTaskManager __asm__("_11TaskManager$global");
+
 class AnimQueuable {
 public:
     _animHandle *handle;
@@ -71,7 +79,34 @@ void AnimQueue::Reset(void)
     }
     count = 0;
 }
+#ifdef NON_MATCHING
+/* 74/76 words: retail loads the TaskManager global's hi part into $a0 before the count branch */
+void AnimQueue::Push(_animHandle *h, int a, int b, int c)
+{
+    if (count >= 12) {
+        printf("Animation Queue is full, we need more than %i animhandles
+", 12);
+        return;
+    }
+    if (h->a == 0) {
+        printf("Animation at %p is not valid!  I am not pushing its handle.
+", h);
+        return;
+    }
+    if (count)
+        RequestInterruption();
+    else
+        gTaskManager.add(taskUpdate, this, 1);
+    q[count].handle = h;
+    q[count].f4 = a;
+    q[count].f8 = b;
+    q[count].fC = 0;
+    q[count].f10 = c;
+    q[count++].f14 = 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/AnimQueue", Push__9AnimQueueP11_animHandleiii);
+#endif
 void AnimQueue::Pop(void)
 {
     int i;
