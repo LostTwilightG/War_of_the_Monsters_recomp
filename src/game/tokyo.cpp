@@ -1,0 +1,19 @@
+#include "common.h"
+
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", _vt$8UfoTokyo);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoGetTidalWaveSource__Fv);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoInitBefore__Fv);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoInitAfter__Fv);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoUpdate__Fv);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoStartTidalWave__FP7Monster);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoAddEpNode__FP9_hierhead);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", init__8UfoTokyo);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", update__8UfoTokyo);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", takeHit__8UfoTokyoP8_fvectorfi);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", __static_initialization_and_destruction_0_001D7390);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", func_001D73E0);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", func_001D73F0);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", func_001D7418);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", __tf8UfoTokyo);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", func_001D7478);
+INCLUDE_ASM("asm/nonmatchings/game/tokyo", _GLOBAL_$I$tidalWaveAnim);

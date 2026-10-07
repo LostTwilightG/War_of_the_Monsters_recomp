@@ -76,3 +76,10 @@ game/AiGrapple
 game/DodgeBallLevel
 game/island
 game/AiScript3Mile
+game/EnemyInfo
+game/WaterGrid
+game/AiPathNet
+game/OgreMace
+game/MonsterTriggers
+game/AiPathFinder
+game/tokyo

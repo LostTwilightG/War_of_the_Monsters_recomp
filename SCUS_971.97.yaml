@@ -79,8 +79,8 @@ segments:
       - [0x005660, cpp, game/AiBrain]  # c++, 4 funcs, name: guess
       - [0x005BE0, cpp, game/AiGrapple]  # c++, 19 funcs, name: manual
       - [0x0062B0, cpp, game/AiPadClips]  # c++, 5 funcs, name: guess
-      - [0x006518, asm, game/AiPathNet]  # c++, 8 funcs, name: guess
-      - [0x006C88, asm, game/AiPathFinder]  # c++, 12 funcs, name: guess
+      - [0x006518, cpp, game/AiPathNet]  # c++, 8 funcs, name: guess
+      - [0x006C88, cpp, game/AiPathFinder]  # c++, 12 funcs, name: guess
       - [0x0074D0, cpp, game/AiPathTool]  # c++, 7 funcs, name: guess
       - [0x007A40, asm, game/AiReflex]  # c++, 145 funcs, name: manual
       - [0x00DC08, asm, game/AiReset]  # c++, 6 funcs, name: guess
@@ -104,7 +104,7 @@ segments:
       - [0x02EAC8, cpp, game/DodgeBallLevel]  # c++, 5 funcs, name: guess
       - [0x02F1B8, asm, game/Debris]  # c++, 10 funcs, name: guess
       - [0x030280, asm, game/Destructible]  # c++, 19 funcs, name: guess
-      - [0x031160, asm, game/EnemyInfo]  # c++, 3 funcs, name: guess
+      - [0x031160, cpp, game/EnemyInfo]  # c++, 3 funcs, name: guess
       - [0x031918, asm, game/FinalBoss]  # c++, 12 funcs, name: guess
       - [0x0343E8, cpp, game/FireBreath]  # c++, 7 funcs, name: guess
       - [0x034A10, asm, game/PedGroup]  # c++, 18 funcs, name: guess
@@ -135,10 +135,10 @@ segments:
       - [0x065AC0, asm, game/MonsterInit]  # c++, 8 funcs, name: manual
       - [0x0676C8, asm, game/MonsterMc]  # c++, 144 funcs, name: manual
       - [0x06D208, cpp, game/MonsterMeters]  # c++, 15 funcs, name: manual
-      - [0x06D7C0, asm, game/MonsterTriggers]  # c++, 11 funcs, name: manual
+      - [0x06D7C0, cpp, game/MonsterTriggers]  # c++, 11 funcs, name: manual
       - [0x06E088, cpp, game/MonsterTweaks]  # c++, 5 funcs, name: guess
       - [0x06E158, asm, game/MovementStates]  # c++, 95 funcs, name: manual
-      - [0x076DF0, asm, game/OgreMace]  # c++, 4 funcs, name: guess
+      - [0x076DF0, cpp, game/OgreMace]  # c++, 4 funcs, name: guess
       - [0x077680, asm, game/PadFlags]  # c++, 21 funcs, name: guess
       - [0x078D58, asm, game/PadFlags_2]  # c++, 4 funcs, name: guess
       - [0x07AEF8, asm, game/PadFlags_3]  # c++, 4 funcs, name: guess
@@ -173,7 +173,7 @@ segments:
       - [0x0D1070, asm, game/threemile]  # c++, 29 funcs, name: manual
       - [0x0D3248, asm, game/StateThrowBack]  # c++, 38 funcs, name: guess
       - [0x0D6598, cpp, game/TokenManager]  # c++, 9 funcs, name: guess
-      - [0x0D6AD8, asm, game/tokyo]  # c++, 12 funcs, name: guess
+      - [0x0D6AD8, cpp, game/tokyo]  # c++, 12 funcs, name: guess
       - [0x0D74D8, cpp, game/ufo]  # c++, 3 funcs, name: guess
       - [0x0D7708, asm, game/UfoNav]  # c++, 17 funcs, name: guess
       - [0x0D8560, asm, game/UfoPickup]  # c++, 13 funcs, name: guess
@@ -182,7 +182,7 @@ segments:
       - [0x0DD788, cpp, game/vegas]  # c++, 3 funcs, name: guess
       - [0x0DDB28, cpp, game/Vehicle]  # c++, 10 funcs, name: guess
       - [0x0DE0B8, asm, game/VehicleNavigator]  # c++, 27 funcs, name: guess
-      - [0x0DFF10, asm, game/WaterGrid]  # c++, 5 funcs, name: guess
+      - [0x0DFF10, cpp, game/WaterGrid]  # c++, 5 funcs, name: guess
       - [0x0E0688, asm, game/Weapon]  # c++, 28 funcs, name: guess
       - [0x0E5360, asm, gcc/libgcc2/do_global_dtors]  # c, 3 funcs, name: mdebug
       - [0x0E5488, asm, gcc/libgcc2/pure_virtual]  # c, 1 funcs, name: mdebug
@@ -577,7 +577,7 @@ segments:
       - [0x5F1700, rodata, game/threemile]
       - [0x5F17B0, rodata, game/StateThrowBack]
       - [0x5F1A80, .rodata, game/TokenManager]
-      - [0x5F1B08, rodata, game/tokyo]
+      - [0x5F1B08, .rodata, game/tokyo]
       - [0x5F1B60, rodata, game/UfoNav]
       - [0x5F1B80, rodata, game/UfoPickup]
       - [0x5F1C60, rodata, game/ui]
