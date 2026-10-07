@@ -11,19 +11,19 @@ decl = {}
 for ln in h[a:b].splitlines():
     m = re.match(r'\s+([\w ]+?\s*\**)\s*(\w+)\(([^)]*)\)( const)?;', ln)
     if m and m.group(1).strip() not in ('void', 'enum', 'class'):
-        decl[m.group(2)] = m.group(1).strip() if not m.group(1).strip().endswith('*') else m.group(1).strip()
+        decl[(m.group(2), m.group(3).strip())] = m.group(1).strip().replace('static ', '')
 p = ROOT / 'src/game/Monster.cpp'
 s = p.read_text()
 n = 0
 def fix(m):
     global n
     name = m.group(2)
-    want = decl.get(name)
+    want = decl.get((name, m.group(3).strip()))
     if want and want != m.group(1).strip():
         n += 1
-        return f'{want} Monster::{name}('
+        return f'{want} Monster::{name}({m.group(3)})'
     return m.group(0)
-s = re.sub(r'^([\w ]+?\s*\**)\s*Monster::(\w+)\(', lambda m: fix(m) if m.group(1).strip() not in ('void',) else m.group(0), s, flags=re.M)
+s = re.sub(r'^([\w ]+?\s*\**)\s*Monster::(\w+)\(([^)]*)\)', lambda m: fix(m) if m.group(1).strip() not in ('void',) else m.group(0), s, flags=re.M)
 s = s.replace('* Monster::', ' *Monster::') if False else s
 p.write_text(s)
 print('fixed', n)

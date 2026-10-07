@@ -27,6 +27,9 @@ EXISTING = {
     0x10E70: ('char', 'm_victoryState[1]', 1),
     0x4A: ('signed char', 'm_attacksEnabled', 1), 0xF1: ('signed char', 'm_turning', 1), 0x280: ('signed char', 'm_freeFalling', 1),
     0x6CB8: ('float', 'm_onFireCount', 4), 0x6CCC: ('int', 'm_cloakTime', 4), 0x7980: ('int *', 'm_specialState', 4),
+    0x4: ('unsigned short', 'm_flags', 2), 0x7DD0: ('int', 'm_blockFlag1B', 4), 0x7E94: ('int', 'm_blockFlag1C', 4),
+    0x298: ('float', 'm_climbSpeedBase', 4), 0x2A0: ('float', 'm_climbStrafeBase', 4), 0xFD70: ('float', 'm_fd70', 4), 0xFD74: ('float', 'm_fd74', 4),
+    0x6C34: ('int', 'm_pinToggle', 4), 0x6C38: ('int', 'm_pinMode', 4), 0x1A70: ('int', 'm_shadowOff', 4), 0x1A74: ('char *', 'm_shadowCs', 4), 0x1A78: ('int', 'm_shadowSaved', 4),
     0x34: ('int *', 'm_state', 4), 0x38: ('int *', 'm_prevState', 4), 0xB4: ('float', 'm_bodyHeight', 4),
     0xEF: ('signed char', 'm_cloaked', 1), 0x1A3C: ('_cs *', 'm_shadow', 4), 0x846C: ('Monster *', 'm_killer', 4),
     0x4B0: ('int', 'm_healthGlow[3]', 12), 0x4BC: ('int', 'm_staminaGlow[3]', 12),
@@ -151,8 +154,8 @@ def main():
             keep.append(ln.rstrip())
     allm = {}
     for ln in keep + decl:
-        m = re.search(r'(\w+)\(', ln)
-        allm[m.group(1)] = ln          # newest wins
+        m = re.search(r'(\w+)\(([^)]*)\)', ln)
+        allm[(m.group(1), m.group(2))] = ln          # newest wins per (name, parameters)
     fwdtxt = ''.join(f'class {t};\n' for t in sorted(fwd) if t not in ('Monster', 'void', '_cs', 'char'))
     cls = ('class Monster {\npublic:\n' + '\n'.join(allm.values()) + '\n\n' + '\n'.join(lines) + '\n};\n')
     pre = h[:a]

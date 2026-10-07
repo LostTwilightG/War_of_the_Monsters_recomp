@@ -25,6 +25,7 @@ public:
     void creditBaseOnly(float amount);
     void credit(float amount);
     int hasEnough(float amount);
+    void drain(float amount, bool a, bool b);
     float getMaxLevel(void);
 };
 

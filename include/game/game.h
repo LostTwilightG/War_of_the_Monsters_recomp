@@ -20,7 +20,6 @@ enum ePickupType { PICKUP_TYPE_0 };
 
 class Monster {
 public:
-    void drainSpecial();
     void enterNewState(MonsterState *state);
     void takeDamage(float dmg, bool b, Monster *src);
     void initAfterDbLoad(void);
@@ -43,7 +42,9 @@ public:
     float puPunchDamageMod(ePickupType t) const;
     float puSpeedMod(ePickupType t) const;
     int restoreAttacksEnabled(void);
+    static unsigned restoreAttacksEnabled(void *p);
     int restoreVulnerability(void);
+    static unsigned restoreVulnerability(void *p);
     void setCameraFollowsMonster(int view, bool follows);
     void startHealthPowerUpGlow(int a, int b);
     void startShocking(float a, float b);
@@ -59,6 +60,15 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    void setCloakOn(void);
+    void recomputeDynamics(void);
+    bool isTargetPinning(void);
+    void setShadowOnOff(bool on);
+    void setEnvMapping(void);
+    bool isSpecialAvailable(void) const;
+    void setInvulnerabilityDuration(int n);
+    void drainSpecial(void);
+    bool isBlocking(void);
     void update(void);
     void updateCinema(void);
     void updatePosition(void);
@@ -187,7 +197,9 @@ public:
     void setShadow(_cs * v);
     void setStickyReticleCS(_cs * v);
 
-    char pad0[0xC - 0x0];
+    char pad0[0x4 - 0x0];
+    unsigned short m_flags;   /* 0x4 */
+    char pad6[0xC - 0x6];
     _cs * m_cs;   /* 0xC */
     char pad10[0x14 - 0x10];
     int m_typeBits;   /* 0x14 */
@@ -241,9 +253,10 @@ public:
     int m_camIdleCircuitTime;   /* 0x28C */
     float m_camIdleFactor;   /* 0x290 */
     float m_climbSpeed;   /* 0x294 */
-    char pad298[0x29C - 0x298];
+    float m_climbSpeedBase;   /* 0x298 */
     float m_climbStrafeSpeed;   /* 0x29C */
-    char pad2A0[0x448 - 0x2A0];
+    float m_climbStrafeBase;   /* 0x2A0 */
+    char pad2A4[0x448 - 0x2A4];
     float m_maxHealth;   /* 0x448 */
     float m_health;   /* 0x44C */
     char pad450[0x460 - 0x450];
@@ -259,7 +272,11 @@ public:
     AiPath * m_closestPath;   /* 0x1A10 */
     char pad1A14[0x1A3C - 0x1A14];
     _cs * m_shadow;   /* 0x1A3C */
-    char pad1A40[0x3120 - 0x1A40];
+    char pad1A40[0x1A70 - 0x1A40];
+    int m_shadowOff;   /* 0x1A70 */
+    char * m_shadowCs;   /* 0x1A74 */
+    int m_shadowSaved;   /* 0x1A78 */
+    char pad1A7C[0x3120 - 0x1A7C];
     _fvector * m_lookAtOverride;   /* 0x3120 */
     char pad3124[0x5040 - 0x3124];
     PadFlags m_padFlags;   /* 0x5040 */
@@ -303,7 +320,8 @@ public:
     float m_pinMuckingDist;   /* 0x6C24 */
     char pad6C28[0x6C30 - 0x6C28];
     int m_autoLeadMovesReticle;   /* 0x6C30 */
-    char pad6C34[0x6C3C - 0x6C34];
+    int m_pinToggle;   /* 0x6C34 */
+    int m_pinMode;   /* 0x6C38 */
     int m_aimHeadingEnabled;   /* 0x6C3C */
     float m_aimHeading;   /* 0x6C40 */
     float m_aimPitch;   /* 0x6C44 */
@@ -326,9 +344,16 @@ public:
     int m_camUnify;   /* 0x7970 */
     char pad7974[0x7980 - 0x7974];
     int * m_specialState;   /* 0x7980 */
-    char pad7984[0x846C - 0x7984];
+    char pad7984[0x7DD0 - 0x7984];
+    int m_blockFlag1B;   /* 0x7DD0 */
+    char pad7DD4[0x7E94 - 0x7DD4];
+    int m_blockFlag1C;   /* 0x7E94 */
+    char pad7E98[0x846C - 0x7E98];
     Monster * m_killer;   /* 0x846C */
-    char pad8470[0x10E70 - 0x8470];
+    char pad8470[0xFD70 - 0x8470];
+    float m_fd70;   /* 0xFD70 */
+    float m_fd74;   /* 0xFD74 */
+    char padFD78[0x10E70 - 0xFD78];
     char m_victoryState[1];   /* 0x10E70 */
     char pad10E71[0x11190 - 0x10E71];
 };

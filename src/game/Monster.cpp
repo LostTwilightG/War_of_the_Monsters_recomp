@@ -1,11 +1,18 @@
 #include "common.h"
 #include "game/game.h"
 #include "game/fire_breath.h"
+#include "game/power_ups.h"
+#include "task_manager.h"
 
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setWaterLevel__Ff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getWaterLevel__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isUnderwater__Ff);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", recomputeDynamics__7Monster);
+void Monster::recomputeDynamics(void)
+{
+    m_climbSpeed = m_climbSpeedBase * 0.024444444f * 60.0f;
+    m_climbStrafeSpeed = m_climbStrafeBase * 0.024444444f * 60.0f;
+    m_fd74 = m_fd70 * 0.024444444f * 60.0f;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", playerUpdateInputs__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", update__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", startCinema__7Monster);
@@ -17,8 +24,18 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", setReticles__7Monsteri);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setTrans__7MonsterR8_fvector);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setRot__7Monsterfff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setMat__7MonsterRA3_A3_f);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setEnvMapping__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", clearEnvMapping__7Monster);
+void Monster::setEnvMapping(void)
+{
+    m_cs->cloakMe = 1;
+    m_cs->cloakWeight = -16.0f;
+    m_flags &= 0xFFFD;
+}
+void Monster::clearEnvMapping(void)
+{
+    m_cs->cloakMe = 0;
+    m_cs->cloakWeight = 16.0f;
+    m_flags |= 2;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateShadow__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", calcGlowIntensity__Fiii);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updatePowerUpGlow__7Monster);
@@ -79,7 +96,19 @@ bool Monster::isHolding(void)
     return m_pickup != 0 || m_target != 0;
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isHoldingLarge__7Monster);
+#ifdef NON_MATCHING
+/* 5/17 words, untuned */
+bool Monster::isBlocking(void)
+{
+    int id = *m_state;
+
+    if ((id == 0x1B && m_blockFlag1B != 0) || (id == 0x1C && m_blockFlag1C != 0))
+        return true;
+    return false;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isBlocking__7Monster);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isIdle__7MonsterUi);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", inCameraFov__7MonsterR8_fvectorT1);
 bool Monster::hasPinTarget(void)
@@ -90,7 +119,15 @@ bool Monster::hasPinTarget(void)
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateClosestPath__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", okToDrawReticle__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setCloakOn__7Monster);
+void Monster::setCloakOn(void)
+{
+    if (m_cloaked == 0) {
+        m_cloaked = 1;
+        m_cloakTime = PowerUps::instance.getCloakTime();
+        setEnvMapping();
+        ((MonsterSound *)((char *)this + 0x1A7C))->playCloakingSound();
+    }
+}
 void Monster::setCloakOff(void)
 {
     m_cloaked = 0;
@@ -100,10 +137,44 @@ void Monster::setCloakOff(void)
 INCLUDE_ASM("asm/nonmatchings/game/Monster", attachFxToHandle__FPiP8_fvectorUi);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateWaterWake__7Monsterfb);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", cleanUpForMovie__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setShadowOnOff__7Monsterb);
+void Monster::setShadowOnOff(bool on)
+{
+    if (m_shadowCs != 0) {
+        if (on) {
+            m_shadowOff = 0;
+            *(int *)(m_shadowCs + 0x10) = (int)m_cs;
+            *(int *)(m_shadowCs + 0x18) = m_shadowSaved;
+            return;
+        }
+        m_shadowOff = 1;
+        *(int *)(m_shadowCs + 0x10) = 0;
+        m_shadowSaved = *(int *)(m_shadowCs + 0x18);
+        *(int *)(m_shadowCs + 0x18) = 0;
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setSecondaryShadowBlocker__7MonsterP3_cs);
+#ifdef NON_MATCHING
+/* 1/17 words, untuned */
+void Monster::drainSpecial(void)
+{
+    m_specialWeapon = 0;
+    if (m_stamina.max < m_stamina.cur)
+        m_stamina.drain(m_stamina.cur - m_stamina.max, false, false);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", drainSpecial__7Monster);
+#endif
+#ifdef NON_MATCHING
+/* 7/14 words, untuned */
+bool Monster::isSpecialAvailable(void) const
+{
+    if (game->m_gameMode != 9)
+        return m_specialWeapon != 0;
+    return false;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isSpecialAvailable__C7Monster);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Monster", func_00163000);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", func_00163020);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", _vt$7Monster);
@@ -541,7 +612,17 @@ bool Monster::isFullStamina(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isFullStamina__7Monster);
 #endif
+#ifdef NON_MATCHING
+/* 4/15 words, untuned */
+bool Monster::isTargetPinning(void)
+{
+    if (m_pinMode == 0)
+        return (*m_padFlags[0]).data[0x32] != 0;
+    return m_pinToggle != 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isTargetPinning__7Monster);
+#endif
 bool Monster::isOnFire(void)
 {
     return m_onFireCount > 0.0f;
@@ -680,7 +761,11 @@ void Monster::setVulnerable(bool v)
 {
     m_unk49 = v;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setInvulnerabilityDuration__7Monsteri);
+void Monster::setInvulnerabilityDuration(int n)
+{
+    m_unk49 = 0;
+    TaskManager::global.add(restoreVulnerability, this, n);
+}
 void Monster::setAttacksEnabled(bool v)
 {
     m_attacksEnabled = v;

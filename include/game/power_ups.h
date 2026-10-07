@@ -7,6 +7,7 @@ class PowerUps {
 public:
     static PowerUps instance;
 
+    int getCloakTime(void);
     void update(void);
     void initPowerUpsAfter(void);
     void KillPowerUps(void);
