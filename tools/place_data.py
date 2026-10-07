@@ -24,6 +24,13 @@ def addr(elf):
 
 
 want = addr('disc/SCUS_971.97')
+if want is None:
+    # splat-made data labels (e.g. MonsterNewNames_006EAA78) are not in the retail symbol table: the address is in the name
+    m = re.search(r'_([0-9A-Fa-f]{8})$', sym)
+    if m:
+        want = m.group(1).lower()
+if want is None:
+    sys.exit(f'{sym}: no retail address known')
 line = f'INCLUDE_ASM("asm/nonmatchings/{tu}", {sym});\n'
 base = orig.replace(line, '')
 asm_lines = [m for m in re.finditer(r'INCLUDE_ASM\([^\n]*\n', base)]
