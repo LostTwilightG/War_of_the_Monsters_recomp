@@ -1,13 +1,8 @@
 #include "common.h"
 #include "hieri_types.h"
+#include "cs_pool.h"
 
 extern "C" int printf(const char *, ...);
-
-struct CsNode {
-    _cs *cs;
-    CsNode *next;
-    CsNode *prev;
-};
 
 struct StackLayout {
     void *start;
@@ -21,20 +16,6 @@ void *operator new(unsigned, void *);
 void InitColGridCsListArray(void);
 void hierInitCs(_cs *);
 void hdRemoveCsFromGrid(_cs *);
-
-class CsPool {
-public:
-    static CsNode m_activeList;
-    static CsNode m_HPActiveList;
-    static CsNode m_inactiveList;
-    static _cs m_csPool[1024];
-
-    void init(void);
-    _cs *csActivate(void);
-    void csDeactivate(_cs *cs);
-    _cs *csHPActivate(void);
-    void csHPDeactivate(_cs *cs);
-};
 
 #ifdef NON_MATCHING
 /* 55/57 words: order of the six list-head stores differs */

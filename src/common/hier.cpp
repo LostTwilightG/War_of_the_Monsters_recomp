@@ -1,5 +1,6 @@
 #include "common.h"
 #include "hieri_types.h"
+#include "cs_pool.h"
 
 struct Mat4 {
     float m[4][4];
@@ -105,16 +106,6 @@ extern float (*matStack)[4];
 extern float (*fovNorms)[4];
 extern float (*fovNorms1)[4];
 extern float (*lightDir)[4];
-struct CsNode {
-    _cs *cs;
-    CsNode *next;
-};
-class CsPool {
-public:
-    static CsNode m_activeList;
-    static CsNode m_HPActiveList;
-    static void init(void);
-};
 extern "C" int hierCsUpdateAsm(_cs *cs, _fvector *eo);
 extern "C" void hierTraverseAsm(void *root, void *ctx, int arg);
 void vu0UnitMatrix(float (*m)[4]);

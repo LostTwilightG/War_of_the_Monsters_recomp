@@ -1,12 +1,8 @@
 #include "common.h"
 #include "hieri_types.h"
+#include "cs_pool.h"
 
 struct MilitaryFormation;
-
-class CsPool {
-public:
-    static void csDeactivate(_cs *cs);
-};
 
 /* Pickup is the (virtual) base in retail; only the fields used here are laid out. */
 class Pickup {
