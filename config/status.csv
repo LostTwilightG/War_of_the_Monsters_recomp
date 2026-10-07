@@ -813,12 +813,12 @@ game/HeliPickup,enterState__10HeliPickupQ210HeliPickup5State,0x13f3e8,548,asm
 game/HeliPickup,__tf10HeliPickup,0x13f648,80,asm
 game/HeliPickup,getVel__10HeliPickup,0x13f698,8,asm
 game/HeliVehicle,__11HeliVehicle,0x13f6a0,96,asm
-game/HeliVehicle,setCs__11HeliVehicleP3_cs,0x13f700,52,asm
+game/HeliVehicle,setCs__11HeliVehicleP3_cs,0x13f700,52,matched
 game/HeliVehicle,setPos__11HeliVehicleR8_fvector,0x13f738,24,asm
 game/HeliVehicle,updateControls__11HeliVehicleR7GamePad,0x13f750,484,asm
-game/HeliVehicle,updatePosition__11HeliVehicle,0x13f938,188,asm
-game/HeliVehicle,updateCollision__11HeliVehicle,0x13f9f8,80,asm
-game/HeliVehicle,updateElevator__11HeliVehiclef,0x13fa48,96,asm
+game/HeliVehicle,updatePosition__11HeliVehicle,0x13f938,188,equivalent
+game/HeliVehicle,updateCollision__11HeliVehicle,0x13f9f8,80,matched
+game/HeliVehicle,updateElevator__11HeliVehiclef,0x13fa48,96,equivalent
 game/HeliVehicle,updateHeading__11HeliVehiclef,0x13faa8,196,asm
 game/HeliVehicle,updateTilt__11HeliVehicleff,0x13fb70,228,asm
 game/HeliVehicle,orientUpToNormal__11HeliVehicleR8_fvectorf,0x13fc58,228,asm
