@@ -89,6 +89,16 @@ def main():
         if '-v' in sys.argv:
             totb = sum(s[x + '_b'] for x in STATES)
             print(f"{'':8} " + ' '.join(f"{s[x + '_b']:>8} {100 * s[x + '_b'] / max(totb, 1):4.1f}%" for x in STATES) + '   bytes')
+    # One row per area in the plain "done/total" shape (the wotm-hud mod parses this): done = matched + equivalent.
+    print()
+    print('decompiled (matched + equivalent), with bytes:')
+    for area in ('game', 'common', 'libs'):
+        s = stats[area]
+        tot_f = sum(s[x + '_f'] for x in STATES)
+        tot_b = sum(s[x + '_b'] for x in STATES)
+        df = s['matched_f'] + s['equivalent_f']
+        db = s['matched_b'] + s['equivalent_b']
+        print(f'{area:8} {df:6}/{tot_f:<6} {100 * df / max(tot_f, 1):5.1f}%  {db:9}/{tot_b:<9} {100 * db / max(tot_b, 1):5.2f}%')
     if '-n' not in sys.argv:
         with open(ROOT / 'config/status.csv', 'w', newline='') as f:
             w = csv.writer(f)
