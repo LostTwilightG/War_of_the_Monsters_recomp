@@ -1,4 +1,5 @@
 #include "common.h"
+#include "game/game.h"
 
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setWaterLevel__Ff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getWaterLevel__Fv);
@@ -104,93 +105,294 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", getLookAtTrans__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getAnim__7Monster11MonsterAnim);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getDynamics__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getVel__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPickup__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getImpaler__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getReverseImpaler__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getGrapplee__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getGrappler__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getGrappleAttempt__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getBeamVictim__7Monster);
+int Monster::getPickup(void)
+{
+    return m_pickup;
+}
+int Monster::getImpaler(void)
+{
+    return m_impaler;
+}
+int Monster::getReverseImpaler(void)
+{
+    return m_reverseImpaler;
+}
+void * Monster::getGrapplee(void)
+{
+    return m_target;
+}
+int Monster::getGrappler(void)
+{
+    return m_grappler;
+}
+int Monster::getGrappleAttempt(void)
+{
+    return m_grappleAttempt;
+}
+int Monster::getBeamVictim(void)
+{
+    return m_beamVictim;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getKiller__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPinTarget__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPinTime__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPlayerInfo__7Monster);
+int Monster::getPinTarget(void)
+{
+    return m_pinTarget;
+}
+float Monster::getPinTime(void)
+{
+    return m_pinTime;
+}
+int Monster::getPlayerInfo(void)
+{
+    return m_playerInfo;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getAi__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getReticleCS__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getStickyReticleCS__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getShadow__7Monster);
+int Monster::getReticleCS(void)
+{
+    return m_reticleCS;
+}
+int Monster::getStickyReticleCS(void)
+{
+    return m_stickyReticleCS;
+}
+int Monster::getShadow(void)
+{
+    return m_shadow;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getFireBreath__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getMonsterSound__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getStaminaMeter__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getHealthMeter__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getLeadVec__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getAutoLeadMovesReticle__7Monster);
+int Monster::getAutoLeadMovesReticle(void)
+{
+    return m_autoLeadMovesReticle;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getReticleLosResult__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getShadowHDResult__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestPath__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getReticleState__C7Monster);
+int Monster::getClosestPath(void)
+{
+    return m_closestPath;
+}
+int Monster::getReticleState(void) const
+{
+    return m_reticleState;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getEnemyInfo__7MonsterR7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getState__7Monster);
+int Monster::getState(void)
+{
+    return m_state;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getStateId__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getPrevStateId__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getCameraData__7MonsteriQ26Camera9CameraPOV);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getType__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getIndex__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getName__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getDupId__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getNumInits__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getMonsterNum__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getSkinNum__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getSpeed__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getHealth__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getMaxHealth__7Monster);
+int Monster::getType(void) const
+{
+    return m_playerNum;
+}
+int Monster::getIndex(void) const
+{
+    return m_index;
+}
+int Monster::getName(void) const
+{
+    return m_typeBits;
+}
+int Monster::getDupId(void) const
+{
+    return m_dupId;
+}
+int Monster::getNumInits(void) const
+{
+    return m_numInits;
+}
+int Monster::getMonsterNum(void) const
+{
+    return m_monsterNum;
+}
+int Monster::getSkinNum(void) const
+{
+    return m_skinNum;
+}
+float Monster::getSpeed(void)
+{
+    return m_speed;
+}
+float Monster::getHealth(void)
+{
+    return m_health;
+}
+float Monster::getMaxHealth(void)
+{
+    return m_maxHealth;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getStamina__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getHeight__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getWidth__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getCameraThatFollows__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getWinsThisGame__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getClimbSpeed__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getClimbStrafeSpeed__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getFallTime__C7Monster);
+float Monster::getWidth(void) const
+{
+    return m_width;
+}
+int Monster::getCameraThatFollows(void) const
+{
+    return m_cameraThatFollows;
+}
+int Monster::getWinsThisGame(void) const
+{
+    return m_unk3C;
+}
+float Monster::getClimbSpeed(void) const
+{
+    return m_climbSpeed;
+}
+float Monster::getClimbStrafeSpeed(void) const
+{
+    return m_climbStrafeSpeed;
+}
+int Monster::getFallTime(void) const
+{
+    return m_fallTime;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getGroundHeight__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getHeightAboveCOG__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getRunTime__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPlayerAiOrFodderNum__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getIsCameraFollowingThisMonster__7Monster);
+float Monster::getHeightAboveCOG(void) const
+{
+    return m_heightAboveCOG;
+}
+float Monster::getRunTime(void) const
+{
+    return m_runTime;
+}
+int Monster::getPlayerAiOrFodderNum(void) const
+{
+    return m_index;
+}
+int Monster::getIsCameraFollowingThisMonster(void)
+{
+    return m_isCameraFollowingThisMonster;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", puPunchDamageMod__C7Monster11ePickupType);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", puLaunchDamageMod__C7Monster11ePickupType);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", puDurationMod__C7Monster11ePickupType);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", puSpeedMod__C7Monster11ePickupType);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getDpDamage__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getDpDuration__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getDpSpeed__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getDpHomingFactor__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getDpVertHomingFactor__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getDpHeadingBreak__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getDpPitchBreak__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getCamIdleCircuitTime__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getCamIdleFactor__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getLandingShakeAmp__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getLandingShakeFreq__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getLandingShakeDur__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getLandingShakeFalloff__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getLandingShakeMag__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPitchRate1__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPitchRate2__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getMaxHeadingChange__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getAimPitch__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getAimHeading__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getRearOffset__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getTargetingMod__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getFallTimeBeforePitch__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPinMaxPitch__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPinMuckingDist__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getOnFireCount__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getOnFireDamage__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getBeingShockedCount__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getBeingShockedDamage__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getLaunchCounter__C7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getLaunchDelay__C7Monster);
+float Monster::getDpDamage(void) const
+{
+    return m_dpDamage;
+}
+float Monster::getDpDuration(void) const
+{
+    return m_dpDuration;
+}
+float Monster::getDpSpeed(void) const
+{
+    return m_dpSpeed;
+}
+float Monster::getDpHomingFactor(void) const
+{
+    return m_dpHomingFactor;
+}
+float Monster::getDpVertHomingFactor(void) const
+{
+    return m_dpVertHomingFactor;
+}
+float Monster::getDpHeadingBreak(void) const
+{
+    return m_dpHeadingBreak;
+}
+float Monster::getDpPitchBreak(void) const
+{
+    return m_dpPitchBreak;
+}
+int Monster::getCamIdleCircuitTime(void) const
+{
+    return m_camIdleCircuitTime;
+}
+float Monster::getCamIdleFactor(void) const
+{
+    return m_camIdleFactor;
+}
+float Monster::getLandingShakeAmp(void) const
+{
+    return m_landingShakeAmp;
+}
+float Monster::getLandingShakeFreq(void) const
+{
+    return m_landingShakeFreq;
+}
+float Monster::getLandingShakeDur(void) const
+{
+    return m_landingShakeDur;
+}
+float Monster::getLandingShakeFalloff(void) const
+{
+    return m_landingShakeFalloff;
+}
+float Monster::getLandingShakeMag(void) const
+{
+    return m_landingShakeMag;
+}
+float Monster::getPitchRate1(void) const
+{
+    return m_pitchRate1;
+}
+float Monster::getPitchRate2(void) const
+{
+    return m_pitchRate2;
+}
+float Monster::getMaxHeadingChange(void) const
+{
+    return m_maxHeadingChange;
+}
+float Monster::getAimPitch(void) const
+{
+    return m_aimPitch;
+}
+float Monster::getAimHeading(void) const
+{
+    return m_aimHeading;
+}
+float Monster::getRearOffset(void) const
+{
+    return m_rearOffset;
+}
+float Monster::getTargetingMod(void) const
+{
+    return m_targetingMod;
+}
+int Monster::getFallTimeBeforePitch(void) const
+{
+    return m_fallTimeBeforePitch;
+}
+float Monster::getPinMaxPitch(void) const
+{
+    return m_pinMaxPitch;
+}
+float Monster::getPinMuckingDist(void) const
+{
+    return m_pinMuckingDist;
+}
+float Monster::getOnFireCount(void) const
+{
+    return m_onFireCount;
+}
+float Monster::getOnFireDamage(void) const
+{
+    return m_onFireDamage;
+}
+float Monster::getBeingShockedCount(void) const
+{
+    return m_beingShockedCount;
+}
+float Monster::getBeingShockedDamage(void) const
+{
+    return m_beingShockedDamage;
+}
+int Monster::getLaunchCounter(void) const
+{
+    return m_launchCounter;
+}
+int Monster::getLaunchDelay(void) const
+{
+    return m_launchDelay;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isVulnerable__C7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isDead__C7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isCloaked__C7Monster);
@@ -207,59 +409,149 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", isBeingShocked__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", inSpecialState__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setCameraFollowsMonster__7Monsterib);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setCs__7MonsterP3_cs);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setGodMode__7Monsterb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setWinsThisGame__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setDamageModifier__7Monsterf);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setRanDeathSequence__7Monsterb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setRanVictorySequence__7Monsterb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setDead__7Monsterb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setTurning__7Monsterb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setPadEnabled__7Monsterb);
+void Monster::setGodMode(bool v)
+{
+    m_godMode = v;
+}
+void Monster::setWinsThisGame(int v)
+{
+    m_unk3C = v;
+}
+void Monster::setDamageModifier(float v)
+{
+    m_damageModifier = v;
+}
+void Monster::setRanDeathSequence(bool v)
+{
+    m_unkF6 = v;
+}
+void Monster::setRanVictorySequence(bool v)
+{
+    m_unkF7 = v;
+}
+void Monster::setDead(bool v)
+{
+    m_dead = v;
+}
+void Monster::setTurning(bool v)
+{
+    m_turning = v;
+}
+void Monster::setPadEnabled(bool v)
+{
+    m_unkF9 = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setPickup__7MonsterGQ2t10LinkedList1ZP6Pickup8Iterator);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setGrapplee__7MonsterP7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setGrappler__7MonsterP7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setGrappleAttempt__7MonsterP7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setBeamVictim__7MonsterP7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setFreeFalling__7Monsterb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setFallTime__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setDupId__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setTypeOfMonster__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setMonsterNum__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setSkinNum__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setPlayerAiOrFodderNum__7Monsteri);
+void Monster::setFreeFalling(bool v)
+{
+    m_freeFalling = v;
+}
+void Monster::setFallTime(int v)
+{
+    m_fallTime = v;
+}
+void Monster::setDupId(int v)
+{
+    m_dupId = v;
+}
+void Monster::setTypeOfMonster(int v)
+{
+    m_playerNum = v;
+}
+void Monster::setMonsterNum(int v)
+{
+    m_monsterNum = v;
+}
+void Monster::setSkinNum(int v)
+{
+    m_skinNum = v;
+}
+void Monster::setPlayerAiOrFodderNum(int v)
+{
+    m_index = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setPlayerInfo__7MonsterP9PlayerDat);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setInteractiveIndex__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getInteractiveIndex__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setName__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setPitchRate1__7Monsterf);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setPitchRate2__7Monsterf);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setCamIdleCircuitTime__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setCamIdleFactor__7Monsterf);
+void Monster::setInteractiveIndex(int v)
+{
+    m_id = v;
+}
+int Monster::getInteractiveIndex(void)
+{
+    return m_id;
+}
+void Monster::setName(int v)
+{
+    m_typeBits = v;
+}
+void Monster::setPitchRate1(float v)
+{
+    m_pitchRate1 = v;
+}
+void Monster::setPitchRate2(float v)
+{
+    m_pitchRate2 = v;
+}
+void Monster::setCamIdleCircuitTime(int v)
+{
+    m_camIdleCircuitTime = v;
+}
+void Monster::setCamIdleFactor(float v)
+{
+    m_camIdleFactor = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setClosestPath__7MonsterP6AiPath);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setVulnerable__7Monsterb);
+void Monster::setVulnerable(bool v)
+{
+    m_unk49 = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setInvulnerabilityDuration__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setAttacksEnabled__7Monsterb);
+void Monster::setAttacksEnabled(bool v)
+{
+    m_attacksEnabled = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setAttackDisableDuration__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setAimHeadingEnabled__7Monsterb);
+void Monster::setAimHeadingEnabled(bool v)
+{
+    m_aimHeadingEnabled = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setLookAtOverride__7MonsterP8_fvector);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", drainStamina__7Monsterfb);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", enableStaminaRegen__7Monsterb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", enableSpecialWeapon__7Monsterb);
+void Monster::enableSpecialWeapon(bool v)
+{
+    m_specialWeapon = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", startHealthPowerUpGlow__7Monsterii);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", startStaminaPowerUpGlow__7Monsterii);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", startSpecialPowerUpGlow__7Monsteri);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", endSpecialPowerUpGlow__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", incrementWinsThisGame__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getHudTexture__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", okToGlow__7Monsterb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", okToUnify__7Monsterb);
+int Monster::getHudTexture(void)
+{
+    return m_hudTexture;
+}
+void Monster::okToGlow(bool v)
+{
+    m_okToGlow = v;
+}
+void Monster::okToUnify(bool v)
+{
+    m_camUnify = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateClosestPath__7MonsterPv);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", restoreVulnerability__7MonsterPv);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", restoreVulnerability__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", restoreAttacksEnabled__7MonsterPv);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", restoreAttacksEnabled__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setShadow__7MonsterP3_cs);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setHudTexture__7Monsteri);
+void Monster::setHudTexture(int v)
+{
+    m_hudTexture = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setReticleCS__7MonsterP3_cs);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setStickyReticleCS__7MonsterP3_cs);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", lyingOnGround__7Monster);
