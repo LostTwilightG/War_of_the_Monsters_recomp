@@ -819,7 +819,7 @@ game/HeliVehicle,updateControls__11HeliVehicleR7GamePad,0x13f750,484,asm
 game/HeliVehicle,updatePosition__11HeliVehicle,0x13f938,188,equivalent
 game/HeliVehicle,updateCollision__11HeliVehicle,0x13f9f8,80,matched
 game/HeliVehicle,updateElevator__11HeliVehiclef,0x13fa48,96,equivalent
-game/HeliVehicle,updateHeading__11HeliVehiclef,0x13faa8,196,asm
+game/HeliVehicle,updateHeading__11HeliVehiclef,0x13faa8,196,equivalent
 game/HeliVehicle,updateTilt__11HeliVehicleff,0x13fb70,228,asm
 game/HeliVehicle,orientUpToNormal__11HeliVehicleR8_fvectorf,0x13fc58,228,asm
 game/HeliVehicleNav,__14HeliVehicleNavR11HeliVehicleP7PathNet,0x13fd40,52,asm

@@ -19,17 +19,54 @@ struct GrappleMonster {
     void *target;
 };
 
+class GamePadClipPlayer;
+class GamePad;
+class AiActionTuple {
+public:
+    int getFieldsSinceEval(void);
+};
+class AiPadClips {
+public:
+    static int getThrow(void);
+};
+class GamePadClipPlayer {
+public:
+    int clip;
+    int update(GamePad &pad);
+    void rewind(void);
+};
+
 class Ai {
 public:
     GrappleMonster *monster;
-    char pad4[0x4C - 4];
+    char pad4[0x44 - 4];
+    char *pad;
+    GamePadClipPlayer clipPlayer;
     int state;
 
     void setFocus(DbInteractive *d);
+    int getButtonMashDelay(void);
+    int getReflexDelay(void);
+    void targetPin(void);
+    void lightPunch(void);
+    void heavyPunch(void);
+    void toss(void);
 };
+int mathfRand(int lo, int hi);
+class GameModeW {
+public:
+    char pad0[0x1203CC];
+    int mode;
+};
+extern GameModeW *game;
 
 class AiGrappleThrow {
 public:
+    char pad0[0x48];
+    int timer;
+
+    void enterAction(Ai &ai);
+    void updateAction(Ai &ai);
     float getEntryRelevance(Ai &ai);
     float getExitRelevance(Ai &ai);
     void exitAction(Ai &ai);
@@ -37,6 +74,11 @@ public:
 
 class AiGrappleAttack {
 public:
+    char pad0[0x48];
+    int timer;
+
+    void updateAction(Ai &ai);
+    void enterAction(Ai &ai);
     float getEntryRelevance(Ai &ai);
     void exitAction(Ai &ai);
 };
@@ -71,8 +113,24 @@ float AiGrappleThrow::getExitRelevance(Ai &ai)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", getExitRelevance__14AiGrappleThrowR2Ai);
 #endif
-INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", enterAction__14AiGrappleThrowR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", updateAction__14AiGrappleThrowR2Ai);
+void AiGrappleThrow::enterAction(Ai &ai)
+{
+    int d = ai.getReflexDelay();
+
+    d -= ((AiActionTuple *)this)->getFieldsSinceEval();
+    timer = (d > -1) ? d : 0;
+    ai.setFocus((DbInteractive *)ai.monster->target);
+    ai.clipPlayer.clip = AiPadClips::getThrow();
+    ai.clipPlayer.rewind();
+}
+void AiGrappleThrow::updateAction(Ai &ai)
+{
+    if (--timer > 0)
+        return;
+    ai.targetPin();
+    if (!ai.clipPlayer.update(*(GamePad *)ai.pad))
+        ai.clipPlayer.rewind();
+}
 void AiGrappleThrow::exitAction(Ai &ai)
 {
     ai.setFocus(0);
@@ -83,8 +141,45 @@ float AiGrappleAttack::getEntryRelevance(Ai &ai)
     return 1.0f;
 }
 INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", getExitRelevance__15AiGrappleAttackR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", enterAction__15AiGrappleAttackR2Ai);
+void AiGrappleAttack::enterAction(Ai &ai)
+{
+    int d;
+
+    ai.setFocus((DbInteractive *)ai.monster->target);
+    d = ai.getReflexDelay();
+    d -= ((AiActionTuple *)this)->getFieldsSinceEval();
+    timer = (d > -1) ? d : 0;
+}
+#ifdef NON_MATCHING
+/* 11/57 words, untuned */
+void AiGrappleAttack::updateAction(Ai &ai)
+{
+    if (--timer > 0)
+        return;
+    timer = ai.getButtonMashDelay();
+    if (game->mode >= 0 && game->mode < 2) {
+        if (mathfRand(0, 5) == 0) {
+            ai.pad[0xE] = 0xFF;
+            ai.toss();
+        } else {
+            ai.lightPunch();
+        }
+    } else {
+        int r = mathfRand(1, 100);
+
+        if (r < 51)
+            ai.lightPunch();
+        else if (r < 61)
+            ai.heavyPunch();
+        else {
+            ai.pad[0xE] = 0xFF;
+            ai.toss();
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", updateAction__15AiGrappleAttackR2Ai);
+#endif
 void AiGrappleAttack::exitAction(Ai &ai)
 {
     ai.setFocus(0);
