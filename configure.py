@@ -69,7 +69,7 @@ def main():
         '',
         # C/C++: ee-gcc (SN ProDG 2.95.2) via tools/cc.sh; INCLUDE_ASM pulls asm/nonmatchings/<tu>/*.s
         'rule cc',
-        f'  command = PYTHON={sys.executable} sh tools/cc.sh $in $out',
+        f'  command = PYTHON={sys.executable} sh tools/cc.sh $in $out $flags',
         '  description = CC $in',
         '',
         'rule ld',
@@ -86,6 +86,13 @@ def main():
         '  description = CHECK $in',
         '',
     ]
+    tu_flags = {}
+    flags_file = ROOT / 'config/tu_flags.txt'
+    if flags_file.exists():
+        for ln in flags_file.read_text().splitlines():
+            if ln.strip() and not ln.startswith('#'):
+                name, _, fl = ln.partition(' ')
+                tu_flags[name] = fl.strip()
     headers = ' '.join(sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / 'include').rglob('*.h')))
     for o in objs:
         stem = o[len('build/'):-len('.o')]
@@ -96,6 +103,8 @@ def main():
             nm = ROOT / 'asm/nonmatchings' / stem[len('src/'):]
             deps = sorted(p.relative_to(ROOT).as_posix().replace('$', '$$') for p in nm.glob('*.s')) if nm.is_dir() else []
             lines.append(f'build {o}: cc {src} | tools/cc.sh tools/snfix.py include/macro.inc {headers} {" ".join(deps)}')
+            if stem[len('src/'):] in tu_flags:
+                lines.append(f'  flags = {tu_flags[stem[len("src/"):]]}')
         else:
             lines.append(f'build {o}: as {stem}.s | include/macro.inc include/labels.inc')
     elf = f'build/{BASENAME}.elf'
