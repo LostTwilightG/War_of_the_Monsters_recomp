@@ -76,7 +76,7 @@ void PadFlags::clearModifiers(void)
     modifier1704 = 0;
     modifier170C = 0;
 }
-char *PadFlags::operator[](int back)
+PadEntry *PadFlags::operator[](int back)
 {
     int n = back;
     int i;
@@ -87,7 +87,7 @@ char *PadFlags::operator[](int back)
 
     if (i < 0)
         i += RING_SIZE;
-    return ring + i * ENTRY_SIZE;
+    return (PadEntry *)(ring + i * ENTRY_SIZE);
 }
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", interpretInputs__8PadFlagsR7GamePad);
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", computeMotionVec__8PadFlagsR8_fvector);

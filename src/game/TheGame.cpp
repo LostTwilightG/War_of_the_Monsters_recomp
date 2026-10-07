@@ -157,9 +157,83 @@ int TheGame::GetNumAIsAlive(void)
     }
     return m_numAIsAlive;
 }
+#ifdef NON_MATCHING
+/* 55/91 words, untuned: loop shape */
+void TheGame::ResetLevel(void)
+{
+    int i;
+    int unified;
+
+    for (i = 0; i < 4; i++)
+        m_huds[i].initForReplay();
+    for (i = 0; i < m_numMonsters; i++) {
+        PadFlags &pf = m_monsters[i]->m_padFlags;
+
+        pf.saveAndClear(1);
+        pf[0]->f3E = 0;
+        pf.clearModifiers();
+        if (gUseUnifiedView == 0)
+            pf.f16E8 = 0;
+    }
+    for (i = 0; i < m_numSlots; i++) {
+        Monster *m = &m_slots[i];
+
+        if (m->m_playerNum != 0) {
+            m->m_unkF6 = 0;
+            m->m_unkF7 = 0;
+            m->m_unk49 = 1;
+        }
+    }
+    unified = gUseUnifiedView;
+    if (m_gameMode == 8)
+        BigShotLevel::instance.initForReplay();
+    if (unified == 0)
+        Cameras::SetCameraPOV(2, Camera::POV_3);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", ResetLevel__7TheGame);
-INCLUDE_ASM("asm/nonmatchings/game/TheGame", UnpauseLevel__7TheGame);
+#endif
+void TheGame::UnpauseLevel(void)
+{
+    int i;
+
+    for (i = 0; i < m_numMonsters; i++) {
+        PadFlags &pf = m_monsters[i]->m_padFlags;
+
+        pf.saveAndClear(1);
+        pf[0]->f3E = 0;
+        pf.clearModifiers();
+        if (gUseUnifiedView == 0 && m_gameMode != 9)
+            pf.f16E8 = 0;
+    }
+}
+#ifdef NON_MATCHING
+/* 13/62 words, untuned: loop shape */
+void TheGame::UpdatePadTweaks(void)
+{
+    int i;
+
+    for (i = 0; i < m_numMonsters; i++) {
+        PadFlags &pf = m_monsters[i]->m_padFlags;
+
+        pf.tweak16C8 = m_padTweaks.t16C8;
+        pf.tweak16C4 = m_padTweaks.t16C4;
+        pf.tweak16DC = m_padTweaks.t16DC;
+        pf.tweak16D0 = m_padTweaks.t16D0;
+        pf.tweak16D4 = m_padTweaks.t16D4;
+        pf.tweak16F4 = m_padTweaks.t16F4;
+        pf.tweak16F8 = m_padTweaks.t16F8;
+        pf.tweak16FC = m_padTweaks.t16FC;
+        pf.tweak17AC = m_padTweaks.t17AC;
+        pf.tweak17B0 = m_padTweaks.t17B0;
+        pf.tweak16E0 = m_padTweaks.t16E0;
+    }
+    for (i = 0; i < 8; i++)
+        inputUseActuator(i, m_actuator[i]);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", UpdatePadTweaks__7TheGame);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameReestablishViews__7TheGame);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", monsterPush__7TheGamePP9_hierheadUi);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", monsterPop__7TheGameP13_monsterstackPP9_hierhead);

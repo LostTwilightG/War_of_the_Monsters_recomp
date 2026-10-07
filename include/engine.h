@@ -30,6 +30,9 @@ void mathfRotAxisToQuaternion(_fvector *dst, _fvector *axis, float angle);
 void mathfConcatQuaternions(_fvector *dst, _fvector *a, _fvector *b);
 float smoothEasyInTC(float cur, float target, float rate, float eps);
 
+/* ---- input ---- */
+void inputUseActuator(int pad, bool enable);
+
 /* ---- timers ---- */
 int timerGetFieldsLastFrame(void);
 int timerGetUpdateRate(void);

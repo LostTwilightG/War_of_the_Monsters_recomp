@@ -6,6 +6,7 @@ class Hud {
 public:
     char pad0[0x2E0];
 
+    void initForReplay(void);
     void addMessage(int a, int b);
     void addTextBoxMessage(int id);
 };

@@ -5,6 +5,7 @@
 #include "game/hud.h"
 #include "game/weapons.h"
 #include "game/stamina_meter.h"
+#include "game/pad_flags.h"
 #include "hieri_types.h"
 
 /* Partial class layouts recovered from usage. Unknown regions are padding until identified. */
@@ -27,11 +28,14 @@ public:
     int m_playerNum;      /* 0x18: 0 = unused slot, 1/2 = controlling player (inferred from Update) */
     char pad1C[4];
     int m_id;             /* 0x20: player/monster id used by hit histories and pickups */
-    char pad24[0xE8 - 0x24];
+    char pad24[0x49 - 0x24];
+    unsigned char m_unk49; /* 0x49: set to 1 by ResetLevel */
+    char pad4A[0xE8 - 0x4A];
     signed char m_dead;   /* 0xE8: nonzero once dead (GetNumAIsAlive counts the zeros) */
     char padE9[3];
     unsigned char m_unkEC; /* 0xEC */
-    char padED[0xF7 - 0xED];
+    char padED[0xF6 - 0xED];
+    unsigned char m_unkF6; /* 0xF6 */
     unsigned char m_unkF7; /* 0xF7 */
     char padF8;
     unsigned char m_unkF9; /* 0xF9 */
@@ -39,7 +43,9 @@ public:
     float m_health;       /* 0x44C */
     char pad450[0x460 - 0x450];
     StaminaMeter m_stamina; /* 0x460 */
-    char pad48C[0x68B4 - 0x48C];
+    char pad48C[0x5040 - 0x48C];
+    PadFlags m_padFlags;  /* 0x5040: input interpretation; the pad tweaks (0x6704..) are inside it */
+    char pad6854[0x68B4 - 0x6854];
     void *m_target;       /* 0x68B4: current target (null when none) */
     char pad68B8[0x7970 - 0x68B8];
     int m_camUnify;       /* 0x7970: zeroed by the cam-unify trigger volume */
@@ -78,6 +84,21 @@ public:
     char pad1203F0[0x12043C - 0x1203F0];
     int m_won[2];                    /* 0x12043C */
     int m_playerMask;                /* 0x120444: bit 0 = player 1 active, bit 1 = player 2 active (inferred) */
+    char pad120448[0x12046C - 0x120448];
+    struct PadTweaks {               /* 0x12046C: copied into every monster's PadFlags by UpdatePadTweaks */
+        int t16C4;
+        float t16D0;
+        float t16D4;
+        int t16C8;
+        int t16F4;
+        int t16F8;
+        int t16FC;
+        int t17AC;
+        int t17B0;
+        int t16DC;
+        int t16E0;
+    } m_padTweaks;
+    int m_actuator[8];               /* 0x120498: per-pad rumble actuator enable flags */
 
     void Init(void);
     void InitBeforeDbLoad(void);
@@ -94,6 +115,7 @@ public:
     int GetNumAIsAlive(void);
     float GetCameraMaxHeight(_fvector *pos);
     void gameInitCamera(int view, int slot);
+    void UpdatePadTweaks(void);
 
     Weapons *getWeapons(void) { return (Weapons *)((char *)this + 0x112490); }
 };
@@ -116,6 +138,12 @@ static inline Monster *gameSlotBase(int idx)
     return (Monster *)((char *)game + (idx * 0x11190 + 0xB80));
 }
 extern int gHudEnable;
+extern int gUseUnifiedView;
+
+class Camera {
+public:
+    enum CameraPOV { POV_0, POV_1, POV_2, POV_3 };
+};
 
 class Cameras {
 public:
@@ -126,6 +154,7 @@ public:
     static void InitCrushMonsters(Monster *a, Monster *b);
     static void Update(void);
     static void SetCameraToFollowMonster(int view, Monster *m);
+    static void SetCameraPOV(int view, Camera::CameraPOV pov);
 };
 
 void fontSetColor(int font, int r, int g, int b, int a);

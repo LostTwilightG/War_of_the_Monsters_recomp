@@ -4,6 +4,13 @@
 #include "hieri_types.h"
 
 class GamePad;
+
+/* One per-frame snapshot of the pad state (94 bytes); only the fields seen so far are named. */
+struct PadEntry {
+    char data[0x3E];
+    short f3E;
+    char pad40[0x5E - 0x40];
+};
 class Monster;
 
 enum ButtonActions { BUTTON_ACTION_NONE = 20 };
@@ -71,7 +78,7 @@ public:
     void clear(int idx, int value);
     void saveAndClear(int value);
     void clearModifiers(void);
-    char *operator[](int back);         /* ring entry `back` frames before the current one */
+    PadEntry *operator[](int back);         /* ring entry `back` frames before the current one */
     void setCurrentAction(ButtonActions button, MappedActions mapped);
     void pushAction(ButtonActions button, MappedActions mapped);
     ButtonActions nextButtonAction(void);

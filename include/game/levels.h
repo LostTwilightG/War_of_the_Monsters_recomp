@@ -24,6 +24,8 @@ public:
     char pad0[0xE8];
     int m_state; /* 0xE8: index into UPDATE_FUNK */
 
+    void initForReplay(void);
+
     static BigShotLevel instance;
     static void (BigShotLevel::*UPDATE_FUNK[])();
 };
