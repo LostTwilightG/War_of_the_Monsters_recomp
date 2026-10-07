@@ -213,6 +213,35 @@ def pad_short_loops(lines):
     return out
 
 
+FPCMP = re.compile(r'^\s*c\.[a-z]+\.s\s')
+
+
+def fix_fp_compare_labels(out):
+    """ps2eeas puts the hazard nop between a c.cc.s and its bc1* *after* any label in between (a branch target
+    lands on the nop); GNU as puts it before the label. Make the nop explicit, after the labels."""
+    res = []
+    i = 0
+    while i < len(out):
+        line = out[i]
+        if FPCMP.match(line):
+            j = i + 1
+            labels = []
+            while j < len(out) and (LABEL.match(out[j]) or out[j].strip().startswith('.p2align') or not out[j].strip()):
+                labels.append(out[j])
+                j += 1
+            if labels and any(LABEL.match(l) for l in labels):
+                k = j
+                while k < len(out) and out[k].strip().startswith('.set'):
+                    k += 1
+                if k < len(out) and re.match(r'^\s*bc1[tf]l?\s', out[k]):
+                    res += ['	.set	noreorder', line] + labels + ['	nop', '	.set	reorder']
+                    i = j
+                    continue
+        res.append(line)
+        i += 1
+    return res
+
+
 def main():
     src, dst = sys.argv[1], sys.argv[2]
     fixer = Fixer()
@@ -222,6 +251,7 @@ def main():
             out.extend(fixer.fix_line(line))
         except ValueError as e:
             sys.exit(f'{src}:{n}: {e}')
+    out = fix_fp_compare_labels(out)
     out = pad_short_loops(out)
     out += ['	.text', '	.align 3']  # retail text objects end 8-aligned (the padding is nops, not part of the next object)
     open(dst, 'w', encoding='latin1', newline='\n').write('\n'.join(out) + '\n')

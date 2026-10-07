@@ -9,6 +9,9 @@ struct _animHandle {
 
 void animationSetToBeginning(_animHandle h, bool b);
 void animationPause(_animHandle h);
+void animationStart(_animHandle h, bool b);
+void animationStartReverse(_animHandle h, bool b);
+float animationGetCurrentPercent(_animHandle h);
 
 class AnimQueuable {
 public:
@@ -77,6 +80,49 @@ void AnimQueue::Pop(void)
         q[i] = q[i + 1];
     count--;
 }
-INCLUDE_ASM("asm/nonmatchings/common/AnimQueue", taskUpdate__9AnimQueue);
-INCLUDE_ASM("asm/nonmatchings/common/AnimQueue", RequestInterruption__9AnimQueue);
-INCLUDE_ASM("asm/nonmatchings/common/AnimQueue", taskUpdate__9AnimQueuePv);
+int AnimQueue::taskUpdate(void)
+{
+    AnimQueuable *a = q;
+
+    if (count == 0)
+        return 0;
+    if (a->fC == 0) {
+        if (a->f4)
+            animationStart(*a->handle, a->f8 != 0);
+        else
+            animationStartReverse(*a->handle, a->f8 != 0);
+        a->fC = 1;
+    } else {
+        int done;
+
+        if (a->f4)
+            done = animationGetCurrentPercent(*a->handle) > 0.9f;
+        else
+            done = animationGetCurrentPercent(*a->handle) < 0.1f;
+        if (done) {
+            Pop();
+        } else if (a->f14) {
+            if (a->f10) {
+                _animHandle *h = a->handle;
+
+                a->f4 = 0;
+                a->f8 = 0;
+                a->fC = 0;
+                a->f10 = 0;
+                animationPause(*h);
+            }
+        }
+    }
+    return count > 0;
+}
+void AnimQueue::RequestInterruption(void)
+{
+    int i;
+
+    for (i = 0; i < count; i++)
+        q[i].f14 = 1;
+}
+unsigned AnimQueue::taskUpdate(void *p)
+{
+    return ((AnimQueue *)p)->taskUpdate();
+}
