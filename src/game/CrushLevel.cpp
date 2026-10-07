@@ -1,21 +1,7 @@
 #include "common.h"
 #include "game/game.h"
 #include "game/MonsterNames.h"
-
-/* "Crush" mode: collect the most tokens before the timer runs out, sudden death on a tie. */
-class CrushLevel {
-public:
-    void initBeforeDbLoad();
-    void initAfterDbLoad();
-    void updateNormal();
-    void initSuddenDeath();
-    void updateSuddenDeath();
-
-    int m_timer;       /* 0x0: fields left */
-    int m_finished;    /* 0x4 */
-    int m_total[2];    /* 0x8: player 1/2 token totals */
-    int m_suddenDeath; /* 0x10 */
-};
+#include "game/crush_level.h"
 
 void CrushLevel::initBeforeDbLoad()
 {

@@ -698,7 +698,7 @@ game/TheGame,InitBeforeDbLoad__7TheGame,0x136560,1824,asm
 game/TheGame,traversalCallback__7TheGameP3_csUiUiRA3_A3_fP8_fvector,0x136c80,256,asm
 game/TheGame,genericEventHandler__7TheGameUi,0x136d80,472,asm
 game/TheGame,InitAfterDbLoad__7TheGame,0x136f58,860,asm
-game/TheGame,Update__7TheGame,0x1372b8,1008,asm
+game/TheGame,Update__7TheGame,0x1372b8,1008,equivalent
 game/TheGame,Update2__7TheGame,0x1376a8,96,asm
 game/TheGame,MonsterParse__7TheGameP9_hierheadP8_fvector,0x137708,260,asm
 game/TheGame,AddMonster__7TheGameP3_csii,0x137810,292,asm

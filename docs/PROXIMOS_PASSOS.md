@@ -1,56 +1,71 @@
-# Próximos passos (atualizado em 2026-10-07 01:35)
+# Próximos passos (atualizado em 2026-10-07 14:10)
 
-Estado: `python3 tools/progress.py` (WSL Ubuntu, venv `~/.venvs/wotm`). `common`: 157 idênticas / 35 equivalentes / 117 hardware /
-835 só assembly. `game`: 42 / 30 / 0 / 3109. Convenções em `docs/ANALYSIS.md` ("Convenções de status das funções").
+## Onde estamos
+- `sh tools/wsl/gate.sh` diz `ROM OK` (build + SHA1). Último estado medido (`python3 tools/progress.py`): `game` ~170 de 3181 funções
+  decompiladas (idênticas + equivalentes), ~14 KB de 930 KB; `common` 192 de 1144. Convenções em `docs/ANALYSIS.md` ("Convenções de status das funções").
+- Ritmo de hoje: ~2,6 KB/hora em funções pequenas. Decompilar o `game` inteiro nesse ritmo não fecha; por isso a estratégia mudou (abaixo).
+- Objetivo do port: precisa de ~1000 funções / ~310 KB (lógica de jogo alcançável pelo laço de atualização), fora hardware. Lista em `config/callgraph.csv`.
+
+## Estratégia (decidida com o usuário em 2026-10-07)
+1. **Escopo por alcance**, não por tamanho: `python3 tools/callgraph.py Update__7TheGame,InitBeforeDbLoad__7TheGame,InitAfterDbLoad__7TheGame,ResetLevel__7TheGame --no-libs`
+   grava `config/callgraph.csv` (função, TU, tamanho, profundidade). Só segue `jal`; chamadas virtuais (`jalr`) não entram, então é um piso.
+   Trabalhar de cima para baixo nessa lista. Hardware (`config/hw_funcs.txt`) fica de fora; `game/Sound` e `game/StreamingSoundManager` NÃO são hardware
+   (decisões de jogo) mas o port pode começar com áudio mudo, então são baixa prioridade.
+2. **Equivalente natural, sem afinar**: escrever C++ natural, pontuar, embrulhar com `nm_wrap.py` se não bater. Só afinar quando é barato (ver armadilhas).
+3. **m2c como rascunho** para funções com mais de ~30 instruções: `sh tools/m2c.sh <tu> <função>`. Conferir contra o assembly, trocar `unkNNN` por campos
+   nomeados dos headers, ajustar tipos. Funções curtas: escrever direto. Nunca confiar no m2c sem ler o asm (os argumentos que ele mostra são ruído de registradores).
+4. **Comparar comportamento com o PCSX2** assim que houver algo rodando (ainda sem testes; decisão do usuário).
+5. **Unificar tipos conforme os usos se repetem**: promover campo a header só quando há evidência (mesmo offset, mesmo uso) em 2+ lugares ou o m2c/asm deixa claro.
 
 ## Como retomar
-1. `wsl -d Ubuntu` (a distro padrão é a `docker-desktop`, que não serve). `cd /mnt/c/Users/TwistZero/WoTM`.
-2. `sh tools/wsl/check.sh` deve dizer `ROM OK`. **Nunca** encadear com `| tail`: o pipe esconde a falha.
-3. Para um TU novo: `python3 tools/new_tu.py game/<Nome>` e depois `sh tools/wsl/check.sh`. Se a ROM não bater por causa de
-   vtable/jump table, `python3 tools/place_data.py <tu> '<simbolo>'`.
-4. Para cada função: ler `asm/nonmatchings/<tu>/<func>.s`, escrever o C++ no `src/<tu>.cpp` no lugar da linha `INCLUDE_ASM`,
-   `python3 tools/ccmatch.py src/<tu>.cpp '' project` (pontua e mostra o que não bate), `tools/wsl/variants.py` se valer a pena
-   tentar variações; se não bater, `python3 tools/nm_wrap.py <arquivo> <simbolo> "<nota>" [Classe::metodo]`.
-5. Commitar só depois do `check.sh` passar.
+1. `wsl -d Ubuntu` (a distro padrão é a `docker-desktop`, que não serve). Venv: `~/.venvs/wotm/bin/python`. Raiz: `/mnt/c/Users/TwistZero/WoTM`.
+2. **Gate de commit**: `sh tools/wsl/gate.sh && git commit ...` (de preferência o `git commit` rodando no Windows; o git do WSL não tem identidade).
+   `check.sh; git commit` ou `check.sh | tail && git commit` commitam builds quebrados.
+3. Converter TUs novos: `sh tools/wsl/convert_tus.sh TuA TuB ...` (um de cada vez, só mantém os que não quebram a ROM, posiciona vtables com `place_data.py`).
+   Depois de um TU removido/revertido, regenerar com `~/.venvs/wotm/bin/python configure.py --split` (senão o `build.ninja` aponta para arquivo inexistente).
+4. Por função: ler `asm/nonmatchings/<tu>/<func>.s` (ou rodar o m2c), escrever o C++ no lugar da linha `INCLUDE_ASM`,
+   `sh tools/wsl/scoreall.sh <TU...>` (pontua com `-DNON_MATCHING`), `nm_wrap.py <arquivo> <simbolo> "<nota>" [Classe::metodo]` se não bater.
+5. Antes de mexer em header compartilhado: `sh tools/wsl/scoreall.sh <todos os TUs de src/game> > ~/base.txt`; depois comparar com `diff`. Rodar `gate.sh`.
 
-## Ordem sugerida
-- Feitos nesta rodada (2026-10-07): StickShaker, PowerUpTool, MilitaryPickup, StartPointTool, PathTool, MonkeyChains (ver status.csv).
-- Terminar os TUs pequenos de `game` já convertidos: TankVehicle (updateControls usa VU + Weapons), reset, AiPathTool, SubwayPickup,
-  CarPickup (resto), Vehicle (resto), AiBrain.
-- Converter e fazer os TUs seguintes de `game` por tamanho (`config/tus.csv`): Destructible, RigidDebris, Ai*, Monster*, Pickups.
-- Priorizar lógica real (IA, monstros, fases, pickups). Não gastar esforço em código de hardware (`config/hw_funcs.txt`).
-- Para funções de `game` o fluxo é: escrever C++ natural, compilar, pontuar, embrulhar se não bater, **sem afinar**.
+## Ferramentas (tools/)
+- `wsl/gate.sh` (build + SHA1, sai com erro se falhar), `wsl/scoreall.sh` (pontuação por função com NON_MATCHING), `wsl/convert_tus.sh`, `wsl/check.sh`,
+  `ccmatch.py`, `nm_wrap.py`, `new_tu.py`, `place_data.py`, `progress.py` (escreve `config/status.csv`), `callgraph.py`, `m2c.sh`, `wsl/variants.py`, `wsl/permute.py`.
+- Scripts `.sh` devem ser criados por heredoc no bash; gravar com Python no Windows deixa CRLF e o `sh` do WSL quebra (`sed -i 's/\r$//'` conserta).
+- Mod `/wotm` (HUD) carrega com `startup_command.bat` (no `.gitignore`), que inicia o Claude com `--plugin-dir ~/.claude/my-plugins/wotm-hud`.
 
 ## Headers compartilhados (include/)
 Regra: uma classe/API usada por mais de um TU mora num header; não redeclarar parcialmente dentro do `.cpp`.
 - `engine.h`: API do motor (matemática, timers, `_animHandle`/animation*, particleKillFx, hier/hd). `game/game.h` inclui.
-- `game/game.h`: `TheGame` com campos nomeados (`m_gravity`, `m_gameMode`, `m_matchMode`, `m_phase`, `m_numSlots`, `m_numMonsters`, `m_levelIdx`),
-  `gameSlotBase(idx)` (mantém a ordem `idx*0x11190 + 0xB80` do retail), `gameHud(i)`, `gameWeapons()`.
-- `point_tool_kit.h` (base das ferramentas; PathTool/PowerUpTool/StartPointTool/AiPathTool derivam e chamam `PointToolKit::init/loadPoints/getPoint`),
-  `task_manager.h`, `bidir_link.h`, `cs_pool.h` (tudo estático), `game/{shell,hit_history,pickup,hud,weapons,power_ups,start_points,stamina_meter}.h`.
-- Mover uma classe para header pode mudar `sizeof` e deslocar campos de structs parciais que a embutem (aconteceu com `StaminaMeter` em `GrappleMonster`):
-  depois de cada mudança rodar `sh tools/wsl/scoreall.sh <TUs>` e comparar com a linha de base, e `sh tools/wsl/gate.sh`.
-- Pontuação antes/depois: `sh tools/wsl/scoreall.sh A B C > novo.txt; diff base.txt novo.txt`.
+- `game/game.h`: `Monster` (0x11190 bytes: `m_cs`, `m_playerNum`, `m_id`, `m_health`, `m_stamina`, `m_target`, `m_camUnify`), `TheGame`
+  (`m_huds[4]`, `m_slots[16]` = os `Monster` em 0xB80, `m_monsters[]` = ponteiros, `m_gravity`, `m_gameMode`, `m_matchMode`, `m_levelId` (1 central, 2 vegas, 3 canyon2,
+  5 airport, 6 threemile, 7 sanfran, 8/15 island, 9 tokyo, 10 ufo, 11 final boss, 26 bigshot, 27 crush), `m_numSlots`, `m_numMonsters`, `m_levelIdx`, `m_playerMask`),
+  `Cameras` (`m_cameras`, `m_state`), acessores `gameSlotBase(idx)` (mantém a ordem `idx*0x11190 + 0xB80`), `gameHud(i)`, `gameWeapons()`.
+- `point_tool_kit.h` (base de PathTool/PowerUpTool/StartPointTool/AiPathTool; derivados chamam `PointToolKit::init/loadPoints/getPoint`), `task_manager.h`, `bidir_link.h`,
+  `cs_pool.h` (tudo estático), `game/{shell,hit_history,pickup,military_pickup,pickup_sound,vehicle_navigator,hud,weapons,power_ups,start_points,stamina_meter,crush_level,levels,streaming_sound}.h`.
+- Mover uma classe para header pode mudar `sizeof` e deslocar campos de structs parciais que a embutem (aconteceu com `StaminaMeter`): sempre comparar antes/depois.
 - Funções que o retail chama com `this` mesmo sem usá-lo (ex.: `StartPoints::getNumPoints`) só batem se declaradas não-estáticas; `isThisTypeFull` é estática.
+- Ainda não unificados: `GamePad` (`GamePad.cpp` vê 6 ints, `GamePadClipPlayer.cpp` vê bytes), `GamePadClipPlayer`/`AiPadClips` (tipo do clipe diverge entre `AiGrapple` e os outros),
+  `Ai`, `Destructibles`.
 
-## Método para funções grandes (a partir de 2026-10-07)
-- Escopo: `python3 tools/callgraph.py Update__7TheGame,InitBeforeDbLoad__7TheGame,InitAfterDbLoad__7TheGame,ResetLevel__7TheGame --no-libs`
-  gera `config/callgraph.csv` (~1000 funções, ~310 KB alcançáveis por chamadas diretas). Priorizar esse conjunto, de cima para baixo; hardware (`config/hw_funcs.txt`) fica de fora.
-- Funções com mais de ~30 instruções: começar por `sh tools/m2c.sh <tu> <função>` (rascunho), conferir contra o assembly, trocar `unkNNN` por campos nomeados dos headers,
-  escrever como C++ natural, `scoreall.sh`, embrulhar com `nm_wrap.py` se não bater, `gate.sh` antes de commitar. Funções curtas: escrever direto.
-- `TheGame`/`Monster`: `game->m_slots[16]` são os `Monster` (0x11190 cada, em 0xB80); `m_huds[4]` no início; `game->m_monsters[]` são ponteiros para eles.
+## Trabalho em andamento: TheGame
+- `src/game/TheGame.cpp` convertido. `TheGame::Update` está escrito (embrulhado em `NON_MATCHING`, 23/252 palavras, equivalente a partir do m2c); falta conferir contra o comportamento.
+- Próximos dentro de `TheGame`: `Update2`, `UpdatePadTweaks`, `SetGravity`, `GetNumAIsAlive`, `SetOkToUnify`, `InitAfterDbLoad`, `InitBeforeDbLoad`, `ResetLevel`, `gameResolveLifeAndDeath` (717 linhas), `gameCheckForCloseCombat`.
+- Depois, descendo a árvore: `Monster::update`/`updatePosition`/`updateCinema` (TU `Monster`, 53 funções / ~18 KB), `AiNavigator`, uma fase completa (`tokyo`, já convertida), `PlantBoss`/`FinalBoss`.
 
 ## Armadilhas já vistas
-- **Gate de commit**: `sh tools/wsl/gate.sh && git commit ...` (gate.sh sai com erro se a ROM não bater; `check.sh; git commit` ou `| tail` commitam builds quebrados). `check.sh | tail && git commit` commita mesmo com `BUILD FAILED` (aconteceu no PathTool).
 - Ao reescrever o fim de um `.cpp` com script, conferir que as linhas `INCLUDE_ASM` finais (static init, `__tf`, ctor, `_GLOBAL_$I$`) continuam lá.
-- `ccmatch.py` sem `-DNON_MATCHING` só compila as `INCLUDE_ASM` (tudo "MATCH"); para pontuar o C++ novo use `ccmatch.py src/x.cpp '-DNON_MATCHING' project`.
-- Layout do `PointToolKit` nas ferramentas (PowerUpTool/StartPointTool/PathTool): pontos 0x40 cada, `numPoints` em 0x4000, ponteiro de dados em 0x4050; `init` = `PointToolKit::init(0)` + `game + idx*0x11190 + 0xB80`.
-- `shell` é gp-relativo em alguns TUs (PowerUpTool, PathTool) e não em outros (StartPointTool): `__asm__("#SNFIX_SMALL shell")` só onde o retail usa gp.
-- gas insere 2 `nop` extras num `.p2align 3` logo depois de uma sequência `li.s` (visto em StickShaker::DefaultSetup); o retail não tem. Sem causa achada, marcar como equivalente.
-- Retorno `(x & 1) == 0` em vez de `!(x & 1)` muda `lw`/`xori` para `ld`/`andi` com campo de 64 bits (MilitaryPickup::kill).
-- Cópia de `_fvector` por `lq/sq` com `jr` seguido de `nop` indica `asm volatile` com `lq/sq` no retail (MilitaryPickup::setFormationPos).
+- `ccmatch.py` sem `-DNON_MATCHING` só compila as `INCLUDE_ASM` (tudo "MATCH"); para pontuar o C++ novo use `-DNON_MATCHING` (o `scoreall.sh` já faz).
+- Layout das ferramentas de pontos: pontos de 0x40 bytes, `numPoints` em 0x4000, campos próprios a partir de 0x4050; `levelData = gameSlotBase(game->m_levelIdx)`.
+- `shell` é gp-relativo em alguns TUs (PowerUpTool, PathTool, AiPathTool) e não em outros (StartPointTool): `__asm__("#SNFIX_SMALL shell")` só onde o retail usa gp.
+  Dentro de um delay slot (`.set nomacro`) o acesso a global é sempre gp, sem precisar do pragma (tokyo).
+- gas insere 2 `nop` extras num `.p2align 3` logo depois de uma sequência `li.s` (StickShaker::DefaultSetup); o retail não tem. Sem causa achada: marcar como equivalente.
+- `(x & 1) == 0` em vez de `!(x & 1)` muda `lw`/`xori` para `ld`/`andi` com campo de 64 bits (MilitaryPickup::kill).
+- Cópia de `_fvector` por `lq/sq` com `jr` seguido de `nop` indica `asm volatile` com `lq/sq` no retail (setFormationPos, setTrans); registrador `$2` fixado com `register int t __asm__("$2")`.
+- Chamada de função dentro dos argumentos da chamada final (operador vírgula) muda o agendamento do prólogo e fez `loadPoints` bater (PathTool/AiPathTool).
+- Ponteiros intermediários (`VehicleNavigator *n = &nav; n->f14 = ...`) imitam os `addiu v1,v0,0x210` do retail.
 - Strings de uma função que passam de `INCLUDE_ASM` para C mudam o padding do `.rodata`: acrescentar `.word 0` em `.rodata` por asm.
 - `switch` em C gera jump table; o retail alinha em 24 palavras (acrescentar `.word 0` x2).
 - Classes com vtable: ctor, `__tf` e `_vt$...` ficam como `INCLUDE_ASM`; escrever os métodos sem `virtual`.
 - Funções estáticas sem argumentos às vezes têm um `v` no fim do símbolo retail: usar `__asm__("nome__Classev")` no membro.
+- Mangling de matriz: `float (*m)[4]` vira `PA3_f` no gcc 2.95.
 - O heredoc da ferramenta pode transformar `\n` em quebra de linha real dentro de scripts Python: para arquivos com regex, usar o Edit.

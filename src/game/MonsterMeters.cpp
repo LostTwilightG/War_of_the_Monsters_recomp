@@ -174,7 +174,7 @@ int StaminaMeter::hasEnough(float amount)
     exhaustTimer = exhaustTime;
     exhausted = 1;
     cur = 0;
-    if (game->m_gameMode == 1 && game->m_phase == 1 && *(int *)(owner + 0x18) == 1)
+    if (game->m_gameMode == 1 && game->m_levelId == 1 && *(int *)(owner + 0x18) == 1)
         gameHud(0)->addTextBoxMessage(0x19);
     return 1;
 }

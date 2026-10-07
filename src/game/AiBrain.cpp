@@ -27,7 +27,7 @@ INCLUDE_ASM("asm/nonmatchings/game/AiBrain", init__7AiBrainR2Ai);
 void AiBrain::reset(Ai &ai)
 {
     AiActionGroup::reset();
-    if (game->m_phase == 7)
+    if (game->m_levelId == 7)
         f_AAC = 500.0f;
 }
 #else

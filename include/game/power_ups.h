@@ -7,6 +7,7 @@ class PowerUps {
 public:
     static PowerUps instance;
 
+    void update(void);
     void KillPowerUps(void);
     void CreatePowerUp(int type, unsigned char arg, _fvector *pos);
 };

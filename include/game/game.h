@@ -16,12 +16,16 @@ public:
     void drainSpecial();
     void enterNewState(MonsterState *state);
     void takeDamage(float dmg, bool b, Monster *src);
+    void update(void);
+    void updateCinema(void);
+    void updatePosition(void);
 
     char pad0[0xC];
     _cs *m_cs;            /* 0x0C: the monster's scene-graph node; its translation is the world position */
     char pad10[4];
     int m_typeBits;       /* 0x14: monster type << 5 */
-    char pad18[0x20 - 0x18];
+    int m_playerNum;      /* 0x18: 0 = unused slot, 1/2 = controlling player (inferred from Update) */
+    char pad1C[4];
     int m_id;             /* 0x20: player/monster id used by hit histories and pickups */
     char pad24[0xEC - 0x24];
     unsigned char m_unkEC; /* 0xEC */
@@ -62,13 +66,25 @@ public:
     float m_gravity;                 /* 0x1203C4 */
     int m_gameMode;                  /* 0x1203C8: 1 = the mode AiScript3Mile/central set up special levels for */
     int m_matchMode;                 /* 0x1203CC: 0 or 1 selects the two-player-style AI in AiGrappleAttack */
-    int m_phase;                     /* 0x1203D0: 7 / 1 are checked by AiBrain and StaminaMeter */
+    int m_levelId;                   /* 0x1203D0: level id (1 central, 2 vegas, 3 canyon2, 5 airport, 6 threemile, 7 sanfran, 8/15 island, 9 tokyo, 10 ufo, 11 final boss, 26 bigshot, 27 crush) */
     int m_numSlots;                  /* 0x1203D4: loop bound over the per-player blocks (gameSlotBase) */
     int m_numMonsters;               /* 0x1203D8: loop bound over m_monsters */
     char pad1203DC[0x1203E8 - 0x1203DC];
     int m_levelIdx;                  /* 0x1203E8: selects the level block (gameSlotBase) */
     char pad1203EC[0x12043C - 0x1203EC];
     int m_won[2];                    /* 0x12043C */
+    int m_playerMask;                /* 0x120444: bit 0 = player 1 active, bit 1 = player 2 active (inferred) */
+
+    void Init(void);
+    void InitBeforeDbLoad(void);
+    void InitAfterDbLoad(void);
+    void Update(void);
+    void Update2(void);
+    void ResetLevel(void);
+    void UnpauseLevel(void);
+    void gameResolveCollisions(void);
+    void gameResolveLifeAndDeath(void);
+    void gameCheckForCloseCombat(void);
 };
 
 extern TheGame *game;
@@ -92,7 +108,12 @@ extern int gHudEnable;
 
 class Cameras {
 public:
+    char pad0[0x2A58];
+    int m_state;              /* 0x2A58: 7 = cinema */
+
+    static Cameras m_cameras;
     static void InitCrushMonsters(Monster *a, Monster *b);
+    static void Update(void);
 };
 
 void fontSetColor(int font, int r, int g, int b, int a);
