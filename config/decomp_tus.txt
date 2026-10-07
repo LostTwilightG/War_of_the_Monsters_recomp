@@ -88,3 +88,4 @@ game/TankPickup
 game/MissileTruckPickup
 game/HeliPickup
 game/UfoPickup
+game/TheGame

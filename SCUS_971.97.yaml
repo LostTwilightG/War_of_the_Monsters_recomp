@@ -108,7 +108,7 @@ segments:
       - [0x031918, asm, game/FinalBoss]  # c++, 12 funcs, name: guess
       - [0x0343E8, cpp, game/FireBreath]  # c++, 7 funcs, name: guess
       - [0x034A10, asm, game/PedGroup]  # c++, 18 funcs, name: guess
-      - [0x036558, asm, game/TheGame]  # c++, 39 funcs, name: guess
+      - [0x036558, cpp, game/TheGame]  # c++, 39 funcs, name: guess
       - [0x03A000, cpp, game/GamePad]  # c++, 2 funcs, name: guess
       - [0x03A538, cpp, game/GamePadClipPlayer]  # c++, 2 funcs, name: guess
       - [0x03A628, asm, game/GlobalReset]  # c++, 4 funcs, name: guess
@@ -535,7 +535,7 @@ segments:
       - [0x5E8E90, rodata, game/Debris]
       - [0x5E8F60, rodata, game/Destructible]
       - [0x5E8FE0, rodata, game/FinalBoss]
-      - [0x5E90B0, rodata, game/TheGame]
+      - [0x5E90B0, .rodata, game/TheGame]
       - [0x5E94E0, rodata, game/GlobalReset]
       - [0x5E9590, rodata, game/Grapple]
       - [0x5E9650, rodata, game/GrappleOHAttack]
