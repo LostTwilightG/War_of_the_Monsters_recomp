@@ -239,16 +239,16 @@ segments:
       - [0x11C0D8, asm, common/pkt]  # c++, 10 funcs, name: guess
       - [0x11CBB0, asm, common/plight]  # c++, 12 funcs, name: guess
       - [0x11D3B8, asm, common/PointLight]  # c++, 13 funcs, name: guess
-      - [0x11DA28, asm, common/PointMass]  # c++, 7 funcs, name: guess
+      - [0x11DA28, cpp, common/PointMass]  # c++, 7 funcs, name: guess
       - [0x11DCE8, asm, common/PointToolKit]  # c++, 15 funcs, name: guess
-      - [0x11E090, asm, common/videocb]  # c++, 3 funcs, name: manual
+      - [0x11E090, cpp, common/videocb]  # c++, 3 funcs, name: manual
       - [0x11E3C0, cpp, common/readbuf]  # c++, 6 funcs, name: manual
       - [0x11E4D0, asm, common/resetcom]  # c++, 18 funcs, name: guess
       - [0x11EF08, asm, common/RigidBody]  # c++, 37 funcs, name: guess
       - [0x120510, asm, common/ScreenPolys]  # c++, 19 funcs, name: guess
-      - [0x121090, asm, common/ShiftJIS]  # c++, 7 funcs, name: guess
+      - [0x121090, cpp, common/ShiftJIS]  # c++, 7 funcs, name: guess
       - [0x121418, asm, common/smooth]  # c++, 8 funcs, name: guess
-      - [0x121BB0, asm, common/str]  # c++, 4 funcs, name: guess
+      - [0x121BB0, cpp, common/str]  # c++, 4 funcs, name: guess
       - [0x121EF8, asm, common/TaskManager]  # c++, 11 funcs, name: guess
       - [0x1223B0, cpp, common/td]  # c++, 2 funcs, name: guess
       - [0x122500, asm, common/tex]  # c++, 20 funcs, name: guess
@@ -266,7 +266,7 @@ segments:
       - [0x12C488, cpp, common/ColGrid]  # c++, 5 funcs, name: manual
       - [0x12C5E8, cpp, common/ctx]  # c++, 2 funcs, name: guess
       - [0x12C688, asm, common/DebugDraw]  # c++, 12 funcs, name: guess
-      - [0x12CCD0, asm, common/GenRand]  # c++, 4 funcs, name: guess
+      - [0x12CCD0, cpp, common/GenRand]  # c++, 4 funcs, name: guess
       - [0x12CFF8, cpp, common/ilnk]  # c++, 4 funcs, name: guess
       - [0x12D140, asm, newlib/libm/math/sf_atan]  # c, 1 funcs, name: mdebug
       - [0x12D3E8, asm, newlib/libm/math/sf_ceil]  # c, 1 funcs, name: mdebug
@@ -609,10 +609,10 @@ segments:
       - [0x5F44E0, rodata, common/partdraw]
       - [0x5F4620, rodata, common/particle]
       - [0x5F4720, rodata, common/PointToolKit]
-      - [0x5F4810, rodata, common/videocb]
+      - [0x5F4810, .rodata, common/videocb]
       - [0x5F4830, rodata, common/resetcom]
-      - [0x5F4A70, rodata, common/ShiftJIS]
-      - [0x5F4A88, rodata, common/str]
+      - [0x5F4A70, .rodata, common/ShiftJIS]
+      - [0x5F4A88, .rodata, common/str]
       - [0x5F4B40, rodata, common/blit]
       - [0x5F4BA0, rodata, common/vi]
       - [0x5F4BB8, rodata, common/videodec]

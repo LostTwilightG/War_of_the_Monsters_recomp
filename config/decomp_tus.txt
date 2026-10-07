@@ -18,3 +18,8 @@ common/hdHat
 common/vu
 common/vo
 common/hdLos
+common/PointMass
+common/GenRand
+common/str
+common/videocb
+common/ShiftJIS
