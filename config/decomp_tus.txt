@@ -25,3 +25,5 @@ common/videocb
 common/ShiftJIS
 common/timer
 common/CsPool
+common/TaskManager
+common/AnimQueue
