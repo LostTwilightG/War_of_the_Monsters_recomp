@@ -77,14 +77,14 @@ segments:
       - [0x002BB8, asm, game/AiAction]  # c++, 30 funcs, name: manual
       - [0x003760, asm, game/Ai_2]  # c++, 7 funcs, name: guess
       - [0x005660, cpp, game/AiBrain]  # c++, 4 funcs, name: guess
-      - [0x005BE0, asm, game/AiGrapple]  # c++, 19 funcs, name: manual
+      - [0x005BE0, cpp, game/AiGrapple]  # c++, 19 funcs, name: manual
       - [0x0062B0, cpp, game/AiPadClips]  # c++, 5 funcs, name: guess
       - [0x006518, asm, game/AiPathNet]  # c++, 8 funcs, name: guess
       - [0x006C88, asm, game/AiPathFinder]  # c++, 12 funcs, name: guess
       - [0x0074D0, cpp, game/AiPathTool]  # c++, 7 funcs, name: guess
       - [0x007A40, asm, game/AiReflex]  # c++, 145 funcs, name: manual
       - [0x00DC08, asm, game/AiReset]  # c++, 6 funcs, name: guess
-      - [0x00EFC0, asm, game/AiScript3Mile]  # c++, 7 funcs, name: guess
+      - [0x00EFC0, cpp, game/AiScript3Mile]  # c++, 7 funcs, name: guess
       - [0x00F6F0, asm, game/AiSeek]  # c++, 96 funcs, name: manual
       - [0x013CA8, cpp, game/AiTweaks]  # c++, 3 funcs, name: guess
       - [0x013D38, asm, game/AiNavigator]  # c++, 51 funcs, name: guess
@@ -100,13 +100,13 @@ segments:
       - [0x026620, asm, game/charreset_2]  # c++, 1 funcs, name: guess
       - [0x02B158, asm, game/collision]  # c++, 6 funcs, name: manual
       - [0x02DFA8, cpp, game/CrushLevel]  # c++, 5 funcs, name: guess
-      - [0x02E418, asm, game/db]  # c++, 4 funcs, name: guess
-      - [0x02EAC8, asm, game/DodgeBallLevel]  # c++, 5 funcs, name: guess
+      - [0x02E418, cpp, game/db]  # c++, 4 funcs, name: guess
+      - [0x02EAC8, cpp, game/DodgeBallLevel]  # c++, 5 funcs, name: guess
       - [0x02F1B8, asm, game/Debris]  # c++, 10 funcs, name: guess
       - [0x030280, asm, game/Destructible]  # c++, 19 funcs, name: guess
       - [0x031160, asm, game/EnemyInfo]  # c++, 3 funcs, name: guess
       - [0x031918, asm, game/FinalBoss]  # c++, 12 funcs, name: guess
-      - [0x0343E8, asm, game/FireBreath]  # c++, 7 funcs, name: guess
+      - [0x0343E8, cpp, game/FireBreath]  # c++, 7 funcs, name: guess
       - [0x034A10, asm, game/PedGroup]  # c++, 18 funcs, name: guess
       - [0x036558, asm, game/TheGame]  # c++, 39 funcs, name: guess
       - [0x03A000, cpp, game/GamePad]  # c++, 2 funcs, name: guess
@@ -116,12 +116,12 @@ segments:
       - [0x03CD38, asm, game/GrappleOHAttack]  # c++, 16 funcs, name: manual
       - [0x03DD00, asm, game/GrappleThrow]  # c++, 17 funcs, name: manual
       - [0x03E928, asm, game/HeliPickup]  # c++, 12 funcs, name: guess
-      - [0x03F6A0, asm, game/HeliVehicle]  # c++, 10 funcs, name: guess
+      - [0x03F6A0, cpp, game/HeliVehicle]  # c++, 10 funcs, name: guess
       - [0x03FD40, asm, game/HeliVehicleNav]  # c++, 25 funcs, name: guess
       - [0x041608, asm, game/HomingBug]  # c++, 25 funcs, name: guess
       - [0x043038, asm, game/Hud]  # c++, 26 funcs, name: guess
       - [0x047160, cpp, game/Interactives]  # c++, 10 funcs, name: guess
-      - [0x047450, asm, game/island]  # c++, 7 funcs, name: guess
+      - [0x047450, cpp, game/island]  # c++, 7 funcs, name: guess
       - [0x047B68, asm, game/McFile]  # c++, 59 funcs, name: manual
       - [0x049FC0, asm, game/McPage]  # c++, 70 funcs, name: manual
       - [0x04CA30, asm, game/MilitaryFormation]  # c++, 24 funcs, name: manual
@@ -516,7 +516,7 @@ segments:
       - [0x5E7598, rodata, game/AiAction]
       - [0x5E7720, rodata, game/Ai_2]
       - [0x5E7A10, .rodata, game/AiBrain]
-      - [0x5E7A40, rodata, game/AiGrapple]
+      - [0x5E7A40, .rodata, game/AiGrapple]
       - [0x5E7AC0, .rodata, game/AiPathTool]
       - [0x5E7B40, rodata, game/AiReflex]
       - [0x5E81E0, rodata, game/AiReset]
@@ -531,7 +531,7 @@ segments:
       - [0x5E8B90, rodata, game/charreset]
       - [0x5E8C50, rodata, game/charreset_2]
       - [0x5E8D70, .rodata, game/CrushLevel]
-      - [0x5E8E60, rodata, game/db]
+      - [0x5E8E60, .rodata, game/db]
       - [0x5E8E90, rodata, game/Debris]
       - [0x5E8F60, rodata, game/Destructible]
       - [0x5E8FE0, rodata, game/FinalBoss]

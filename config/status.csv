@@ -3110,8 +3110,8 @@ game/uidev,__10CDevScreen,0x1dd660,80,asm
 game/uidev,__tf14CNetworkScreen,0x1dd6b0,108,asm
 game/uidev,__14CNetworkScreen,0x1dd720,72,asm
 game/uidev,_GLOBAL_$I$devScreen,0x1dd768,32,asm
-game/vegas,vegasInitBefore__Fv,0x1dd788,8,asm
-game/vegas,vegasInitAfter__Fv,0x1dd790,32,asm
+game/vegas,vegasInitBefore__Fv,0x1dd788,8,matched
+game/vegas,vegasInitAfter__Fv,0x1dd790,32,matched
 game/vegas,vegasUpdate__Fv,0x1dd7b0,884,asm
 game/Vehicle,getHatField__Fv,0x1ddb28,96,asm
 game/Vehicle,__7Vehicle,0x1ddb88,136,asm

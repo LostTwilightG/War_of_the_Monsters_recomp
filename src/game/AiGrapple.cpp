@@ -1,0 +1,23 @@
+#include "common.h"
+
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", update__20AiGrappledActionListR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", update__21AiGrapplingActionListR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", __14AiGrappleThrow);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", getEntryRelevance__14AiGrappleThrowR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", getExitRelevance__14AiGrappleThrowR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", enterAction__14AiGrappleThrowR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", updateAction__14AiGrappleThrowR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", exitAction__14AiGrappleThrowR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", __15AiGrappleAttack);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", getEntryRelevance__15AiGrappleAttackR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", getExitRelevance__15AiGrappleAttackR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", enterAction__15AiGrappleAttackR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", updateAction__15AiGrappleAttackR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", exitAction__15AiGrappleAttackR2Ai);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", __tf20AiGrappledActionList);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", __tf21AiGrapplingActionList);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", __tf14AiGrappleThrow);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", __tf15AiGrappleAttack);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", getMaxLevel__12StaminaMeter);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", func_00106230);
+INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", func_00106270);

@@ -69,3 +69,10 @@ game/StickShaker
 game/Vehicle
 game/SpecFxAnim
 game/vegas
+game/FireBreath
+game/HeliVehicle
+game/db
+game/AiGrapple
+game/DodgeBallLevel
+game/island
+game/AiScript3Mile
