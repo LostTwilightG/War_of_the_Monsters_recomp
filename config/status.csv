@@ -2125,9 +2125,9 @@ game/PowerUps,TakeHit__8PowerUpsP7MonsterP3_cs,0x187920,1492,asm
 game/PowerUps,GetClosestPowerUp__8PowerUpsP8_fvectori,0x187ef8,352,asm
 game/PowerUps,startCinema__8PowerUps,0x188058,80,asm
 game/PowerUps,endCinema__8PowerUps,0x1880a8,84,asm
-game/PowerUpTool,loadPoints__11PowerUpToolPcb,0x188100,116,asm
-game/PowerUpTool,init__11PowerUpTooli,0x188178,84,asm
-game/PowerUpTool,exportPoints__11PowerUpTool,0x1881d0,128,asm
+game/PowerUpTool,loadPoints__11PowerUpToolPcb,0x188100,116,matched
+game/PowerUpTool,init__11PowerUpTooli,0x188178,84,matched
+game/PowerUpTool,exportPoints__11PowerUpTool,0x1881d0,128,matched
 game/PowerUpTool,__static_initialization_and_destruction_0,0x188250,40,asm
 game/PowerUpTool,__tf11PowerUpTool,0x188278,80,asm
 game/PowerUpTool,__11PowerUpTool,0x1882c8,20,asm
