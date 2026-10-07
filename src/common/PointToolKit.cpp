@@ -1,47 +1,5 @@
 #include "common.h"
-
-/* Virtual members (init, loadPoints, exportPoints), the ctor, __tf and the vtable stay as asm: the vtable is
-   emitted with the first virtual function, so defining those here would duplicate it. */
-class PointToolKit {
-public:
-    struct Point {
-        char data[0x10];
-        int numPaths;
-        int paths[11];
-    };
-
-    Point points[256];
-    int numPoints;
-    int view;
-    float *mat;
-    float *trans;
-    float f4010;
-    char pad4014[0xC];
-    int reticleX;
-    float reticleY;
-    int reticleZ;
-    char pad402C[4];
-    int f4030;
-    float pointHeight;
-    float pointWidth;
-    float pointMoveStep;
-    float reticleMoveStep;
-    void *vptr;
-
-    void init(int v);
-    void loadPoints(char *name, bool b);
-    void resetReticle(void);
-    Point *getPoint(int i);
-    int getPathType(Point *a, Point *b);
-    int hasPath(Point *a, Point *b);
-    int getPointIndex(Point *p);
-    void setPointHeight(float h);
-    void setPointWidth(float w);
-    void setPointMoveStep(float s);
-    void setReticleMoveStep(float s);
-    void exportPoints(void);
-    int getNumPoints(void);
-};
+#include "point_tool_kit.h"
 
 INCLUDE_ASM("asm/nonmatchings/common/PointToolKit", init__12PointToolKiti);
 INCLUDE_ASM("asm/nonmatchings/common/PointToolKit", loadPoints__12PointToolKitPcb);

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "point_tool_kit.h"
 #include "game/shell.h"
 #include "hieri_types.h"
 #include "game/game.h"
@@ -23,12 +24,8 @@ public:
     void addPoint(unsigned char type, _fvector *pos, float angle, bool b);
 };
 
-/* PointToolKit is the base in retail (init/getPoint/loadPoints live in common); its layout is flattened here. */
-class StartPointTool {
+class StartPointTool : public PointToolKit {
 public:
-    StartPointData points[256];
-    int numPoints;
-    char pad4004[0x4050 - 0x4004];
     void *levelData;
 
     void init(int i) __asm__("init__14StartPointTooli");
@@ -37,9 +34,6 @@ public:
     unsigned char degreesToData(float d);
     float dataToDegrees(unsigned char c);
 };
-void PointToolKitInit(StartPointTool *t, int i) __asm__("init__12PointToolKiti");
-StartPointData *PointToolKitGetPoint(StartPointTool *t, int i) __asm__("getPoint__12PointToolKiti");
-void PointToolKitLoad(StartPointTool *t, char *name, bool b) __asm__("loadPoints__12PointToolKitPcb");
 
 INCLUDE_ASM("asm/nonmatchings/game/StartPointTool", _vt$14StartPointTool);
 void StartPointTool::loadPoints(void)
@@ -49,11 +43,11 @@ void StartPointTool::loadPoints(void)
 
     Shell::formatFilename(path, fmt, shell->GetLevelName(), D_006F8328);
     StartPoints::m_instance.clear();
-    PointToolKitLoad(this, path, true);
+    PointToolKit::loadPoints(path, true);
 }
 void StartPointTool::init(int i)
 {
-    PointToolKitInit(this, 0);
+    PointToolKit::init(0);
     levelData = gameSlotBase(game->m_levelIdx);
 }
 void StartPointTool::exportPoints(void)
@@ -63,7 +57,7 @@ void StartPointTool::exportPoints(void)
     int n;
 
     sp->clear();
-    p = PointToolKitGetPoint(this, 0);
+    p = (StartPointData *)getPoint(0);
     for (n = numPoints; n != 0; n--, p++)
     {
         float a = dataToDegrees(p->angle);

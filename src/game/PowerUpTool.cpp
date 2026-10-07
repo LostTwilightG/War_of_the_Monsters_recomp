@@ -1,4 +1,5 @@
 #include "common.h"
+#include "point_tool_kit.h"
 #include "game/shell.h"
 #include "hieri_types.h"
 #include "game/game.h"
@@ -21,12 +22,8 @@ public:
     void CreatePowerUp(int type, unsigned char arg, _fvector *pos);
 };
 
-/* PointToolKit is the base in retail (init/getPoint live in common); its layout is flattened here. */
-class PowerUpTool {
+class PowerUpTool : public PointToolKit {
 public:
-    PowerUpPoint points[256];
-    int numPoints;
-    char pad4004[0x4050 - 0x4004];
     void *levelData;
 
     void init(int i) __asm__("init__11PowerUpTooli");
@@ -35,7 +32,6 @@ public:
 };
 
 INCLUDE_ASM("asm/nonmatchings/game/PowerUpTool", _vt$11PowerUpTool);
-void PointToolKitLoad(PowerUpTool *t, char *name, bool b) __asm__("loadPoints__12PointToolKitPcb");
 void PowerUpTool::loadPoints(char *name, bool b)
 {
     char path[0x20];
@@ -44,13 +40,11 @@ void PowerUpTool::loadPoints(char *name, bool b)
     if (!name)
         name = shell->GetLevelName();
     Shell::formatFilename(path, fmt, name, D_006F7E18);
-    PointToolKitLoad(this, path, b);
+    PointToolKit::loadPoints(path, b);
 }
-void PointToolKitInit(PowerUpTool *t, int i) __asm__("init__12PointToolKiti");
-PowerUpPoint *PointToolKitGetPoint(PowerUpTool *t, int i) __asm__("getPoint__12PointToolKiti");
 void PowerUpTool::init(int i)
 {
-    PointToolKitInit(this, 0);
+    PointToolKit::init(0);
     levelData = gameSlotBase(game->m_levelIdx);
 }
 void PowerUpTool::exportPoints(void)
@@ -60,7 +54,7 @@ void PowerUpTool::exportPoints(void)
     int n;
 
     pu->KillPowerUps();
-    p = PointToolKitGetPoint(this, 0);
+    p = (PowerUpPoint *)getPoint(0);
     for (n = numPoints; n != 0; n--, p++)
         pu->CreatePowerUp(p->type, p->arg, (_fvector *)p);
 }

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "point_tool_kit.h"
 #include "game/shell.h"
 #include "hieri_types.h"
 #include "game/game.h"
@@ -36,12 +37,8 @@ struct PathPoint {
     char pad39[0x40 - 0x39];
 };
 
-/* PointToolKit is the base in retail; its layout is flattened here. */
-class PathTool {
+class PathTool : public PointToolKit {
 public:
-    PathPoint points[256];
-    int numPoints;
-    char pad4004[0x4050 - 0x4004];
     PathNetOut *net;
     char *name;
     char pad4058[4];
@@ -51,9 +48,6 @@ public:
     void loadPoints(char *n, bool b);
     void exportPoints(void);
 };
-void PointToolKitInit(PathTool *t, int i) __asm__("init__12PointToolKiti");
-PathPoint *PointToolKitGetPoint(PathTool *t, int i) __asm__("getPoint__12PointToolKiti");
-void PointToolKitLoad(PathTool *t, char *name, bool b) __asm__("loadPoints__12PointToolKitPcb");
 
 INCLUDE_ASM("asm/nonmatchings/game/PathTool", _vt$8PathTool);
 void PathTool::loadPoints(char *n, bool b)
@@ -61,18 +55,18 @@ void PathTool::loadPoints(char *n, bool b)
     char path[0x20];
     char *fmt = D_006F7DC8;
 
-    PointToolKitLoad(this, (Shell::formatFilename(path, fmt, n ? n : shell->GetLevelName(), name), path), b);
+    PointToolKit::loadPoints((Shell::formatFilename(path, fmt, n ? n : shell->GetLevelName(), name), path), b);
 }
 void PathTool::init(int i)
 {
-    PointToolKitInit(this, 0);
+    PointToolKit::init(0);
     levelData = gameSlotBase(game->m_levelIdx);
 }
 #ifdef NON_MATCHING
 /* 7/99 words, untuned */
 void PathTool::exportPoints(void)
 {
-    PathPoint *p = PointToolKitGetPoint(this, 0);
+    PathPoint *p = (PathPoint *)getPoint(0);
     PathNodeOut *n;
     int count = 256;
 
