@@ -29,15 +29,33 @@ base = orig.replace(line, '')
 asm_lines = [m for m in re.finditer(r'INCLUDE_ASM\([^\n]*\n', base)]
 spots = [0] + [m.end() for m in asm_lines]
 spots = sorted({0} | {m.end() for m in asm_lines})
-for pos in spots:
-    # insert after the include line / at the file start, only at statement boundaries
+
+def build_with(pos):
     text = base[:pos] + line + base[pos:] if pos else base.replace('\n\n', '\n\n' + line, 1)
     path.write_text(text)
     subprocess.run(['ninja', 'build/SCUS_971.97.elf'], cwd=ROOT, capture_output=True, text=True)
-    mine = addr('build/SCUS_971.97.elf')
-    print(pos, mine, 'retail', want, flush=True)
-    if mine is not None and mine == want:
-        print('placed')
-        sys.exit(0)
+    return addr('build/SCUS_971.97.elf')
+
+# The symbol address grows with the number of rodata-bearing stubs placed before it, so binary-search the first
+# position whose address reaches the retail one (a linear scan needs one build per position).
+lo, hi = 0, len(spots) - 1
+found = None
+while lo <= hi:
+    mid = (lo + hi) // 2
+    mine = build_with(spots[mid])
+    print(spots[mid], mine, 'retail', want, flush=True)
+    if mine is None:
+        break
+    if mine == want:
+        found = mid
+        hi = mid - 1
+    elif mine < want:
+        lo = mid + 1
+    else:
+        hi = mid - 1
+if found is not None:
+    build_with(spots[found])
+    print('placed')
+    sys.exit(0)
 path.write_text(orig)
 sys.exit('no position matched')
