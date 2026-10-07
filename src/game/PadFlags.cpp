@@ -1,0 +1,23 @@
+#include "common.h"
+
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", __8PadFlags);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", init__8PadFlagsP7Monster);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", setCurrentAction__8PadFlags13ButtonActions13MappedActions);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", pushAction__8PadFlags13ButtonActions13MappedActions);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", nextButtonAction__8PadFlags);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", nextMappedAction__8PadFlags);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", popAction__8PadFlags);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", clear__8PadFlagsii);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", saveAndClear__8PadFlagsi);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", clearModifiers__8PadFlags);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", __vc__8PadFlagsi);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", interpretInputs__8PadFlagsR7GamePad);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", computeMotionVec__8PadFlagsR8_fvector);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", computeMotionRot__8PadFlags);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", updateViewChanges__8PadFlagsR7GamePad);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", okToChangeMap__8PadFlags);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", dashDoubleTap__8PadFlagsR7GamePad);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", checkCombos__8PadFlagsR7GamePad);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", checkTaunt__8PadFlags);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", clearSecretCode__8PadFlags);
+INCLUDE_ASM("asm/nonmatchings/game/PadFlags", clearCombo__8PadFlags);

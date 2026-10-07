@@ -87,12 +87,12 @@ segments:
       - [0x00EFC0, cpp, game/AiScript3Mile]  # c++, 7 funcs, name: guess
       - [0x00F6F0, asm, game/AiSeek]  # c++, 96 funcs, name: manual
       - [0x013CA8, cpp, game/AiTweaks]  # c++, 3 funcs, name: guess
-      - [0x013D38, asm, game/AiNavigator]  # c++, 51 funcs, name: guess
+      - [0x013D38, cpp, game/AiNavigator]  # c++, 51 funcs, name: guess
       - [0x017B58, asm, game/airport]  # c++, 19 funcs, name: guess
       - [0x0198F0, cpp, game/AnimContact]  # c++, 9 funcs, name: guess
       - [0x019D00, asm, game/BigShotLevel]  # c++, 16 funcs, name: guess
       - [0x01B500, cpp, game/BoneSpring]  # c++, 2 funcs, name: guess
-      - [0x01B790, asm, game/Cameras]  # c++, 47 funcs, name: guess
+      - [0x01B790, cpp, game/Cameras]  # c++, 47 funcs, name: guess
       - [0x0213F0, asm, game/canyon2]  # c++, 13 funcs, name: manual
       - [0x022568, cpp, game/CarPickup]  # c++, 11 funcs, name: guess
       - [0x022958, cpp, game/central]  # c++, 3 funcs, name: guess
@@ -139,7 +139,7 @@ segments:
       - [0x06E088, cpp, game/MonsterTweaks]  # c++, 5 funcs, name: guess
       - [0x06E158, asm, game/MovementStates]  # c++, 95 funcs, name: manual
       - [0x076DF0, cpp, game/OgreMace]  # c++, 4 funcs, name: guess
-      - [0x077680, asm, game/PadFlags]  # c++, 21 funcs, name: guess
+      - [0x077680, cpp, game/PadFlags]  # c++, 21 funcs, name: guess
       - [0x078D58, asm, game/PadFlags_2]  # c++, 4 funcs, name: guess
       - [0x07AEF8, asm, game/PadFlags_3]  # c++, 4 funcs, name: guess
       - [0x07CFD0, asm, game/PadFlags_4]  # c++, 4 funcs, name: guess
@@ -521,11 +521,11 @@ segments:
       - [0x5E7B40, rodata, game/AiReflex]
       - [0x5E81E0, rodata, game/AiReset]
       - [0x5E8450, rodata, game/AiSeek]
-      - [0x5E8810, rodata, game/AiNavigator]
+      - [0x5E8810, .rodata, game/AiNavigator]
       - [0x5E8830, rodata, game/airport]
       - [0x5E88C0, .rodata, game/AnimContact]
       - [0x5E8930, rodata, game/BigShotLevel]
-      - [0x5E8A28, rodata, game/Cameras]
+      - [0x5E8A28, .rodata, game/Cameras]
       - [0x5E8AB0, rodata, game/canyon2]
       - [0x5E8B10, .rodata, game/CarPickup]
       - [0x5E8B90, rodata, game/charreset]

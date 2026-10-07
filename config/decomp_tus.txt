@@ -89,3 +89,6 @@ game/MissileTruckPickup
 game/HeliPickup
 game/UfoPickup
 game/TheGame
+game/PadFlags
+game/Cameras
+game/AiNavigator
