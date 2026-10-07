@@ -1,16 +1,74 @@
 #include "common.h"
+#include "hieri_types.h"
+
+/* CarPickup is a virtual class (vtable, ctor and __tf stay as asm). The members below are written without the
+   `virtual` keyword so that this file does not emit a second vtable; fields are reached by raw offset. */
+void hdReparentCsGrid(_cs *cs);
+
+class CarSound {
+public:
+    void terminateCarSound(void);
+};
+
+class Pickup {
+public:
+    void kill(void);
+    void grab(int i);
+    void setVisualState(int s);
+    void hatCheck(void);
+};
+
+class CarPickup : public Pickup {
+public:
+    void takeHit(_fvector *pos, float dmg, int x);
+    void kill(void);
+    void grab(int i);
+    void drop(void);
+    char *getVehicle(void);
+};
 
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", _vt$9CarPickup);
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", __9CarPickup);
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", initAfterDbLoad__9CarPickup);
-INCLUDE_ASM("asm/nonmatchings/game/CarPickup", takeHit__9CarPickupP8_fvectorfi);
+void CarPickup::takeHit(_fvector *pos, float dmg, int x)
+{
+    *(float *)((char *)this + 0x48) -= dmg;
+}
+#ifdef NON_MATCHING
+/* 14/16 words, untuned */
+void CarPickup::kill(void)
+{
+    _cs *cs = *(_cs **)((char *)this + 0xC);
+
+    cs->drawMe = 0;
+    cs = *(_cs **)((char *)this + 0xC);
+    cs->testCollision = 0;
+    ((CarSound *)((char *)this + 0x170))->terminateCarSound();
+    Pickup::kill();
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", kill__9CarPickup);
-INCLUDE_ASM("asm/nonmatchings/game/CarPickup", grab__9CarPickupi);
-INCLUDE_ASM("asm/nonmatchings/game/CarPickup", drop__9CarPickup);
+#endif
+void CarPickup::grab(int i)
+{
+    Pickup::grab(i);
+    *(int *)((char *)this + 0x260) = 0;
+    ((CarSound *)((char *)this + 0x170))->terminateCarSound();
+}
+void CarPickup::drop(void)
+{
+    *(int *)((char *)this + 0xD8) = 0;
+    Pickup::setVisualState(0);
+    Pickup::hatCheck();
+    hdReparentCsGrid(*(_cs **)((char *)this + 0xC));
+}
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", update__9CarPickup);
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", regen__9CarPickup);
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", updateInputs__9CarPickupR7GamePad);
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", func_001228C8);
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", func_001228D8);
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", __tf9CarPickup);
-INCLUDE_ASM("asm/nonmatchings/game/CarPickup", getVehicle__9CarPickup);
+char *CarPickup::getVehicle(void)
+{
+    return (char *)this + 0x180;
+}
