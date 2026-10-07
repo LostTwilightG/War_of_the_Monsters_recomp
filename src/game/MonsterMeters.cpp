@@ -1,4 +1,5 @@
 #include "common.h"
+#include "game/stamina_meter.h"
 #include "game/game.h"
 
 class HealthMeter {
@@ -17,32 +18,6 @@ public:
 };
 
 extern float gLowStaminaThreshold;
-
-/* Stamina bar. `exhausted` is set when it hits zero; while exhausted the bar refills through a separate pool
-   (recoverPool) and a countdown (exhaustTimer) until it passes gLowStaminaThreshold * max. */
-class StaminaMeter {
-public:
-    float max;
-    float regenRate;
-    float f8;
-    float fC;
-    float cur;
-    float recoverPool;
-    int exhaustTimer;
-    int exhaustTime;
-    int exhausted;
-    int enabled;
-    char *owner;
-
-    StaminaMeter();
-    void init(void);
-    void reset(void);
-    void update(int dt);
-    void creditFull(void);
-    void creditBaseOnly(float amount);
-    void credit(float amount);
-    int hasEnough(float amount);
-};
 
 HealthMeter::HealthMeter()
 {
@@ -91,7 +66,7 @@ void StaminaMeter::init(void)
     enabled = 1;
     max = 100.0f;
     regenRate = 0.08f;
-    f8 = 130.0f;
+    maxLevel = 130.0f;
     fC = 0.5f;
     exhaustTime = 360;
 }
@@ -119,7 +94,7 @@ void StaminaMeter::update(int dt)
 }
 void StaminaMeter::creditFull(void)
 {
-    credit(f8);
+    credit(maxLevel);
 }
 #ifdef NON_MATCHING
 /* 23/47 words, untuned: branch layout */

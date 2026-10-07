@@ -1,23 +1,14 @@
 #include "common.h"
+#include "game/stamina_meter.h"
 #include "game/game.h"
 #include "engine.h"
 
 struct DbInteractive;
 
-class StaminaMeter {
-public:
-    char pad0[8];
-    float maxLevel;
-    char padC[4];
-    float level;
-
-    float getMaxLevel(void);
-};
-
 struct GrappleMonster {
     char pad0[0x460];
     StaminaMeter stamina;
-    char pad474[0x68B4 - 0x474];
+    char pad48C[0x68B4 - 0x48C];
     void *target;
 };
 
@@ -86,7 +77,7 @@ INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", __14AiGrappleThrow);
 float AiGrappleThrow::getEntryRelevance(Ai &ai)
 {
     StaminaMeter *m = &ai.monster->stamina;
-    float lvl = m->level;
+    float lvl = m->cur;
     float r = lvl / m->getMaxLevel();
     float t = 1.0f - r * r;
 
