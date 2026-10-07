@@ -164,8 +164,8 @@ game/AiPathFinder,popBest__Q212AiPathFinder8OpenList,0x1073f8,68,asm
 game/AiPathFinder,find__Q212AiPathFinder8OpenListP6AiPath,0x107440,52,asm
 game/AiPathFinder,init__Q212AiPathFinder10GlobalListi,0x107478,72,asm
 game/AiPathFinder,init__9BidirLink,0x1074c0,12,asm
-game/AiPathTool,init__10AiPathTooli,0x1074d0,84,asm
-game/AiPathTool,loadPoints__10AiPathToolPcb,0x107528,112,asm
+game/AiPathTool,init__10AiPathTooli,0x1074d0,84,matched
+game/AiPathTool,loadPoints__10AiPathToolPcb,0x107528,112,matched
 game/AiPathTool,exportPoints__10AiPathTool,0x107598,964,asm
 game/AiPathTool,__static_initialization_and_destruction_0,0x107960,80,asm
 game/AiPathTool,__tf10AiPathTool,0x1079b0,80,asm
@@ -1984,7 +1984,7 @@ game/PathNet,getRandNode__7PathNet,0x17ed58,64,equivalent
 game/PathNet,getClosestNode__7PathNetR8_fvectori,0x17ed98,140,equivalent
 game/PathNet,getClosestPath__7PathNetR8_fvectorRii,0x17ee28,372,asm
 game/PathNet,getClosestPath__7PathNetR8_fvectorT1Rii,0x17efa0,280,asm
-game/PathTool,loadPoints__8PathToolPcb,0x17f0b8,112,equivalent
+game/PathTool,loadPoints__8PathToolPcb,0x17f0b8,112,matched
 game/PathTool,init__8PathTooli,0x17f128,84,matched
 game/PathTool,exportPoints__8PathTool,0x17f180,364,equivalent
 game/PathTool,__static_initialization_and_destruction_0,0x17f2f0,80,asm

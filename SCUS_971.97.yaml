@@ -179,7 +179,7 @@ segments:
       - [0x0D8560, asm, game/UfoPickup]  # c++, 13 funcs, name: guess
       - [0x0D93D8, asm, game/ui]  # c++, 16 funcs, name: guess
       - [0x0DAF08, asm, game/uidev]  # c++, 81 funcs, name: manual
-      - [0x0DD788, asm, game/vegas]  # c++, 3 funcs, name: guess
+      - [0x0DD788, cpp, game/vegas]  # c++, 3 funcs, name: guess
       - [0x0DDB28, cpp, game/Vehicle]  # c++, 10 funcs, name: guess
       - [0x0DE0B8, asm, game/VehicleNavigator]  # c++, 27 funcs, name: guess
       - [0x0DFF10, asm, game/WaterGrid]  # c++, 5 funcs, name: guess

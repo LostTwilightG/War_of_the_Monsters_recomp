@@ -68,3 +68,4 @@ game/MonsterMeters
 game/StickShaker
 game/Vehicle
 game/SpecFxAnim
+game/vegas
