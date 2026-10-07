@@ -25,8 +25,9 @@ EXISTING = {
     0xF9: ('unsigned char', 'm_unkF9', 1), 0x44C: ('float', 'm_health', 4), 0x460: ('StaminaMeter', 'm_stamina', 0x2C),
     0x5040: ('PadFlags', 'm_padFlags', 0x1814), 0x68B4: ('void *', 'm_target', 4), 0x7970: ('int', 'm_camUnify', 4),
     0x10E70: ('char', 'm_victoryState[1]', 1),
+    0x4A: ('signed char', 'm_attacksEnabled', 1), 0xF1: ('signed char', 'm_turning', 1), 0x280: ('signed char', 'm_freeFalling', 1),
     0x34: ('int *', 'm_state', 4), 0x38: ('int *', 'm_prevState', 4), 0xB4: ('float', 'm_bodyHeight', 4),
-    0xEF: ('signed char', 'm_cloaked', 1), 0x1A3C: ('char *', 'm_shadow', 4), 0x846C: ('Monster *', 'm_killer', 4),
+    0xEF: ('signed char', 'm_cloaked', 1), 0x1A3C: ('_cs *', 'm_shadow', 4), 0x846C: ('Monster *', 'm_killer', 4),
     0x4B0: ('int', 'm_healthGlow[3]', 12), 0x4BC: ('int', 'm_staminaGlow[3]', 12),
     0x6CC4: ('float', 'm_beingShockedCount', 4), 0x6CC8: ('float', 'm_beingShockedDamage', 4), 0x6CD4: ('int', 'm_cameraFollows', 4),
     0x6CD8: ('int', 'm_cameraView', 4),
@@ -69,12 +70,17 @@ def parse():
             continue
         func, const, rest = m.groups()
         a = re.match(r'\$(\w+), (0x[0-9A-Fa-f]+|\d+)\(\$a0\)$', args.strip())
-        if op in LOADS and a and a.group(1) in ('v0', 'f0') and not rest:
+        ad = re.match(r'\$v0, \$a0, (0x[0-9A-Fa-f]+|\d+)$', args.strip()) if op == 'addiu' else None
+        if ad and not rest:
+            out.append((func, mangled, bool(const), 'addr', 'void *', 4, int(ad.group(1), 0), None))
+        elif op in LOADS and a and a.group(1) in ('v0', 'f0') and not rest:
             ct, sz = LOADS[op]
             out.append((func, mangled, bool(const), 'get', ct, sz, int(a.group(2), 0), None))
-        elif op in STORES and a and a.group(1) in ('a1', 'f12') and rest in PARAM:
+        elif op in STORES and a and a.group(1) in ('a1', 'f12') and (rest in PARAM or re.match(r'^P\d+\w+$', rest)):
             ct, sz = STORES[op]
-            out.append((func, mangled, bool(const), 'set', ct, sz, int(a.group(2), 0), PARAM[rest]))
+            pm = re.match(r'^P(\d+)(\w+)$', rest)
+            pt = (pm.group(2)[:int(pm.group(1))] + ' *') if pm else PARAM[rest]
+            out.append((func, mangled, bool(const), 'set', ct, sz, int(a.group(2), 0), pt))
     return out
 
 
@@ -84,7 +90,7 @@ def main():
     names = {v[1]: k for k, v in EXISTING.items()}
     skipped = []
     for func, mangled, const, kind, ct, sz, off, pt in acc:
-        if off in fields:
+        if kind == 'addr' or off in fields:
             continue
         if any(o < off + sz and off < o + s2 for o, (_, _, s2) in fields.items()):
             skipped.append((func, hex(off), 'overlaps'))
@@ -94,27 +100,33 @@ def main():
             nm = f'{nm}_{off:X}'
         fields[off] = (ct, nm, sz)
         names[nm] = off
-    code = []
+    # a setter taking a pointer retypes an int field to that pointer type
+    fwd = set()
     for func, mangled, const, kind, ct, sz, off, pt in acc:
+        if kind == 'set' and pt and pt.endswith('*') and off in fields and fields[off][0] == 'int':
+            fields[off] = (pt.strip(), fields[off][1], 4)
+            fwd.add(pt.strip()[:-1].strip())
+    code, decl = [], []
+    for func, mangled, const, kind, ct, sz, off, pt in acc:
+        cq = ' const' if const else ''
+        if kind == 'addr':
+            code.append((mangled, f'void *Monster::{func}(void){cq}\n{{\n    return (char *)this + 0x{off:X};\n}}\n'))
+            decl.append(f'    void *{func}(void){cq};')
+            continue
         if off not in fields:
             continue
         fct, fnm, fsz = fields[off]
         if kind == 'get':
-            code.append((mangled, f'{fct if fct != "char" else "char"} Monster::{func}(void){" const" if const else ""}\n{{\n    return {fnm};\n}}\n'))
+            code.append((mangled, f'{fct} Monster::{func}(void){cq}\n{{\n    return {fnm};\n}}\n'))
+            decl.append(f'    {fct} {func}(void){cq};')
         else:
             code.append((mangled, f'void Monster::{func}({pt} v)\n{{\n    {fnm} = v;\n}}\n'))
-    decl = []
-    for func, mangled, const, kind, ct, sz, off, pt in acc:
-        if off not in fields:
-            continue
-        fct = fields[off][0]
-        decl.append(f'    {fct} {func}(void){" const" if const else ""};' if kind == 'get' else f'    void {func}({pt} v);')
+            decl.append(f'    void {func}({pt} v);')
     print(f'{len(acc)} accessors, {len(fields) - len(EXISTING)} new fields, skipped: {skipped}')
     if '--apply' not in sys.argv:
         for off in sorted(fields):
             print(f'  0x{off:X} {fields[off][0]} {fields[off][1]}')
         return
-    # class body
     lines = []
     cur = 0
     for off in sorted(fields):
@@ -128,17 +140,29 @@ def main():
     h = HDR.read_text()
     a = h.index('class Monster {')
     b = h.index('typedef char _size_Monster', a)
-    cls = ('class Monster {\npublic:\n'
-           '    void drainSpecial();\n    void enterNewState(MonsterState *state);\n    void takeDamage(float dmg, bool b, Monster *src);\n'
-           '    void initAfterDbLoad(void);\n    void update(void);\n    void updateCinema(void);\n    void updatePosition(void);\n'
-           + '\n'.join(sorted(set(decl))) + '\n\n' + '\n'.join(lines) + '\n};\n')
-    HDR.write_text(h[:a] + cls + h[b:])
+    old = h[a:b]
+    # keep the hand-written method declarations (everything before the first "/* 0x" field line)
+    keep = []
+    for ln in old.splitlines()[2:]:
+        if '/* 0x' in ln or ln.strip().startswith('char pad'):
+            break
+        if ln.strip().endswith(';') and '(' in ln:
+            keep.append(ln.rstrip())
+    allm = {}
+    for ln in keep + decl:
+        m = re.search(r'(\w+)\(', ln)
+        allm[m.group(1)] = ln          # newest wins
+    fwdtxt = ''.join(f'class {t};\n' for t in sorted(fwd) if t not in ('Monster', 'void', '_cs', 'char'))
+    cls = ('class Monster {\npublic:\n' + '\n'.join(allm.values()) + '\n\n' + '\n'.join(lines) + '\n};\n')
+    pre = h[:a]
+    if fwdtxt and fwdtxt not in pre:
+        pre = pre.replace('enum ePickupType', fwdtxt + 'enum ePickupType', 1)
+    HDR.write_text(pre + cls + h[b:])
     cpp = CPP.read_text()
     for mangled, fn in code:
         line = f'INCLUDE_ASM("asm/nonmatchings/game/Monster", {mangled});\n'
         if line in cpp:
             cpp = cpp.replace(line, fn)
-    cpp = cpp.replace('#include "common.h"\n', '#include "common.h"\n#include "game/game.h"\n', 1) if '#include "game/game.h"' not in cpp else cpp
     CPP.write_text(cpp)
     print('applied')
 

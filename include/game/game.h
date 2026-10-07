@@ -13,6 +13,9 @@
 
 class MonsterState;
 
+class AiPath;
+class PlayerDat;
+class _fvector;
 enum ePickupType { PICKUP_TYPE_0 };
 
 class Monster {
@@ -48,7 +51,7 @@ public:
     void update(void);
     void updateCinema(void);
     void updatePosition(void);
-    char * getShadow(void);
+    _cs * getShadow(void);
     float getAimHeading(void) const;
     float getAimPitch(void) const;
     float getBeingShockedCount(void) const;
@@ -86,15 +89,15 @@ public:
     float getWidth(void) const;
     int * getState(void);
     int getAutoLeadMovesReticle(void);
-    int getBeamVictim(void);
+    Monster * getBeamVictim(void);
     int getCamIdleCircuitTime(void) const;
     int getCameraThatFollows(void) const;
-    int getClosestPath(void);
+    AiPath * getClosestPath(void);
     int getDupId(void) const;
     int getFallTime(void) const;
     int getFallTimeBeforePitch(void) const;
-    int getGrappleAttempt(void);
-    int getGrappler(void);
+    Monster * getGrappleAttempt(void);
+    Monster * getGrappler(void);
     int getHudTexture(void);
     int getImpaler(void);
     int getIndex(void) const;
@@ -108,12 +111,12 @@ public:
     int getPickup(void);
     int getPinTarget(void);
     int getPlayerAiOrFodderNum(void) const;
-    int getPlayerInfo(void);
-    int getReticleCS(void);
+    PlayerDat * getPlayerInfo(void);
+    _cs * getReticleCS(void);
     int getReticleState(void) const;
     int getReverseImpaler(void);
     int getSkinNum(void) const;
-    int getStickyReticleCS(void);
+    _cs * getStickyReticleCS(void);
     int getType(void) const;
     int getWinsThisGame(void) const;
     void * getGrapplee(void);
@@ -145,6 +148,33 @@ public:
     void setTypeOfMonster(int v);
     void setVulnerable(bool v);
     void setWinsThisGame(int v);
+    void *getAi(void);
+    void *getDynamics(void);
+    void *getFireBreath(void);
+    void *getFootHDResult(void);
+    void *getHealthMeter(void);
+    void *getLeadVec(void);
+    void *getLookAtTrans(void);
+    void *getMonsterSound(void);
+    void *getMotionRot(void);
+    void *getPinTrans(void);
+    void *getPrevMat(void);
+    void *getPrevTrans(void);
+    void *getReticleLosResult(void);
+    void *getShadowHDResult(void);
+    void *getStaminaMeter(void);
+    void *getVel(void);
+    void setBeamVictim(Monster * v);
+    void setClosestPath(AiPath * v);
+    void setCs(_cs * v);
+    void setGrappleAttempt(Monster * v);
+    void setGrapplee(Monster * v);
+    void setGrappler(Monster * v);
+    void setLookAtOverride(_fvector * v);
+    void setPlayerInfo(PlayerDat * v);
+    void setReticleCS(_cs * v);
+    void setShadow(_cs * v);
+    void setStickyReticleCS(_cs * v);
 
     char pad0[0xC - 0x0];
     _cs * m_cs;   /* 0xC */
@@ -213,12 +243,14 @@ public:
     int m_healthGlow[3];   /* 0x4B0 */
     int m_staminaGlow[3];   /* 0x4BC */
     char pad4C8[0x4D8 - 0x4C8];
-    int m_playerInfo;   /* 0x4D8 */
+    PlayerDat * m_playerInfo;   /* 0x4D8 */
     char pad4DC[0x1A10 - 0x4DC];
-    int m_closestPath;   /* 0x1A10 */
+    AiPath * m_closestPath;   /* 0x1A10 */
     char pad1A14[0x1A3C - 0x1A14];
-    char * m_shadow;   /* 0x1A3C */
-    char pad1A40[0x5040 - 0x1A40];
+    _cs * m_shadow;   /* 0x1A3C */
+    char pad1A40[0x3120 - 0x1A40];
+    _fvector * m_lookAtOverride;   /* 0x3120 */
+    char pad3124[0x5040 - 0x3124];
     PadFlags m_padFlags;   /* 0x5040 */
     char pad6854[0x6868 - 0x6854];
     int m_hudTexture;   /* 0x6868 */
@@ -227,10 +259,10 @@ public:
     int m_pickup;   /* 0x68A4 */
     int m_impaler;   /* 0x68A8 */
     int m_reverseImpaler;   /* 0x68AC */
-    int m_grappler;   /* 0x68B0 */
+    Monster * m_grappler;   /* 0x68B0 */
     void * m_target;   /* 0x68B4 */
-    int m_grappleAttempt;   /* 0x68B8 */
-    int m_beamVictim;   /* 0x68BC */
+    Monster * m_grappleAttempt;   /* 0x68B8 */
+    Monster * m_beamVictim;   /* 0x68BC */
     char pad68C0[0x697C - 0x68C0];
     int m_launchDelay;   /* 0x697C */
     int m_launchCounter;   /* 0x6980 */
@@ -248,8 +280,8 @@ public:
     char pad6AA8[0x6B18 - 0x6AA8];
     float m_puDurationMod[28];   /* 0x6B18 */
     float m_puSpeedMod[28];   /* 0x6B88 */
-    int m_reticleCS;   /* 0x6BF8 */
-    int m_stickyReticleCS;   /* 0x6BFC */
+    _cs * m_reticleCS;   /* 0x6BF8 */
+    _cs * m_stickyReticleCS;   /* 0x6BFC */
     char pad6C00[0x6C04 - 0x6C00];
     int m_pinTarget;   /* 0x6C04 */
     float m_pinTime;   /* 0x6C08 */

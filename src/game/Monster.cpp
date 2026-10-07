@@ -99,16 +99,37 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", updateTurn__7Monsterb);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateMove__7Monsterb);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", stopFireBreath__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", putOutFire__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getMotionRot__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPrevTrans__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPrevMat__7Monster);
+void *Monster::getMotionRot(void)
+{
+    return (char *)this + 0xA0;
+}
+void *Monster::getPrevTrans(void)
+{
+    return (char *)this + 0x90;
+}
+void *Monster::getPrevMat(void)
+{
+    return (char *)this + 0x50;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getLocatorTrans__7Monsteri);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getLocatorMat__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getPinTrans__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getLookAtTrans__7Monster);
+void *Monster::getPinTrans(void)
+{
+    return (char *)this + 0x3E30;
+}
+void *Monster::getLookAtTrans(void)
+{
+    return (char *)this + 0x3E80;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getAnim__7Monster11MonsterAnim);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getDynamics__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getVel__7Monster);
+void *Monster::getDynamics(void)
+{
+    return (char *)this + 0x100;
+}
+void *Monster::getVel(void)
+{
+    return (char *)this + 0x260;
+}
 int Monster::getPickup(void)
 {
     return m_pickup;
@@ -125,15 +146,15 @@ void * Monster::getGrapplee(void)
 {
     return m_target;
 }
-int Monster::getGrappler(void)
+Monster * Monster::getGrappler(void)
 {
     return m_grappler;
 }
-int Monster::getGrappleAttempt(void)
+Monster * Monster::getGrappleAttempt(void)
 {
     return m_grappleAttempt;
 }
-int Monster::getBeamVictim(void)
+Monster * Monster::getBeamVictim(void)
 {
     return m_beamVictim;
 }
@@ -154,35 +175,59 @@ float Monster::getPinTime(void)
 {
     return m_pinTime;
 }
-int Monster::getPlayerInfo(void)
+PlayerDat * Monster::getPlayerInfo(void)
 {
     return m_playerInfo;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getAi__7Monster);
-int Monster::getReticleCS(void)
+void *Monster::getAi(void)
+{
+    return (char *)this + 0x4E0;
+}
+_cs * Monster::getReticleCS(void)
 {
     return m_reticleCS;
 }
-int Monster::getStickyReticleCS(void)
+_cs * Monster::getStickyReticleCS(void)
 {
     return m_stickyReticleCS;
 }
-char *Monster::getShadow(void)
+_cs *Monster::getShadow(void)
 {
     return m_shadow;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getFireBreath__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getMonsterSound__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getStaminaMeter__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getHealthMeter__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getLeadVec__7Monster);
+void *Monster::getFireBreath(void)
+{
+    return (char *)this + 0x68C0;
+}
+void *Monster::getMonsterSound(void)
+{
+    return (char *)this + 0x1A7C;
+}
+void *Monster::getStaminaMeter(void)
+{
+    return (char *)this + 0x460;
+}
+void *Monster::getHealthMeter(void)
+{
+    return (char *)this + 0x448;
+}
+void *Monster::getLeadVec(void)
+{
+    return (char *)this + 0x6990;
+}
 int Monster::getAutoLeadMovesReticle(void)
 {
     return m_autoLeadMovesReticle;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getReticleLosResult__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getShadowHDResult__7Monster);
-int Monster::getClosestPath(void)
+void *Monster::getReticleLosResult(void)
+{
+    return (char *)this + 0x6C50;
+}
+void *Monster::getShadowHDResult(void)
+{
+    return (char *)this + 0x1A40;
+}
+AiPath *Monster::getClosestPath(void)
 {
     return m_closestPath;
 }
@@ -275,7 +320,7 @@ int Monster::getFallTime(void) const
 }
 float Monster::getGroundHeight(void) const
 {
-    return *(float *)(m_shadow + 0x18);
+    return *(float *)((char *)m_shadow + 0x18);
 }
 float Monster::getHeightAboveCOG(void) const
 {
@@ -472,7 +517,10 @@ void Monster::setCameraFollowsMonster(int view, bool follows)
     m_cameraView = view;
     m_cameraFollows = follows;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setCs__7MonsterP3_cs);
+void Monster::setCs(_cs * v)
+{
+    m_cs = v;
+}
 void Monster::setGodMode(bool v)
 {
     m_godMode = v;
@@ -506,10 +554,22 @@ void Monster::setPadEnabled(bool v)
     m_unkF9 = v;
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setPickup__7MonsterGQ2t10LinkedList1ZP6Pickup8Iterator);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setGrapplee__7MonsterP7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setGrappler__7MonsterP7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setGrappleAttempt__7MonsterP7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setBeamVictim__7MonsterP7Monster);
+void Monster::setGrapplee(Monster * v)
+{
+    m_target = v;
+}
+void Monster::setGrappler(Monster * v)
+{
+    m_grappler = v;
+}
+void Monster::setGrappleAttempt(Monster * v)
+{
+    m_grappleAttempt = v;
+}
+void Monster::setBeamVictim(Monster * v)
+{
+    m_beamVictim = v;
+}
 void Monster::setFreeFalling(bool v)
 {
     m_freeFalling = v;
@@ -538,7 +598,10 @@ void Monster::setPlayerAiOrFodderNum(int v)
 {
     m_index = v;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setPlayerInfo__7MonsterP9PlayerDat);
+void Monster::setPlayerInfo(PlayerDat * v)
+{
+    m_playerInfo = v;
+}
 void Monster::setInteractiveIndex(int v)
 {
     m_id = v;
@@ -567,7 +630,10 @@ void Monster::setCamIdleFactor(float v)
 {
     m_camIdleFactor = v;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setClosestPath__7MonsterP6AiPath);
+void Monster::setClosestPath(AiPath * v)
+{
+    m_closestPath = v;
+}
 void Monster::setVulnerable(bool v)
 {
     m_unk49 = v;
@@ -582,7 +648,10 @@ void Monster::setAimHeadingEnabled(bool v)
 {
     m_aimHeadingEnabled = v;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setLookAtOverride__7MonsterP8_fvector);
+void Monster::setLookAtOverride(_fvector * v)
+{
+    m_lookAtOverride = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", drainStamina__7Monsterfb);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", enableStaminaRegen__7Monsterb);
 void Monster::enableSpecialWeapon(bool v)
@@ -632,15 +701,27 @@ int Monster::restoreAttacksEnabled(void)
     m_attacksEnabled = 1;
     return 0;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setShadow__7MonsterP3_cs);
+void Monster::setShadow(_cs * v)
+{
+    m_shadow = v;
+}
 void Monster::setHudTexture(int v)
 {
     m_hudTexture = v;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setReticleCS__7MonsterP3_cs);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setStickyReticleCS__7MonsterP3_cs);
+void Monster::setReticleCS(_cs * v)
+{
+    m_reticleCS = v;
+}
+void Monster::setStickyReticleCS(_cs * v)
+{
+    m_stickyReticleCS = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", lyingOnGround__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getFootHDResult__7Monster);
+void *Monster::getFootHDResult(void)
+{
+    return (char *)this + 0x3B0;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", func_00163CB8);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", D_006EC070);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", D_006EC0A0);
