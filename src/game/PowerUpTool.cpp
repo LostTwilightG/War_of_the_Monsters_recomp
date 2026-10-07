@@ -1,6 +1,6 @@
 #include "common.h"
 #include "game/power_ups.h"
-#include "point_tool_kit.h"
+#include "game/power_up_tool.h"
 #include "game/shell.h"
 #include "hieri_types.h"
 #include "game/game.h"
@@ -15,15 +15,6 @@ struct PowerUpPoint {
 extern char D_006F7E10[];
 extern char D_006F7E18[];
 __asm__("#SNFIX_SMALL shell");
-
-class PowerUpTool : public PointToolKit {
-public:
-    void *levelData;
-
-    void init(int i) __asm__("init__11PowerUpTooli");
-    void exportPoints(void);
-    void loadPoints(char *name, bool b);
-};
 
 INCLUDE_ASM("asm/nonmatchings/game/PowerUpTool", _vt$11PowerUpTool);
 void PowerUpTool::loadPoints(char *name, bool b)

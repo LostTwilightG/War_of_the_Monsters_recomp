@@ -6,6 +6,7 @@
 #include "game/weapons.h"
 #include "game/stamina_meter.h"
 #include "game/pad_flags.h"
+#include "game/token_manager.h"
 #include "hieri_types.h"
 
 /* Partial class layouts recovered from usage. Unknown regions are padding until identified. */
@@ -17,6 +18,7 @@ public:
     void drainSpecial();
     void enterNewState(MonsterState *state);
     void takeDamage(float dmg, bool b, Monster *src);
+    void initAfterDbLoad(void);
     void update(void);
     void updateCinema(void);
     void updatePosition(void);
@@ -28,7 +30,9 @@ public:
     int m_playerNum;      /* 0x18: 0 = unused slot, 1/2 = controlling player (inferred from Update) */
     char pad1C[4];
     int m_id;             /* 0x20: player/monster id used by hit histories and pickups */
-    char pad24[0x49 - 0x24];
+    char pad24[0x3C - 0x24];
+    int m_unk3C;          /* 0x3C: zeroed by InitAfterDbLoad */
+    char pad40[0x49 - 0x40];
     unsigned char m_unk49; /* 0x49: set to 1 by ResetLevel */
     char pad4A[0xE8 - 0x4A];
     signed char m_dead;   /* 0xE8: nonzero once dead (GetNumAIsAlive counts the zeros) */
@@ -55,13 +59,6 @@ public:
 };
 typedef char _size_Monster[sizeof(Monster) == 0x11190 ? 1 : -1];
 
-class TokenManager {
-public:
-    int grandTotal();
-
-    char pad0[0x1004];
-};
-
 class TheGame {
 public:
     Hud m_huds[4];                   /* 0x000: one per view, stride 0x2E0 */
@@ -84,7 +81,11 @@ public:
     char pad1203F0[0x12043C - 0x1203F0];
     int m_won[2];                    /* 0x12043C */
     int m_playerMask;                /* 0x120444: bit 0 = player 1 active, bit 1 = player 2 active (inferred) */
-    char pad120448[0x12046C - 0x120448];
+    char pad120448[0x120450 - 0x120448];
+    int f120450, f120454, f120458, f12045C; /* zeroed by InitAfterDbLoad */
+    int f120460;                     /* set to 1 by InitAfterDbLoad */
+    char pad120464[4];
+    int f120468;                     /* set to 1 by InitAfterDbLoad */
     struct PadTweaks {               /* 0x12046C: copied into every monster's PadFlags by UpdatePadTweaks */
         int t16C4;
         float t16D0;
@@ -116,6 +117,8 @@ public:
     float GetCameraMaxHeight(_fvector *pos);
     void gameInitCamera(int view, int slot);
     void UpdatePadTweaks(void);
+    static void traversalCallback(_cs *cs, unsigned a, unsigned b, float (&m)[4][4], _fvector *eo);
+    static void genericEventHandler(unsigned event);
 
     Weapons *getWeapons(void) { return (Weapons *)((char *)this + 0x112490); }
 };

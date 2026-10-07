@@ -8,6 +8,7 @@ public:
     static PowerUps instance;
 
     void update(void);
+    void initPowerUpsAfter(void);
     void KillPowerUps(void);
     void CreatePowerUp(int type, unsigned char arg, _fvector *pos);
 };

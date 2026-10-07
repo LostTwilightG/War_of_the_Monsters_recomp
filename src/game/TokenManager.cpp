@@ -1,32 +1,7 @@
 #include "common.h"
+#include "game/token_manager.h"
 
 extern "C" int strcmp(const char *, const char *);
-
-class TokenManager {
-public:
-    struct Milestone {
-        int threshold;
-        int value;
-    };
-    struct Token {
-        char name[0x20];
-        int amount;
-        int f24;
-        Milestone milestones[10];
-        int numMilestones;
-        int mode;
-    };
-
-    Token tokens[32];
-    int count;
-
-    TokenManager();
-    void init(void);
-    int grandTotal(void);
-    char *getTokenKey(int i);
-    int tokenValue(char *name);
-    int tokenValue(int i);
-};
 
 INCLUDE_ASM("asm/nonmatchings/game/TokenManager", D_006F1A80);
 TokenManager::TokenManager()

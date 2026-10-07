@@ -12,9 +12,20 @@ void tokyoUpdate(void);
 void sanFranUpdate(void);
 void ufoUpdate(void);
 
+void centralInitAfter(void);
+void vegasInitAfter(void);
+void canyon2InitAfter(void);
+void airportInitAfter(void);
+void islandInitAfter(void);
+void threeMileInitAfter(void);
+void tokyoInitAfter(void);
+void sanFranInitAfter(void);
+void ufoInitAfter(void);
+
 class FinalBoss {
 public:
     void update(void);
+    void initAfter(void);
 };
 extern FinalBoss finalBoss;
 

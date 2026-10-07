@@ -38,6 +38,11 @@ int timerGetFieldsLastFrame(void);
 int timerGetUpdateRate(void);
 
 /* ---- particles / scene graph ---- */
+void particleInitAfter(void);
+void hdInit(void);
+void hierSetTraversalCallback(void (*cb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *));
+int timerGetMinUpdateRate(void);
+extern int m_minUpdateRate;
 void particleKillFx(int &handle);
 void hierSetCsEpNode(_cs *cs, _hierhead *ep);
 void hdReparentCsGrid(_cs *cs);

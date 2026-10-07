@@ -1,5 +1,5 @@
 #include "common.h"
-#include "point_tool_kit.h"
+#include "game/start_point_tool.h"
 #include "game/start_points.h"
 #include "game/shell.h"
 #include "hieri_types.h"
@@ -16,17 +16,6 @@ struct StartPointData {
     unsigned char angle;
     unsigned char flag;
     char pad2F[0x40 - 0x2F];
-};
-
-class StartPointTool : public PointToolKit {
-public:
-    void *levelData;
-
-    void init(int i) __asm__("init__14StartPointTooli");
-    void loadPoints(void);
-    void exportPoints(void);
-    unsigned char degreesToData(float d);
-    float dataToDegrees(unsigned char c);
 };
 
 INCLUDE_ASM("asm/nonmatchings/game/StartPointTool", _vt$14StartPointTool);

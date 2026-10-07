@@ -7,6 +7,7 @@
 class Weapons {
 public:
     void UpdateWeapons(void);
+    void InitWeaponsAfter(void);
     void CreateLavaBall(_fvector *pos, _fvector *dir, _fvector *target, int a, int b);
 };
 

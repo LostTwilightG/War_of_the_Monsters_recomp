@@ -7,6 +7,35 @@
 #include "game/level_pickups.h"
 #include "game/streaming_sound.h"
 #include "task_manager.h"
+#include "memory_stack.h"
+#include "game/power_up_tool.h"
+#include "game/start_point_tool.h"
+#include "game/token_manager.h"
+
+class Debris {
+public:
+    static void InitAfter(void);
+};
+class SpecFxAnim {
+public:
+    static void initAfterDbLoad(void);
+};
+class HomingBug {
+public:
+    static void initAfterDbLoad(void);
+};
+class Ai {
+public:
+    static void globalInit(void);
+};
+class ActionDispatch {
+public:
+    static void initGenericEvent(void (*handler)(unsigned));
+};
+class LevelObjectSoundManager {
+public:
+    void initLevelObjectSoundManager(void);
+};
 
 class Destructibles {
 public:
@@ -20,7 +49,88 @@ INCLUDE_ASM("asm/nonmatchings/game/TheGame", Init__7TheGame);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", InitBeforeDbLoad__7TheGame);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", traversalCallback__7TheGameP3_csUiUiRA3_A3_fP8_fvector);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", genericEventHandler__7TheGameUi);
+#ifdef NON_MATCHING
+/* 128/216 words, untuned: written from the m2c draft */
+void TheGame::InitAfterDbLoad(void)
+{
+    int i;
+
+    f120468 = 1;
+    if (m_gameMode != 8) {
+        PowerUps::instance.initPowerUpsAfter();
+        PowerUpTool::instance.loadPoints(0, true);
+        StartPointTool::instance.loadPoints();
+    }
+    particleInitAfter();
+    hdInit();
+    getWeapons()->InitWeaponsAfter();
+    Debris::InitAfter();
+    LevelPickups::initAfterDbLoad();
+    SpecFxAnim::initAfterDbLoad();
+    HomingBug::initAfterDbLoad();
+    Ai::globalInit();
+    m_minUpdateRate = timerGetMinUpdateRate();
+    f120460 = 1;
+    f120454 = 0;
+    f120458 = 0;
+    f120450 = 0;
+    f12045C = 0;
+    for (i = m_numSlots - 1; i >= 0; i--) {
+        m_slots[i].initAfterDbLoad();
+        m_slots[i].m_unk3C = 0;
+    }
+    MemoryStack::global.pushMark();
+    hierSetTraversalCallback(traversalCallback);
+    ActionDispatch::initGenericEvent(genericEventHandler);
+    ((LevelObjectSoundManager *)((char *)this + 0x121570))->initLevelObjectSoundManager();
+    gUseUnifiedView = 0;
+    Cameras::SetCameraPOV(2, Camera::POV_3);
+    switch (m_levelId) {
+    case 1:
+        if (shell->m_mode == 1)
+            centralInitAfter();
+        break;
+    case 2:
+        if (shell->m_mode == 1)
+            vegasInitAfter();
+        break;
+    case 3:
+        if (shell->m_mode == 1)
+            canyon2InitAfter();
+        break;
+    case 5:
+        airportInitAfter();
+        break;
+    case 8:
+    case 15:
+        islandInitAfter();
+        for (i = 0; i < m_numMonsters; i++) {
+            m_tokens[i].setMax("Destructibles", 0);
+            m_tokens[i].setMilestone("Destructibles", 1, 1, TokenManager::MILESTONE_1);
+        }
+        break;
+    case 6:
+        threeMileInitAfter();
+        break;
+    case 9:
+        tokyoInitAfter();
+        break;
+    case 7:
+        sanFranInitAfter();
+        break;
+    case 10:
+        if (shell->m_mode == 1)
+            ufoInitAfter();
+        break;
+    case 11:
+        if (shell->m_mode == 1)
+            finalBoss.initAfter();
+        break;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", InitAfterDbLoad__7TheGame);
+#endif
 #ifdef NON_MATCHING
 /* 23/252 words, untuned: written from the m2c draft */
 void TheGame::Update(void)

@@ -5,6 +5,7 @@
 class LevelPickups {
 public:
     static void update(void);
+    static void initAfterDbLoad(void);
     static void turnOffMilitary(void);
     static void initMilitaryForCentral(void);
 };
