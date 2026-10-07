@@ -2838,11 +2838,11 @@ game/StartPoints,getNumPoints__11StartPointsUc,0x1ceac0,28,equivalent
 game/StartPoints,getPoint__11StartPointsUci,0x1ceae0,36,equivalent
 game/StartPoints,isThisTypeFull__11StartPointsUc,0x1ceb08,44,matched
 game/StartPoints,getNextPoint__11StartPointsUc,0x1ceb38,60,equivalent
-game/StartPointTool,loadPoints__14StartPointTool,0x1ceb78,112,asm
-game/StartPointTool,init__14StartPointTooli,0x1cebe8,84,asm
-game/StartPointTool,exportPoints__14StartPointTool,0x1cec40,152,asm
-game/StartPointTool,degreesToData__14StartPointToolf,0x1cecd8,64,asm
-game/StartPointTool,dataToDegrees__14StartPointToolUc,0x1ced18,72,asm
+game/StartPointTool,loadPoints__14StartPointTool,0x1ceb78,112,matched
+game/StartPointTool,init__14StartPointTooli,0x1cebe8,84,matched
+game/StartPointTool,exportPoints__14StartPointTool,0x1cec40,152,matched
+game/StartPointTool,degreesToData__14StartPointToolf,0x1cecd8,64,matched
+game/StartPointTool,dataToDegrees__14StartPointToolUc,0x1ced18,72,matched
 game/StartPointTool,__static_initialization_and_destruction_0,0x1ced60,40,asm
 game/StartPointTool,__tf14StartPointTool,0x1ced88,80,asm
 game/StartPointTool,__14StartPointTool,0x1cedd8,20,asm
