@@ -11,4 +11,14 @@ INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", adjust__Q212AiPathFinder8OpenL
 INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", popBest__Q212AiPathFinder8OpenList);
 INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", find__Q212AiPathFinder8OpenListP6AiPath);
 INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", init__Q212AiPathFinder10GlobalListi);
-INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", init__9BidirLink);
+class BidirLink {
+public:
+    int next, prev;
+
+    void init(void);
+};
+void BidirLink::init(void)
+{
+    prev = 0;
+    next = 0;
+}

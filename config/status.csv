@@ -163,7 +163,7 @@ game/AiPathFinder,adjust__Q212AiPathFinder8OpenListPQ212AiPathFinder4Node,0x1073
 game/AiPathFinder,popBest__Q212AiPathFinder8OpenList,0x1073f8,68,asm
 game/AiPathFinder,find__Q212AiPathFinder8OpenListP6AiPath,0x107440,52,asm
 game/AiPathFinder,init__Q212AiPathFinder10GlobalListi,0x107478,72,asm
-game/AiPathFinder,init__9BidirLink,0x1074c0,12,asm
+game/AiPathFinder,init__9BidirLink,0x1074c0,12,matched
 game/AiPathTool,init__10AiPathTooli,0x1074d0,84,matched
 game/AiPathTool,loadPoints__10AiPathToolPcb,0x107528,112,matched
 game/AiPathTool,exportPoints__10AiPathTool,0x107598,964,asm
@@ -1945,7 +1945,7 @@ game/MovementStates,getAnimIndex__8StateRun,0x176d98,8,asm
 game/OgreMace,__8OgreMaceP7Monster,0x176df0,432,asm
 game/OgreMace,setMode__8OgreMaceQ28OgreMace4Mode,0x176fa0,96,asm
 game/OgreMace,update__8OgreMace,0x177000,1656,asm
-game/OgreMace,setEndPos__8OgreMaceP8_fvector,0x177678,8,asm
+game/OgreMace,setEndPos__8OgreMaceP8_fvector,0x177678,8,matched
 game/PadFlags,__8PadFlags,0x177680,268,asm
 game/PadFlags,init__8PadFlagsP7Monster,0x177790,328,asm
 game/PadFlags,setCurrentAction__8PadFlags13ButtonActions13MappedActions,0x1778d8,48,asm
@@ -2968,12 +2968,12 @@ game/TokenManager,getTokenKey__12TokenManageri,0x1d6850,12,matched
 game/TokenManager,setMilestone__12TokenManagerPciiQ212TokenManager13MilestoneType,0x1d6860,304,asm
 game/TokenManager,tokenValue__12TokenManagerPc,0x1d6990,152,equivalent
 game/TokenManager,tokenValue__12TokenManageri,0x1d6a28,176,asm
-game/tokyo,tokyoGetTidalWaveSource__Fv,0x1d6ad8,8,asm
-game/tokyo,tokyoInitBefore__Fv,0x1d6ae0,40,asm
+game/tokyo,tokyoGetTidalWaveSource__Fv,0x1d6ad8,8,matched
+game/tokyo,tokyoInitBefore__Fv,0x1d6ae0,40,matched
 game/tokyo,tokyoInitAfter__Fv,0x1d6b08,128,asm
 game/tokyo,tokyoUpdate__Fv,0x1d6b88,1076,asm
 game/tokyo,tokyoStartTidalWave__FP7Monster,0x1d6fc0,116,asm
-game/tokyo,tokyoAddEpNode__FP9_hierhead,0x1d7038,8,asm
+game/tokyo,tokyoAddEpNode__FP9_hierhead,0x1d7038,8,matched
 game/tokyo,init__8UfoTokyo,0x1d7040,256,asm
 game/tokyo,update__8UfoTokyo,0x1d7140,400,asm
 game/tokyo,takeHit__8UfoTokyoP8_fvectorfi,0x1d72d0,192,asm

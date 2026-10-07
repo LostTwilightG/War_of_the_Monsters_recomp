@@ -1,12 +1,32 @@
 #include "common.h"
+#include "hieri_types.h"
+
+extern int tidalWaveActive;
+extern int tidalWaveCount;
+extern int tidalSource;
+extern _hierhead *D_006F8CFC;
+extern int D_006F8D00;
 
 INCLUDE_ASM("asm/nonmatchings/game/tokyo", _vt$8UfoTokyo);
-INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoGetTidalWaveSource__Fv);
-INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoInitBefore__Fv);
+int tokyoGetTidalWaveSource(void)
+{
+    return tidalSource;
+}
+void tokyoInitBefore(void)
+{
+    tidalWaveActive = 0;
+    tidalWaveCount = 0;
+    tidalSource = 0;
+    D_006F8CFC = 0;
+    D_006F8D00 = 0;
+}
 INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoInitAfter__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoUpdate__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoStartTidalWave__FP7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/tokyo", tokyoAddEpNode__FP9_hierhead);
+void tokyoAddEpNode(_hierhead *h)
+{
+    D_006F8CFC = h;
+}
 INCLUDE_ASM("asm/nonmatchings/game/tokyo", init__8UfoTokyo);
 INCLUDE_ASM("asm/nonmatchings/game/tokyo", update__8UfoTokyo);
 INCLUDE_ASM("asm/nonmatchings/game/tokyo", takeHit__8UfoTokyoP8_fvectorfi);
