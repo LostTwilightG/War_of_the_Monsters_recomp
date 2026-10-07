@@ -21,3 +21,6 @@ hierLoadVu1Ucode__Fv
 hierFlushObjQ__Fv
 hierSetDmaIntHandler__Fv
 hierDmaHandler__Fi
+tu:common/partdraw
+# game/Sound and game/StreamingSoundManager are NOT listed: they hold gameplay-level sound decisions (what plays when, pan/volume).
+# The port can stub the audio backend first and implement them later, so they are low priority but not hardware code.
