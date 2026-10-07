@@ -27,7 +27,7 @@ public:
 };
 class AiPadClips {
 public:
-    static int getThrow(void);
+    static int getThrow(void) __asm__("getThrow__10AiPadClipsv");
 };
 class GamePadClipPlayer {
 public:
