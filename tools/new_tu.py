@@ -34,13 +34,17 @@ for tu in tus:
     if subprocess.run(['git', 'ls-files', '--error-unmatch', str(out.relative_to(ROOT))], cwd=ROOT, capture_output=True).returncode == 0:
         continue  # already hand-written (splat writes its own stubs, with real bodies for trivial functions; replace those)
     funcs = []
+    data_only = []
     for f in (ROOT / 'asm/nonmatchings' / tu).glob('*.s'):
         m = re.search(r'glabel [^\n]*\n\s*/\* [0-9A-F]+ ([0-9A-F]{8}) ', f.read_text())  # not the rodata lines above it
         if not m:
-            print(f'WARNING {tu}: {f.name} has no code (data-only, e.g. a vtable): add its INCLUDE_ASM by hand, between the '
-                  'functions whose rodata surrounds its address (see tools/wsl/check.sh)')
+            # data-only (e.g. a vtable): placed first, which is right for most classes; if the ROM check fails, run
+            # tools/place_data.py to find the right spot among the functions' rodata
+            data_only.append(f.stem)
             continue
         funcs.append((int(m.group(1), 16), f.stem))
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text('#include "common.h"\n\n' + ''.join(f'INCLUDE_ASM("asm/nonmatchings/{tu}", {n});\n' for _, n in sorted(funcs)))
+    out.write_text('#include "common.h"\n\n'
+                   + ''.join(f'INCLUDE_ASM("asm/nonmatchings/{tu}", {n});\n' for n in sorted(data_only))
+                   + ''.join(f'INCLUDE_ASM("asm/nonmatchings/{tu}", {n});\n' for _, n in sorted(funcs)))
     print(f'{out}: {len(funcs)} functions')

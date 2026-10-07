@@ -51,3 +51,16 @@ game/ufo
 game/AiPadClips
 game/BoneSpring
 game/StartPointTool
+game/ShellRtLoop
+game/Interactives
+game/PathTool
+game/CarPickup
+game/PathNet
+game/AnimContact
+game/SubwayPickup
+game/MonkeyChains
+game/GamePad
+game/TokenManager
+game/reset
+game/AiPathTool
+game/AiBrain
