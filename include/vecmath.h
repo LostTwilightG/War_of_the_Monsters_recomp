@@ -1,0 +1,39 @@
+#ifndef VECMATH_H
+#define VECMATH_H
+
+/* VU0 macro-mode vector helpers. Their asm matches what the retail build inlines everywhere.
+   The .set noreorder keeps GNU as from adding the cop1->cop2 hazard nop that ps2eeas leaves out. */
+
+struct _fvector;
+
+static inline void vecAdd(_fvector *dst, _fvector *a, _fvector *b)
+{
+    __asm__ volatile("lqc2 $vf11, 0x0(%1)\n\t"
+                     "lqc2 $vf12, 0x0(%2)\n\t"
+                     "vadd.xyz $vf11, $vf11, $vf12\n\t"
+                     "sqc2 $vf11, %0"
+                     : "=m"(*dst) : "r"(a), "r"(b));
+}
+static inline void vecSub(_fvector *dst, _fvector *a, _fvector *b)
+{
+    __asm__ volatile("lqc2 $vf11, 0x0(%1)\n\t"
+                     "lqc2 $vf12, 0x0(%2)\n\t"
+                     "vsub.xyz $vf11, $vf11, $vf12\n\t"
+                     "sqc2 $vf11, %0"
+                     : "=m"(*dst) : "r"(a), "r"(b));
+}
+static inline void vecScale(_fvector *dst, _fvector *a, float s)
+{
+    register int t __asm__("$2");
+
+    __asm__ volatile(".set push\n\t.set noreorder\n\t"
+                     "lqc2 $vf11, 0x0(%2)\n\t"
+                     "mfc1 %1, %3\n\t"
+                     "qmtc2.ni %1, $vf12\n\t"
+                     "vmulx.xyz $vf11, $vf11, $vf12x\n\t"
+                     "sqc2 $vf11, %0\n\t"
+                     ".set pop"
+                     : "=m"(*dst), "=r"(t) : "r"(a), "f"(s));
+}
+
+#endif
