@@ -118,11 +118,11 @@ int StickShaker::update(void)
     }
     for (i = 0; i < game->m_numMonsters; i++) {
         _fvector diff;
-        char *mon = (char *)game->m_monsters[i];
+        Monster *mon = game->m_monsters[i];
 
-        vecSub(&diff, &pos, (_fvector *)(*(char **)(mon + 0xC) + 0x10));
+        vecSub(&diff, &pos, &mon->m_cs->trans);
         d = sqrtf(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
-        if (d <= t && hits.newHit(*(int *)(mon + 0x20), false)) {
+        if (d <= t && hits.newHit(mon->m_id, false)) {
             ActuatorData *a;
             int k;
 

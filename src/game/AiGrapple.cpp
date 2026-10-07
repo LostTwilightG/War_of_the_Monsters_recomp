@@ -5,13 +5,6 @@
 
 struct DbInteractive;
 
-struct GrappleMonster {
-    char pad0[0x460];
-    StaminaMeter stamina;
-    char pad48C[0x68B4 - 0x48C];
-    void *target;
-};
-
 class GamePadClipPlayer;
 class GamePad;
 class AiActionTuple {
@@ -31,7 +24,7 @@ public:
 
 class Ai {
 public:
-    GrappleMonster *monster;
+    Monster *monster;
     char pad4[0x44 - 4];
     char *pad;
     GamePadClipPlayer clipPlayer;
@@ -76,7 +69,7 @@ INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", __14AiGrappleThrow);
 /* 2/27 words, untuned: FP register allocation */
 float AiGrappleThrow::getEntryRelevance(Ai &ai)
 {
-    StaminaMeter *m = &ai.monster->stamina;
+    StaminaMeter *m = &ai.monster->m_stamina;
     float lvl = m->cur;
     float r = lvl / m->getMaxLevel();
     float t = 1.0f - r * r;
@@ -90,7 +83,7 @@ INCLUDE_ASM("asm/nonmatchings/game/AiGrapple", getEntryRelevance__14AiGrappleThr
 /* 2/15 words, untuned: retail leaves nops in the delay slots */
 float AiGrappleThrow::getExitRelevance(Ai &ai)
 {
-    if (ai.monster->target) {
+    if (ai.monster->m_target) {
         if (ai.state == 1)
             return 1.0f;
     }
@@ -105,7 +98,7 @@ void AiGrappleThrow::enterAction(Ai &ai)
 
     d -= ((AiActionTuple *)this)->getFieldsSinceEval();
     timer = (d > -1) ? d : 0;
-    ai.setFocus((DbInteractive *)ai.monster->target);
+    ai.setFocus((DbInteractive *)ai.monster->m_target);
     ai.clipPlayer.clip = AiPadClips::getThrow();
     ai.clipPlayer.rewind();
 }
@@ -131,7 +124,7 @@ void AiGrappleAttack::enterAction(Ai &ai)
 {
     int d;
 
-    ai.setFocus((DbInteractive *)ai.monster->target);
+    ai.setFocus((DbInteractive *)ai.monster->m_target);
     d = ai.getReflexDelay();
     d -= ((AiActionTuple *)this)->getFieldsSinceEval();
     timer = (d > -1) ? d : 0;

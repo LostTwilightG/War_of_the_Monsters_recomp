@@ -58,9 +58,10 @@ void islandEruptVolcano(int type, int id)
         animationStart(D_0070B5B0, true);
     }
     for (i = 0; i < game->m_numSlots; i++) {
-        char *pl = (char *)gameSlotBase(i);
+        Monster *m = gameSlotBase(i);
+        char *pl = (char *)m;
 
-        if (*(int *)(pl + 0x20) == D_006F8C14) {
+        if (m->m_id == D_006F8C14) {
             gameHud(*(int *)(pl + 0x6CD8))->addMessage(0xE, 1);
         } else {
             _fvector v;
@@ -68,7 +69,7 @@ void islandEruptVolcano(int type, int id)
             v.x = *(float *)(pl + 0x3E60);
             v.y = *(float *)(pl + 0x3E64);
             v.z = *(float *)(pl + 0x3E68) + 50.0f;
-            islandFireLava(&v, *(int *)(pl + 0x20));
+            islandFireLava(&v, m->m_id);
         }
     }
 }
