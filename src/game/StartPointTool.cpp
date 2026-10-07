@@ -1,5 +1,6 @@
 #include "common.h"
 #include "point_tool_kit.h"
+#include "game/start_points.h"
 #include "game/shell.h"
 #include "hieri_types.h"
 #include "game/game.h"
@@ -15,13 +16,6 @@ struct StartPointData {
     unsigned char angle;
     unsigned char flag;
     char pad2F[0x40 - 0x2F];
-};
-
-class StartPoints {
-public:
-    static StartPoints m_instance;
-    void clear(void);
-    void addPoint(unsigned char type, _fvector *pos, float angle, bool b);
 };
 
 class StartPointTool : public PointToolKit {
