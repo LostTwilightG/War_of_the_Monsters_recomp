@@ -1097,8 +1097,8 @@ game/MissileTruckPickup,leadFormation__18MissileTruckPickup,0x14e448,72,asm
 game/MissileTruckPickup,followFormation__18MissileTruckPickup,0x14e490,76,asm
 game/MissileTruckPickup,resignFormation__18MissileTruckPickup,0x14e4e0,36,asm
 game/MissileTruckPickup,__tf18MissileTruckPickup,0x14e540,80,asm
-game/MonkeyChains,init__12MonkeyChainsP7Monster,0x14e590,244,asm
-game/MonkeyChains,update__12MonkeyChains,0x14e688,96,asm
+game/MonkeyChains,init__12MonkeyChainsP7Monster,0x14e590,244,equivalent
+game/MonkeyChains,update__12MonkeyChains,0x14e688,96,matched
 game/MonkeyChains,init__Q212MonkeyChains5ChainP7MonsterP13_ParticleTypei,0x14e6e8,188,asm
 game/MonkeyChains,update__Q212MonkeyChains5ChainP7Monster,0x14e7a8,740,asm
 game/MonsterStates,collisTestCloseRangeAttack__20PunchSwipeConfigBaseiP7MonsterR10HitHistoryi,0x14ea90,1476,asm
@@ -1987,10 +1987,10 @@ game/PathNet,getClosestPath__7PathNetR8_fvectorT1Rii,0x17efa0,280,asm
 game/PathTool,loadPoints__8PathToolPcb,0x17f0b8,112,equivalent
 game/PathTool,init__8PathTooli,0x17f128,84,matched
 game/PathTool,exportPoints__8PathTool,0x17f180,364,equivalent
-game/PathTool,__static_initialization_and_destruction_0,0x17f2f0,80,matched
-game/PathTool,__tf8PathTool,0x17f340,80,matched
-game/PathTool,__8PathToolP7PathNetPcT2,0x17f390,32,matched
-game/PathTool,_GLOBAL_$I$_8PathTool$instance,0x17f3b0,32,matched
+game/PathTool,__static_initialization_and_destruction_0,0x17f2f0,80,asm
+game/PathTool,__tf8PathTool,0x17f340,80,asm
+game/PathTool,__8PathToolP7PathNetPcT2,0x17f390,32,asm
+game/PathTool,_GLOBAL_$I$_8PathTool$instance,0x17f3b0,32,asm
 game/Pickup,__6Pickup,0x17f3d0,36,asm
 game/Pickup,init__6PickupP9_hierheadR8_fvectorPA3_fb11ePickupType,0x17f3f8,664,asm
 game/Pickup,initAfterDbLoad__6Pickup,0x17f690,92,asm

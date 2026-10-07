@@ -14,13 +14,22 @@ Estado: `python3 tools/progress.py` (WSL Ubuntu, venv `~/.venvs/wotm`). `common`
 5. Commitar só depois do `check.sh` passar.
 
 ## Ordem sugerida
-- Terminar os TUs pequenos de `game` já convertidos: StickShaker, PowerUpTool, MilitaryPickup, PathTool, StartPointTool,
-  TankVehicle, MonkeyChains, reset, AiPathTool, SubwayPickup, CarPickup (resto), Vehicle (resto), AiBrain.
+- Feitos nesta rodada (2026-10-07): StickShaker, PowerUpTool, MilitaryPickup, StartPointTool, PathTool, MonkeyChains (ver status.csv).
+- Terminar os TUs pequenos de `game` já convertidos: TankVehicle (updateControls usa VU + Weapons), reset, AiPathTool, SubwayPickup,
+  CarPickup (resto), Vehicle (resto), AiBrain.
 - Converter e fazer os TUs seguintes de `game` por tamanho (`config/tus.csv`): Destructible, RigidDebris, Ai*, Monster*, Pickups.
 - Priorizar lógica real (IA, monstros, fases, pickups). Não gastar esforço em código de hardware (`config/hw_funcs.txt`).
 - Para funções de `game` o fluxo é: escrever C++ natural, compilar, pontuar, embrulhar se não bater, **sem afinar**.
 
 ## Armadilhas já vistas
+- **Gate de commit**: `sh tools/wsl/check.sh > /tmp/chk.log 2>&1; grep -q "ROM OK" /tmp/chk.log && git commit ...`. `check.sh | tail && git commit` commita mesmo com `BUILD FAILED` (aconteceu no PathTool).
+- Ao reescrever o fim de um `.cpp` com script, conferir que as linhas `INCLUDE_ASM` finais (static init, `__tf`, ctor, `_GLOBAL_$I$`) continuam lá.
+- `ccmatch.py` sem `-DNON_MATCHING` só compila as `INCLUDE_ASM` (tudo "MATCH"); para pontuar o C++ novo use `ccmatch.py src/x.cpp '-DNON_MATCHING' project`.
+- Layout do `PointToolKit` nas ferramentas (PowerUpTool/StartPointTool/PathTool): pontos 0x40 cada, `numPoints` em 0x4000, ponteiro de dados em 0x4050; `init` = `PointToolKit::init(0)` + `game + idx*0x11190 + 0xB80`.
+- `shell` é gp-relativo em alguns TUs (PowerUpTool, PathTool) e não em outros (StartPointTool): `__asm__("#SNFIX_SMALL shell")` só onde o retail usa gp.
+- gas insere 2 `nop` extras num `.p2align 3` logo depois de uma sequência `li.s` (visto em StickShaker::DefaultSetup); o retail não tem. Sem causa achada, marcar como equivalente.
+- Retorno `(x & 1) == 0` em vez de `!(x & 1)` muda `lw`/`xori` para `ld`/`andi` com campo de 64 bits (MilitaryPickup::kill).
+- Cópia de `_fvector` por `lq/sq` com `jr` seguido de `nop` indica `asm volatile` com `lq/sq` no retail (MilitaryPickup::setFormationPos).
 - Strings de uma função que passam de `INCLUDE_ASM` para C mudam o padding do `.rodata`: acrescentar `.word 0` em `.rodata` por asm.
 - `switch` em C gera jump table; o retail alinha em 24 palavras (acrescentar `.word 0` x2).
 - Classes com vtable: ctor, `__tf` e `_vt$...` ficam como `INCLUDE_ASM`; escrever os métodos sem `virtual`.
