@@ -322,13 +322,13 @@ game/AiReset,loadFromRef__7AiResetb,0x10dd08,8,asm
 game/AiReset,writeKeys__7AiResetPc,0x10dd10,2776,asm
 game/AiReset,readKey__7AiResetPc,0x10e7e8,1928,asm
 game/AiReset,__tf7AiReset,0x10ef70,80,asm
-game/AiScript3Mile,__13AiScript3Mile,0x10efc0,108,asm
+game/AiScript3Mile,__13AiScript3Mile,0x10efc0,108,matched
 game/AiScript3Mile,update__13AiScript3Mile,0x10f030,632,asm
 game/AiScript3Mile,enterState__13AiScript3MileQ213AiScript3Mile5State,0x10f2a8,820,asm
-game/AiScript3Mile,__13AiScriptTokyo,0x10f5e0,88,asm
+game/AiScript3Mile,__13AiScriptTokyo,0x10f5e0,88,matched
 game/AiScript3Mile,update__13AiScriptTokyo,0x10f638,108,asm
-game/AiScript3Mile,update__13AiScript3MilePv,0x10f6a8,28,asm
-game/AiScript3Mile,update__13AiScriptTokyoPv,0x10f6c8,28,asm
+game/AiScript3Mile,update__13AiScript3MilePv,0x10f6a8,28,matched
+game/AiScript3Mile,update__13AiScriptTokyoPv,0x10f6c8,28,matched
 game/AiSeek,__12AiSeekHealth,0x10f6f0,80,asm
 game/AiSeek,getEntryRelevance__12AiSeekHealthR2Ai,0x10f740,384,asm
 game/AiSeek,getExitRelevance__12AiSeekHealthR2Ai,0x10f8c0,340,asm
@@ -621,7 +621,7 @@ game/db,dbGetCSForModel__FP9_hierhead,0x12ea38,72,matched
 game/db,dbGetHPCSForModel__FP9_hierhead,0x12ea80,72,matched
 game/DodgeBallLevel,initAfterDbLoad__14DodgeBallLevel,0x12eac8,268,asm
 game/DodgeBallLevel,update__14DodgeBallLeveli,0x12ebd8,1172,asm
-game/DodgeBallLevel,ResetCountdown__14DodgeBallLevel,0x12f070,212,asm
+game/DodgeBallLevel,ResetCountdown__14DodgeBallLevel,0x12f070,212,matched
 game/DodgeBallLevel,__static_initialization_and_destruction_0,0x12f148,76,asm
 game/DodgeBallLevel,_GLOBAL_$I$_14DodgeBallLevel$instance,0x12f198,32,asm
 game/Debris,InitBefore__6Debris,0x12f1b8,96,asm
