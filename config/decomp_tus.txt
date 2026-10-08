@@ -100,3 +100,5 @@ game/Shell
 common/dbs
 common/file
 game/MonsterInit
+game/ui
+game/screen

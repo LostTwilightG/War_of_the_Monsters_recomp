@@ -22,6 +22,8 @@ public:
 
     char *GetLevelName(void);
     void LoadLevelFiles(void);
+    int MonsterExists(int i);
+    int MonsterIsChosen(int i);
     void BootInitUi(void);
     void BootInitUserint(void);
     void BootInitGame(void);

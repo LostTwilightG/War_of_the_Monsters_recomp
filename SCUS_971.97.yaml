@@ -154,7 +154,7 @@ segments:
       - [0x089570, asm, game/RigidDebris]  # c++, 15 funcs, name: guess
       - [0x08A4B0, asm, game/RigidPickup]  # c++, 37 funcs, name: guess
       - [0x08D378, asm, game/sanfran]  # c++, 8 funcs, name: manual
-      - [0x08DAE8, asm, game/screen]  # c++, 55 funcs, name: guess
+      - [0x08DAE8, cpp, game/screen]  # c++, 55 funcs, name: guess
       - [0x0A66B8, cpp, game/Shell]  # c++, 62 funcs, name: guess
       - [0x0AC3E0, asm, game/ShellFinished]  # c++, 24 funcs, name: manual
       - [0x0B0418, cpp, game/ShellRtLoop]  # c++, 4 funcs, name: guess
@@ -177,7 +177,7 @@ segments:
       - [0x0D74D8, cpp, game/ufo]  # c++, 3 funcs, name: guess
       - [0x0D7708, asm, game/UfoNav]  # c++, 17 funcs, name: guess
       - [0x0D8560, cpp, game/UfoPickup]  # c++, 13 funcs, name: guess
-      - [0x0D93D8, asm, game/ui]  # c++, 16 funcs, name: guess
+      - [0x0D93D8, cpp, game/ui]  # c++, 16 funcs, name: guess
       - [0x0DAF08, asm, game/uidev]  # c++, 81 funcs, name: manual
       - [0x0DD788, cpp, game/vegas]  # c++, 3 funcs, name: guess
       - [0x0DDB28, cpp, game/Vehicle]  # c++, 10 funcs, name: guess
@@ -563,7 +563,7 @@ segments:
       - [0x5EDF50, rodata, game/RigidDebris]
       - [0x5EDFB0, rodata, game/RigidPickup]
       - [0x5EE060, rodata, game/sanfran]
-      - [0x5EE230, rodata, game/screen]
+      - [0x5EE230, .rodata, game/screen]
       - [0x5EF0F0, .rodata, game/Shell]
       - [0x5EF9F0, rodata, game/ShellFinished]
       - [0x5EFFA0, rodata, game/Sound]
@@ -580,7 +580,7 @@ segments:
       - [0x5F1B08, .rodata, game/tokyo]
       - [0x5F1B60, rodata, game/UfoNav]
       - [0x5F1B80, .rodata, game/UfoPickup]
-      - [0x5F1C60, rodata, game/ui]
+      - [0x5F1C60, .rodata, game/ui]
       - [0x5F2320, rodata, game/uidev]
       - [0x5F2820, rodata, game/VehicleNavigator]
       - [0x5F2840, .rodata, game/Weapon]
