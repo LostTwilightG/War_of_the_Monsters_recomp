@@ -17,6 +17,7 @@ public:
     void addTextBoxMessage(int id);
     void registerHealthCredit(int amount);
     void registerComboHit(void);
+    void registerStaminaCredit(int amount);
 };
 
 typedef char _size_Hud[sizeof(Hud) == 0x2E0 ? 1 : -1];

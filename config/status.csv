@@ -1403,10 +1403,10 @@ game/Monster,knockBack__7MonsterR8_fvectorff,0x1601c8,628,asm
 game/Monster,blowUpMonster__7MonsterP7Monster,0x160440,156,matched
 game/Monster,updateDeathSequence__7Monster,0x1604e0,88,matched
 game/Monster,registerComboHit__7MonsterP7Monster,0x160538,104,matched
-game/Monster,getClosestMonster__7Monsterf,0x1605a0,188,asm
-game/Monster,getClosestMonster2D__7Monsterf,0x160660,188,asm
-game/Monster,getClosestMonster__7Monsteriif,0x160720,192,asm
-game/Monster,getClosestMonsterWithLos__7Monsterf,0x1607e0,200,asm
+game/Monster,getClosestMonster__7Monsterf,0x1605a0,188,equivalent
+game/Monster,getClosestMonster2D__7Monsterf,0x160660,188,equivalent
+game/Monster,getClosestMonster__7Monsteriif,0x160720,192,equivalent
+game/Monster,getClosestMonsterWithLos__7Monsterf,0x1607e0,200,equivalent
 game/Monster,getClosestMonsterToOrientation__7Monsterff,0x1608a8,276,asm
 game/Monster,getClosestMonsterToOrientation__7Monsteriiff,0x1609c0,404,asm
 game/Monster,getClosestMonsterToPunch__7Monsterfff,0x160b58,976,asm

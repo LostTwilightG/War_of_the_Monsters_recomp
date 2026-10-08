@@ -68,6 +68,8 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    void creditStamina(float amount, bool baseOnly);
+    void startCinema(void);
     Monster *getClosestMonster(float maxDist);
     Monster *getClosestMonster2D(float maxDist);
     Monster *getClosestMonsterWithLos(float maxDist);

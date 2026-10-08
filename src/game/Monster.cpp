@@ -22,6 +22,12 @@ public:
     void updateInputs(void);
 };
 extern float cloaker;
+class AnimBlend {
+public:
+    void setPercent(float p);
+    void rampOut(float t);
+};
+void animationTransitionInto(_animHandle &h, float t, int a, int b);
 class StateDeath {
 public:
     int transitionOK(void);
@@ -196,7 +202,22 @@ void Monster::update(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", update__7Monster);
 #endif
-INCLUDE_ASM("asm/nonmatchings/game/Monster", startCinema__7Monster);
+void Monster::startCinema(void)
+{
+    ((AnimBlend *)((char *)this + 0x2FE0))->setPercent(0.5f);
+    ((AnimBlend *)((char *)this + 0x3048))->setPercent(0.5f);
+    if (*(int *)((char *)this + 0x311C)) {
+        ((AnimBlend *)((char *)this + 0x30B4))->rampOut(0.0f);
+        *(int *)((char *)this + 0x311C) = 0;
+    }
+    ((float *)((char *)m_cs + 0x70))[0] = 1.0f;
+    ((float *)((char *)m_cs + 0x70))[1] = 1.0f;
+    ((float *)((char *)m_cs + 0x70))[2] = 1.0f;
+    ((float *)((char *)m_cs + 0x70))[3] = 1.0f;
+    enterNewState((MonsterState *)((char *)this + 0x7984));
+    if (game->m_gameMode != 1)
+        animationTransitionInto(*(_animHandle *)((char *)this + 0x2290), 96.0f, 1, 1);
+}
 #ifdef NON_MATCHING
 /* 4/90 words, untuned: written from the m2c draft */
 void Monster::updateCinema(void)
@@ -522,7 +543,37 @@ float Monster::getCollisionDamage(float m)
 {
     return m_collisionBase + m * m_collisionScale;
 }
+#ifdef NON_MATCHING
+/* 73/78 words, untuned: v0/v1 swap for the constant 1 */
+void Monster::creditStamina(float amount, bool baseOnly)
+{
+    StaminaMeter *sm;
+    int full;
+
+    if (baseOnly) {
+        sm = &m_stamina;
+        if (m_cameraFollows && m_playerNum == 1 && amount > 1.0f) {
+            if (sm->cur < m_stamina.max)
+                gameHud(m_cameraView)->registerStaminaCredit((int)amount);
+        }
+        sm->creditBaseOnly(amount);
+        return;
+    }
+    sm = &m_stamina;
+    if (m_cameraFollows) {
+        full = 1;
+        if (m_playerNum == 1 && amount > 1.0f) {
+            if (!(sm->cur >= sm->maxLevel))
+                full = 0;
+            if (full == 0)
+                gameHud(m_cameraView)->registerStaminaCredit((int)amount);
+        }
+    }
+    sm->credit(amount);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", creditStamina__7Monsterfb);
+#endif
 void Monster::creditHealth(float amount)
 {
     ((HealthMeter *)((char *)this + 0x448))->credit(amount);
