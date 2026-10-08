@@ -119,3 +119,12 @@ que o próprio TU define (alias para a cópia do retail). Serve para validar as 
 - difftest ganhou `--init '<python>'` (W/W16/W8/THIS/ARENA/STUB) para montar estado estruturado; `Monster::update` precisa de `m_state` -> objeto com vtable (`W(THIS+0x34,S); W(S+0x10,VT); W16(VT+0x18,0); W(VT+0x1C,STUB)`),
   mas ainda cai em escritas fora do mapa (retail e alt), falta ajustar mais ponteiros.
 - O log do PCSX2 do usuário fica em `~/Documents/PCSX2/logs/emulog.txt`; erros em diálogo também aparecem lá como `ReportErrorAsync`.
+
+### Bugs de comportamento do halfcpp achados jogando (2026-10-08)
+Teste do usuário no halfcpp: veículos do chão sem glow verde e ◯ não pega; pedestres andando em fila; alguns prédios atravessáveis. Achados e corrigidos lendo as equivalentes contra o asm:
+- **`PathNode` tinha 0x40 bytes, o retail usa 0x30** (links de 4 bytes a partir de 0x12, são 7 e não 9): `PathNet::getRandNode/getClosestNode` indexavam nós errados -> pedestres (e provavelmente os carros, que também seguem a PathNet) em fila. Agora `getRandNode` dá MATCH; há um `typedef char PathNodeSizeCheck[...]`.
+- `AiBrain`: a classe base vazia `AiActionGroup` ocupa 1 byte no gcc 2.95 e empurrava `f_AAC` para 0xAB0 (retail 0xAAC). Sem herança agora (`AiBrain::reset` virou MATCH).
+- `AiGrappleAttack::updateAction`: com `matchMode` 0/1 o retail sorteia `heavyPunch` (o nosso chamava `toss`).
+- `Monster::isIdle`: último teste invertido (retail retorna 1 quando `t < state[2]`); só a câmera usa.
+- **Lição**: "untuned" com muitas palavras diferentes pode esconder erro de layout/semântica (o difftest não pegou nenhum destes: estado aleatório, callees stubados). Ferramentas novas: `tools/nm_audit.py` (offsets e imediatos por função, ELF NM x retail; muito ruído de gp x lui), `tools/nm_calls.py` (sequência de chamadas; achou o `toss` extra) e `tools/ramdiff.py` (compara dois dumps de RAM do EE; com `NM_HEAP=0x8E0000 sh tools/wsl/build_nm.sh ...` o heap fica no mesmo lugar nos dois builds e os endereços dos objetos coincidem; dump por `play.ps1 <elf> <n> <arquivo>`).
+- Comparação de RAM retail x halfcpp na fase (mesmo ponto): listas de pickups, `Interactives`, `ColGrid` (381 nós usados nos dois) e pools estão iguais; então o setup do nível está certo e o defeito do glow/pegar veículo é dinâmico. **Ainda não explicado**: glow/pegar veículo e prédios atravessáveis (retestar com o halfcpp novo; se persistir, reproduzir andando até um carro e ler `s_highlightPickup` na RAM).
