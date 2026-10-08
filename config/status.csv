@@ -700,11 +700,11 @@ game/TheGame,genericEventHandler__7TheGameUi,0x136d80,472,asm
 game/TheGame,InitAfterDbLoad__7TheGame,0x136f58,860,equivalent
 game/TheGame,Update__7TheGame,0x1372b8,1008,equivalent
 game/TheGame,Update2__7TheGame,0x1376a8,96,matched
-game/TheGame,MonsterParse__7TheGameP9_hierheadP8_fvector,0x137708,260,asm
-game/TheGame,AddMonster__7TheGameP3_csii,0x137810,292,asm
-game/TheGame,GetMonsterFromName__7TheGameii,0x137938,132,asm
-game/TheGame,SetPlayerMonster__7TheGameiiiii,0x1379c0,332,asm
-game/TheGame,SetAIMonster__7TheGameiiii,0x137b10,820,asm
+game/TheGame,MonsterParse__7TheGameP9_hierheadP8_fvector,0x137708,260,equivalent
+game/TheGame,AddMonster__7TheGameP3_csii,0x137810,292,equivalent
+game/TheGame,GetMonsterFromName__7TheGameii,0x137938,132,equivalent
+game/TheGame,SetPlayerMonster__7TheGameiiiii,0x1379c0,332,equivalent
+game/TheGame,SetAIMonster__7TheGameiiii,0x137b10,820,equivalent
 game/TheGame,gameInitCamera__7TheGameii,0x137e48,76,matched
 game/TheGame,GetCameraMaxHeight__7TheGameP8_fvector,0x137e98,20,matched
 game/TheGame,gameResolveCollisions__7TheGame,0x137eb0,436,asm

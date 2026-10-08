@@ -42,6 +42,15 @@ public:
     void Update(void);
 };
 extern Destructibles *destructibles;
+extern "C" int printf(const char *, ...);
+class DbInteractive;
+class Interactives {
+public:
+    static int addInteractive(DbInteractive *p);
+};
+_cs *dbGetCSForModel(_hierhead *h);
+void hierSetCsDrawMe(_cs *cs, unsigned char v);
+
 void checkTriggerTree(void);
 
 
@@ -225,11 +234,163 @@ void TheGame::Update2(void)
     if (m_playerMask & 4)
         LevelPickups::update();
 }
+/* The first monster model parsed for a (type, dup) pair keeps the highest `dup` seen so far: models of the same monster type
+   (the object id with its low 5 bits cleared) are numbered 1.. in the order the level lists them. */
+#ifdef NON_MATCHING
+/* 1/65 words: untuned, from the m2c draft */
+void TheGame::MonsterParse(_hierhead *h, _fvector *pos)
+{
+    int found = -1;
+    int dup;
+    unsigned id = *(unsigned *)h >> 18;
+    int rem = id & 0x1F;
+    int type = id - rem;
+
+    for (dup = 0; dup < 0x32; dup++) {
+        if (GetMonsterFromName(type, dup) != 0)
+            found = dup;
+    }
+    if (rem == 0) {
+        _cs *cs = dbGetCSForModel(h);
+
+        m_curDupId = found + 1;
+        AddMonster(cs, type, found + 1);
+        return;
+    }
+    if ((int)id < 0x400) {
+        Monster *m = GetMonsterFromName(type, found);
+
+        if (m != 0)
+            m->addAttachment(h);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", MonsterParse__7TheGameP9_hierheadP8_fvector);
+#endif
+
+#ifdef NON_MATCHING
+/* 38/73 words: untuned */
+void TheGame::AddMonster(_cs *cs, int type, int dup)
+{
+    Monster *m = &m_slots[m_numSlots];
+    unsigned *head;
+
+    m->m_dupId = dup;
+    m_slotInteractive[m_numSlots] = Interactives::addInteractive((DbInteractive *)&m_slots[m_numSlots]);
+    m->m_typeBits = type;
+    m->m_id = m_slotInteractive[m_numSlots];
+    m->m_cs = cs;
+    m->m_playerNum = 0;
+    cs->drawMe = 0;
+    head = (unsigned *)cs->epNode;
+    *head = (*head & 0x3FFFF) | (type << 18);
+    head = (unsigned *)cs->epNode;
+    *head = (*head & 0xFFFC007F) | ((m_slotInteractive[m_numSlots] & 0x7FF) << 7);
+    m_numSlots++;
+    printf("Got monster %d with cs %p, interactiveIndex %d\n", type, cs, m->m_id);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", AddMonster__7TheGameP3_csii);
+#endif
+
+#ifdef NON_MATCHING
+/* 0/33 words: retail peels the first slot */
+Monster *TheGame::GetMonsterFromName(int type, int dup)
+{
+    int i;
+
+    for (i = 0; i < m_numSlots; i++) {
+        if (m_slots[i].m_typeBits == type && m_slots[i].m_dupId == dup)
+            return &m_slots[i];
+    }
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", GetMonsterFromName__7TheGameii);
+#endif
+
+#ifdef NON_MATCHING
+/* 4/84 words: untuned */
+void TheGame::SetPlayerMonster(int pIdx, int type, int dup, int view, int skin)
+{
+    int i;
+
+    if (m_numSlots == 0)
+        printf(">>>>>>>>>>  No Monsters In Database!!!  <<<<<<<<<<\n");
+    for (i = 0; i < m_numSlots; i++) {
+        Monster *m = &m_slots[i];
+
+        if (m->m_typeBits == type && m->m_dupId == dup) {
+            m->m_index = pIdx;
+            m->m_monsterNum = i;
+            m->m_playerInfo = (PlayerDat *)((char *)this + 0x112480 + pIdx * 4);
+            m_monsters[pIdx] = m;
+            m->playerInit();
+            m->m_skinNum = skin;
+            if (i < 2)
+                *(int *)((char *)m + 0x672C) = *(int *)((char *)shell + 0x2B8C + i * 4) - 1;
+            if (view >= 0)
+                gameInitCamera(view, i);
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", SetPlayerMonster__7TheGameiiiii);
+#endif
+
+#ifdef NON_MATCHING
+/* A monster that is not driven by a player or an AI (the boss halves, the inactive crowd) is switched off: no owner, nothing drawn. */
+static void disableMonster(Monster *m)
+{
+    m->m_playerNum = 0;
+    m->m_cs->drawMe = 0;
+    m->m_shadow->drawMe = 0;
+    (*(_cs **)((char *)m + 0x71F8))->drawMe = 0;
+    (*(_cs **)((char *)m + 0x71FC))->drawMe = 0;
+}
+
+/* 3/205 words: retail inlines the five disable blocks */
+void TheGame::SetAIMonster(int aiIdx, int type, int dup, int skin)
+{
+    int i;
+
+    m_numAIs = 0;
+    for (i = 0; i < m_numSlots; i++) {
+        Monster *m = &m_slots[i];
+
+        if (m->m_typeBits == type && m->m_dupId == dup) {
+            m->m_monsterNum = i;
+            m->m_index = aiIdx;
+            m->m_playerInfo = 0;
+            m_monsters[4 + aiIdx] = m;
+            m->m_skinNum = skin;
+            m->aiInit();
+            if (m->m_shadow != 0)
+                hierSetCsDrawMe(m->m_shadow, 1);
+            if (m_numMonsters < 2)
+                gameInitCamera(1, i);
+            else
+                gameInitCamera(3, i);
+        }
+        if (m_slots[i].m_playerNum == 2 || m_slots[i].m_typeBits == 0x1C0 || m_slots[i].m_typeBits == 0x1E0)
+            m_numAIs++;
+        if (m_slots[i].m_typeBits == 0x1A0)
+            disableMonster(&m_slots[i]);
+        if (m_levelId == 2 && m_gameMode == 1 && m_slots[i].m_typeBits == 0x40 && m_slots[i].m_playerNum == 2)
+            disableMonster(&m_slots[i]);
+        if (m_slots[i].m_typeBits == 0x1C0) {
+            disableMonster(&m_slots[i]);
+            *(Monster **)((char *)&finalBoss + 0x74) = &m_slots[i];
+        }
+        if (m_slots[i].m_typeBits == 0x1E0) {
+            disableMonster(&m_slots[i]);
+            *(Monster **)((char *)&finalBoss + 0x78) = &m_slots[i];
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", SetAIMonster__7TheGameiiii);
+#endif
 void TheGame::gameInitCamera(int view, int slot)
 {
     m_viewSlot[view] = slot;

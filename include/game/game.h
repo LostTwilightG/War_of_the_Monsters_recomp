@@ -265,6 +265,9 @@ public:
     void setReticleCS(_cs * v);
     void setShadow(_cs * v);
     void setStickyReticleCS(_cs * v);
+    void playerInit(void);
+    void aiInit(void);
+    void addAttachment(_hierhead *h);
 
     char pad0[0x4 - 0x0];
     unsigned short m_flags;   /* 0x4 */
@@ -460,10 +463,12 @@ public:
     int m_numAIs;                    /* 0x1203E0: AI monsters, stored in m_monsters[4..] */
     int m_numAIsAlive;               /* 0x1203E4: cached by GetNumAIsAlive */
     int m_viewSlot[2];               /* 0x1203E8: monster slot each view follows (gameInitCamera); [0] also selects the level data block */
-    char pad1203F0[0x12043C - 0x1203F0];
+    char pad1203F0[0x1203FC - 0x1203F0];
+    int m_slotInteractive[16];       /* 0x1203FC: Interactives index of each monster slot (AddMonster) */
     int m_won[2];                    /* 0x12043C */
     int m_playerMask;                /* 0x120444: bit 0 = player 1 active, bit 1 = player 2 active (inferred) */
-    char pad120448[0x120450 - 0x120448];
+    int m_curDupId;                  /* 0x120448: duplicate id of the monster model being parsed (MonsterParse) */
+    char pad12044C[4];
     int f120450, f120454, f120458, f12045C; /* zeroed by InitAfterDbLoad */
     int f120460;                     /* set to 1 by InitAfterDbLoad */
     char pad120464[4];
@@ -498,6 +503,11 @@ public:
     int GetNumAIsAlive(void);
     float GetCameraMaxHeight(_fvector *pos);
     void gameInitCamera(int view, int slot);
+    Monster *GetMonsterFromName(int type, int dup);
+    void AddMonster(_cs *cs, int type, int dup);
+    void MonsterParse(_hierhead *h, _fvector *pos);
+    void SetPlayerMonster(int pIdx, int type, int dup, int view, int skin);
+    void SetAIMonster(int aiIdx, int type, int dup, int skin);
     void fadeOutAndIn(int n);
     void UpdatePadTweaks(void);
     static void traversalCallback(_cs *cs, unsigned a, unsigned b, float (&m)[4][4], _fvector *eo);
