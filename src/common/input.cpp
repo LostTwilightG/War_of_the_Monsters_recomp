@@ -192,8 +192,73 @@ int inputGetCtlPadAnalogAxis(int axis, int pad)
     }
     return v;
 }
-INCLUDE_ASM("asm/nonmatchings/common/input", inputGetShellAnalogInput__Fii);
-INCLUDE_ASM("asm/nonmatchings/common/input", inputFixAnalogValue__Fii);
+int inputGetShellAnalogInput(int dir, int pad)
+{
+    int hit = 0;
+    int x, y;
+
+    if (inputCtlAvailable[pad] && inputPadType[pad] != 4) {
+        x = 0x80 - inputGetCtlPadAnalogAxis(2, pad);
+        y = 0x80 - inputGetCtlPadAnalogAxis(3, pad);
+        inputGetCtlPadAnalogAxis(0, pad);
+        inputGetCtlPadAnalogAxis(1, pad);
+        switch (dir) {
+        case 0x80: /* left */
+            hit = x > 120;
+            break;
+        case 0x20: /* right */
+            hit = x < -120;
+            break;
+        case 0x10: /* up */
+            hit = y > 120;
+            break;
+        case 0x40: /* down */
+            hit = y < -120;
+            break;
+        }
+    }
+    return hit;
+}
+int inputFixAnalogValue(int axis, int pad)
+{
+    int v = 0;
+    int mag;
+    float f;
+
+    if (inputCtlAvailable[pad] && inputPadType[pad] != 4) {
+        v = inputGetCtlPadAnalogAxis(axis, pad);
+        if (v > 225) {
+            f = (float)v - 225.0f;
+            v = (int)(f * 64.0f / 30.0f + 64.0f);
+            if (v > 127)
+                v = 127;
+        } else if (v > 162) {
+            f = (float)v - 162.0f;
+            v = (int)(f * 64.0f / 64.0f);
+            if (v > 64)
+                v = 64;
+        } else if (v < 30) {
+            f = (float)v;
+            v = (int)(f * 64.0f / 30.0f + -127.0f);
+            if (v <= -128)
+                v = -127;
+        } else if (v < 92) {
+            f = 92.0f - (float)v;
+            v = (int)(f * -64.0f / 62.0f);
+            if (v <= -65)
+                v = -64;
+        } else
+            v = 0;
+        if (v > 127)
+            v = 127;
+        else if (v <= -128)
+            v = -127;
+        mag = v < 0 ? -v : v;
+        if (mag <= 1)
+            v = 0;
+    }
+    return v;
+}
 int inputScaleAnalogButton(int value, int min, int max)
 {
     int v = min + (int)((float)value / 255.0f * ((float)max - (float)min));
