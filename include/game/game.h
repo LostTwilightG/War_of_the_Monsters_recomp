@@ -16,6 +16,7 @@ class MonsterState;
 class AiPath;
 class PlayerDat;
 class _fvector;
+class ActAiNavigation;
 enum ePickupType { PICKUP_TYPE_0 };
 
 class Monster {
@@ -60,6 +61,13 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    void enableStaminaRegen(bool b);
+    void endSpecialPowerUpGlow(void);
+    float getStamina(void);
+    void putOutFire(void);
+    void landingShake(void);
+    void startBeingImpaled(float a, float b);
+    void handleAction(ActAiNavigation *a);
     float getCollisionDamage(float m);
     void drainStamina(float amount, bool b);
     void endCinema(void);

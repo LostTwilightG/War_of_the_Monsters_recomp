@@ -40,8 +40,15 @@ public:
 };
 unsigned timerGetFieldCount(void);
 
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setWaterLevel__Ff);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getWaterLevel__Fv);
+float WaterLevel;
+void setWaterLevel(float v)
+{
+    WaterLevel = v;
+}
+float getWaterLevel(void)
+{
+    return WaterLevel;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isUnderwater__Ff);
 void Monster::recomputeDynamics(void)
 {
@@ -258,13 +265,17 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestTargetable__7MonsterUsbff
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getLookAtTarget__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getDestructibleFromReticle__7Monsterf);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", addAttachment__7MonsterP9_hierhead);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", handleAction__7MonsterP15ActAiNavigation);
+void Monster::handleAction(ActAiNavigation *a)
+{
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", attachPickupImpaler__7MonsterGQ2t10LinkedList1ZP6Pickup8IteratorP8_fvector);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", detachPickupImpaler__7Monsterb);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", dropPickupImpaler__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", handleLocator__7MonsterUiRA3_A3_fP8_fvector);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", enterNewState__7MonsterP12MonsterState);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", landingShake__7Monster);
+void Monster::landingShake(void)
+{
+}
 float Monster::getCollisionDamage(float m)
 {
     return m_collisionBase + m * m_collisionScale;
@@ -293,7 +304,9 @@ void Monster::startShocking(float a, float b)
     m_beingShockedDamage = b;
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateBeingShocked__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", startBeingImpaled__7Monsterff);
+void Monster::startBeingImpaled(float a, float b)
+{
+}
 bool Monster::isHolding(void)
 {
     return m_pickup != 0 || m_target != 0;
@@ -395,7 +408,10 @@ void Monster::stopFireBreath(void)
 {
     ((FireBreath *)((char *)this + 0x68C0))->ApplyMint();
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", putOutFire__7Monster);
+void Monster::putOutFire(void)
+{
+    m_onFireCount = 0;
+}
 void *Monster::getMotionRot(void)
 {
     return (char *)this + 0xA0;
@@ -589,7 +605,10 @@ float Monster::getMaxHealth(void)
 {
     return m_maxHealth;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getStamina__7Monster);
+float Monster::getStamina(void)
+{
+    return m_stamina.cur;
+}
 float Monster::getHeight(void) const
 {
     return m_bodyHeight + m_heightAboveCOG;
@@ -995,7 +1014,10 @@ void Monster::drainStamina(float amount, bool b)
 {
     m_stamina.drain(amount, b, false);
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", enableStaminaRegen__7Monsterb);
+void Monster::enableStaminaRegen(bool b)
+{
+    m_stamina.enabled = b;
+}
 void Monster::enableSpecialWeapon(bool v)
 {
     m_specialWeapon = v;
@@ -1018,7 +1040,10 @@ void Monster::startSpecialPowerUpGlow(int a)
     m_specialGlow[2] = 0x7F;
     m_specialGlow[1] = 0;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", endSpecialPowerUpGlow__7Monster);
+void Monster::endSpecialPowerUpGlow(void)
+{
+    m_specialGlow[2] = 0;
+}
 void Monster::incrementWinsThisGame(int n)
 {
     m_winsThisGame += n;

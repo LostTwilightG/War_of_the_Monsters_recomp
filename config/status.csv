@@ -1372,7 +1372,7 @@ game/Monster,playerUpdateInputs__7Monster,0x15b460,36,asm
 game/Monster,update__7Monster,0x15b488,1216,equivalent
 game/Monster,startCinema__7Monster,0x15b948,200,asm
 game/Monster,updateCinema__7Monster,0x15ba10,308,equivalent
-game/Monster,endCinema__7Monster,0x15bb48,28,asm
+game/Monster,endCinema__7Monster,0x15bb48,28,matched
 game/Monster,updateBoundingSphere__7Monster,0x15bb68,956,asm
 game/Monster,updateReticle__7Monster,0x15bf28,1004,asm
 game/Monster,setReticles__7Monsteri,0x15c318,376,asm
@@ -1423,7 +1423,7 @@ game/Monster,dropPickupImpaler__7Monster,0x161ea8,80,asm
 game/Monster,handleLocator__7MonsterUiRA3_A3_fP8_fvector,0x161ef8,716,asm
 game/Monster,enterNewState__7MonsterP12MonsterState,0x1621c8,588,asm
 game/Monster,landingShake__7Monster,0x162418,8,asm
-game/Monster,getCollisionDamage__7Monsterf,0x162420,20,asm
+game/Monster,getCollisionDamage__7Monsterf,0x162420,20,matched
 game/Monster,creditStamina__7Monsterfb,0x162438,312,asm
 game/Monster,creditHealth__7Monsterf,0x162570,112,asm
 game/Monster,breathFire__7Monster,0x1625e0,76,asm
@@ -1451,8 +1451,8 @@ game/Monster,drainSpecial__7Monster,0x162f80,68,equivalent
 game/Monster,isSpecialAvailable__C7Monster,0x162fc8,56,equivalent
 game/Monster,__tf7Monster,0x163028,80,asm
 game/Monster,__7Monster,0x163078,956,asm
-game/Monster,updateTurn__7Monsterb,0x163438,28,asm
-game/Monster,updateMove__7Monsterb,0x163458,28,asm
+game/Monster,updateTurn__7Monsterb,0x163438,28,matched
+game/Monster,updateMove__7Monsterb,0x163458,28,matched
 game/Monster,stopFireBreath__7Monster,0x163478,28,matched
 game/Monster,putOutFire__7Monster,0x163498,8,asm
 game/Monster,getMotionRot__7Monster,0x1634a0,8,matched
@@ -1490,7 +1490,7 @@ game/Monster,getReticleLosResult__7Monster,0x1635c8,8,matched
 game/Monster,getShadowHDResult__7Monster,0x1635d0,8,matched
 game/Monster,getClosestPath__7Monster,0x1635d8,8,matched
 game/Monster,getReticleState__C7Monster,0x1635e0,8,matched
-game/Monster,getEnemyInfo__7MonsterR7Monster,0x1635e8,28,asm
+game/Monster,getEnemyInfo__7MonsterR7Monster,0x1635e8,28,matched
 game/Monster,getState__7Monster,0x163608,8,matched
 game/Monster,getStateId__7Monster,0x163610,12,matched
 game/Monster,getPrevStateId__7Monster,0x163620,12,matched
@@ -1603,12 +1603,12 @@ game/Monster,setAttacksEnabled__7Monsterb,0x163b00,8,matched
 game/Monster,setAttackDisableDuration__7Monsteri,0x163b08,56,asm
 game/Monster,setAimHeadingEnabled__7Monsterb,0x163b40,8,matched
 game/Monster,setLookAtOverride__7MonsterP8_fvector,0x163b48,8,matched
-game/Monster,drainStamina__7Monsterfb,0x163b50,32,asm
+game/Monster,drainStamina__7Monsterfb,0x163b50,32,matched
 game/Monster,enableStaminaRegen__7Monsterb,0x163b70,8,asm
 game/Monster,enableSpecialWeapon__7Monsterb,0x163b78,8,matched
 game/Monster,startHealthPowerUpGlow__7Monsterii,0x163b80,16,matched
 game/Monster,startStaminaPowerUpGlow__7Monsterii,0x163b90,16,matched
-game/Monster,startSpecialPowerUpGlow__7Monsteri,0x163ba0,20,asm
+game/Monster,startSpecialPowerUpGlow__7Monsteri,0x163ba0,20,matched
 game/Monster,endSpecialPowerUpGlow__7Monster,0x163bb8,8,asm
 game/Monster,incrementWinsThisGame__7Monsteri,0x163bc0,16,matched
 game/Monster,getHudTexture__7Monster,0x163bd0,8,matched
