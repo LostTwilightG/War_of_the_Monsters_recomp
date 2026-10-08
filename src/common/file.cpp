@@ -18,6 +18,18 @@ struct FileStatus {
 extern FileStatus fileStatus;
 extern unsigned char cdSectorBuffer[];
 
+struct sceCdRMode {
+    unsigned char trycount, spindlctrl, datapattern, pad;
+};
+extern sceCdRMode cdReadMode;
+
+extern "C" {
+int sceCdRead(unsigned int lsn, unsigned int sectors, void *buf, sceCdRMode *mode);
+int sceCdSync(int mode);
+}
+void setMaxTexId(int i, unsigned short v);
+void setMaxTexAddr(int i, unsigned short v);
+void setMaxResAddr(int i, unsigned short v);
 int fileStringCompare(char *a, char *b);
 
 INCLUDE_ASM("asm/nonmatchings/common/file", fileInitializeCd__Fv);
@@ -118,10 +130,57 @@ signed char getIdxOfName(char *name)
             return i;
     return -1;
 }
-INCLUDE_ASM("asm/nonmatchings/common/file", fileAddNgpFile__FPci);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileAddTexFile__FPci);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileAddResFile__FPci);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileAddName__FPc);
+void fileAddNgpFile(char *addr, int size)
+{
+    int rem, pad;
+
+    fileStatus.ngpAddr[fileStatus.ngpLoaded++] = addr;
+    fileStatus.ngpAddr[fileStatus.ngpLoaded] = fileStatus.ngpAddr[fileStatus.ngpLoaded - 1] + size;
+    rem = (int)fileStatus.ngpAddr[fileStatus.ngpLoaded] & 0x7F;
+    if (rem) {
+        pad = 0x80 - rem;
+        fileStatus.ngpAddr[fileStatus.ngpLoaded] += (signed char)pad;
+        fileStatus.ngpAddr[fileStatus.ngpLoaded] += 0x80;
+    }
+}
+void fileAddTexFile(char *addr, int size)
+{
+    int rem, pad;
+
+    fileStatus.texAddr[fileStatus.texLoaded++] = addr;
+    fileStatus.texAddr[fileStatus.texLoaded] = fileStatus.texAddr[fileStatus.texLoaded - 1] + size;
+    rem = (int)fileStatus.texAddr[fileStatus.texLoaded] & 0x7F;
+    if (rem) {
+        pad = 0x80 - rem;
+        fileStatus.texAddr[fileStatus.texLoaded] += (signed char)pad;
+        fileStatus.texAddr[fileStatus.texLoaded] += 0x70;
+    }
+}
+void fileAddResFile(char *addr, int size)
+{
+    int rem, pad;
+
+    setMaxResAddr(fileStatus.resLoaded, 0);
+    setMaxTexAddr(fileStatus.resLoaded, 0);
+    setMaxTexId(fileStatus.resLoaded, 0);
+    fileStatus.resAddr[fileStatus.resLoaded++] = addr;
+    fileStatus.resAddr[fileStatus.resLoaded] = fileStatus.resAddr[fileStatus.resLoaded - 1] + size;
+    rem = (int)fileStatus.resAddr[fileStatus.resLoaded] & 0x7F;
+    if (rem) {
+        pad = 0x80 - rem;
+        fileStatus.resAddr[fileStatus.resLoaded] += (signed char)pad;
+        fileStatus.resAddr[fileStatus.resLoaded] += 0x70;
+    }
+}
+void fileAddName(char *name)
+{
+    int i, j;
+
+    for (i = 0; i < 9; i++)
+        fileStatus.names[fileStatus.ngpLoaded - 1][i] = 0;
+    for (j = 0; name[j] != 0 && j < 8; j++)
+        fileStatus.names[fileStatus.ngpLoaded - 1][j] = name[j];
+}
 void fileOnlyNgpFile(char *addr, int size)
 {
     char *end = addr + size;
@@ -186,11 +245,28 @@ short twoCharsToShort(int i)
 {
     return cdSectorBuffer[i] + (cdSectorBuffer[i + 1] << 8);
 }
-INCLUDE_ASM("asm/nonmatchings/common/file", fileCdRead__FllPc);
+int fileCdRead(long sectors, long lsn, char *buf)
+{
+    int ret = sceCdRead(lsn, sectors, buf, &cdReadMode);
+
+    sceCdSync(0);
+    return ret;
+}
 INCLUDE_ASM("asm/nonmatchings/common/file", fileCdSearchFile__FP10sceCdlFILEPc);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileHierAddrOfSect__FUi);
 INCLUDE_ASM("asm/nonmatchings/common/file", filePrintCdFiles__FP13_cdFileSystemi);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileStringCompare__FPcT0);
+int fileStringCompare(char *a, char *b)
+{
+    int i;
+
+    for (i = 0; i < 16; i++) {
+        if (a[i] != b[i])
+            return 0;
+        if (a[i] == 0)
+            return 1;
+    }
+    return 0;
+}
 INCLUDE_ASM("asm/nonmatchings/common/file", fileTrimPath__FPc);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileGetTimeString__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileAdjustFileName__FPcT0);
