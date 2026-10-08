@@ -429,7 +429,199 @@ void TheGame::gameResolveCollisions(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameResolveCollisions__7TheGame);
 #endif
+#ifdef NON_MATCHING
+void rtReturnToShell(int code, int delay);
+extern int aiLeft __asm__("D_006F8BF8");
+extern char BigShotLevel_instance[] __asm__("_12BigShotLevel$instance");
+class StateVictory {
+public:
+    int transitionOK(Monster *m);
+};
+class SoundManager {
+public:
+    void swapMonsterSoundBankBlocking(int from, int to);
+};
+
+#define SHN(o) (*(int *)((char *)shell + (o)))
+
+/* Checks every frame whether a round ended and asks the shell to leave the loop: rtReturnToShell(code, delay): code 1 = a player died (the mode's
+   Evaluate* decides what follows), 0 = a win; 0x1E frames of delay while the screen fades. m_unkF6 marks a monster that is out for good, m_unkF7 one that
+   has won (victory state). Modes: 1 story, 2/3/11 free for all, 4 endurance, 6 elimination, 7 dodgeball, 8 bigshot, 9 crush. */
+void TheGame::gameResolveLifeAndDeath(void)
+{
+    int i, j;
+
+    switch (m_gameMode) {
+    case 1:
+        aiLeft = 0;
+        if (m_numAIs == 0)
+            aiLeft = 1;
+        for (i = 0; i < m_numAIs; i++)
+            if (m_monsters[4 + i]->m_unkF6 == 0)
+                aiLeft = 1;
+        for (i = 0; i < m_numMonsters; i++) {
+            if (m_monsters[i]->m_unkF6 != 0) {
+                if (SHN(0x2BBC) == 1) {
+                    rtReturnToShell(1, 0x1E);
+                    fadeOut(4);
+                } else {
+                    rtReturnToShell(1, 0x1E);
+                    fadeOutAndIn(4);
+                }
+            }
+        }
+        if (m_levelId != 6 && m_levelId != 3 && m_levelId != 9 && m_levelId != 10 && m_levelId != 11) {
+            if (aiLeft == 0) {
+                Monster *p = m_monsters[0];
+
+                if (p->m_unkF7 != 0) {
+                    rtReturnToShell(0, 0x1E);
+                    fadeOut(4);
+                } else if (p->m_dead == 0 && *p->m_state != 0x40 && ((StateVictory *)p->m_victoryState)->transitionOK(p)) {
+                    m_monsters[0]->enterNewState((MonsterState *)m_monsters[0]->m_victoryState);
+                }
+            }
+        }
+        break;
+    case 4: {
+        Monster **ais = &m_monsters[4];
+        Monster *m = ais[SHN(0x2A70)];
+
+        if (m->m_unkF6 != 0) {
+            int oldType = m->m_typeBits;
+
+            printf("We just noticed that an AI died in Endurance mode!!, We'll clean him up and provide a new one.
+");
+            ais[SHN(0x2A70)]->m_playerNum = 0;
+            hierSetCsDrawMe(ais[SHN(0x2A70)]->m_cs, 0);
+            SHN(0x2A70)++;
+            if (SHN(0x2A70) >= m_numAIs)
+                SHN(0x2A70) = 0;
+            hierSetCsDrawMe(ais[SHN(0x2A70)]->m_cs, 1);
+            ais[SHN(0x2A70)]->aiInit();
+            ((SoundManager *)((char *)shell + 0x2C30))->swapMonsterSoundBankBlocking(oldType, ais[SHN(0x2A70)]->m_typeBits);
+        }
+        for (i = 0; i < m_numMonsters; i++) {
+            if (m_monsters[i]->m_unkF6 != 0) {
+                rtReturnToShell(1, 0x1E);
+                fadeOut(4);
+            }
+        }
+        break;
+    }
+    case 6:
+        for (i = 0; i < m_numMonsters; i++) {
+            Monster *m = m_monsters[i];
+
+            if (m->m_unkF6 != 0) {
+                int lives = i == 0 ? SHN(0x2B40) : SHN(0x2B44);
+
+                if (lives == 0) {
+                    Monster *k = m->m_killer;
+
+                    if (k != 0) {
+                        if (k->m_unkF7 != 0) {
+                            rtReturnToShell(1, 0x1E);
+                            fadeOut(4);
+                        }
+                    } else {
+                        rtReturnToShell(1, 0x1E);
+                    }
+                } else {
+                    rtReturnToShell(1, 0x1E);
+                }
+            }
+        }
+        break;
+    case 2:
+    case 3:
+    case 11:
+        for (i = 0; i < m_numSlots; i++) {
+            Monster *s = &m_slots[i];
+
+            if (s->m_unkF6 != 0) {
+                Monster *k = s->m_killer;
+
+                if (k != 0) {
+                    int target = SHN(0x2A44);
+
+                    if (target <= 0 || m_slots[k->m_monsterNum].m_winsThisGame < target) {
+                        rtReturnToShell(1, 0x1E);
+                        if (s->m_playerNum == 1 && m_gameMode == 2)
+                            fadeOutAndIn(4);
+                    } else if (k->m_unkF7 != 0) {
+                        rtReturnToShell(1, 0x1E);
+                        fadeOut(4);
+                    }
+                } else {
+                    rtReturnToShell(1, 0x1E);
+                    if (s->m_playerNum == 1 && m_gameMode == 2)
+                        fadeOutAndIn(4);
+                }
+            }
+        }
+        break;
+    case 8:
+        if (*(int *)(BigShotLevel_instance + 0xE8) == 1) {
+            for (i = 0; i < m_numMonsters; i++) {
+                if (m_monsters[i]->m_unkF6 != 0) {
+                    for (j = 0; j < m_numMonsters; j++) {
+                        if (j != i && m_monsters[j]->m_unkF7 != 0) {
+                            m_won[1] = i;
+                            m_won[0] = j;
+                            rtReturnToShell(0, 0);
+                        }
+                    }
+                }
+            }
+        }
+        break;
+    case 9:
+        for (i = 0; i < m_numMonsters; i++) {
+            if (m_monsters[i]->m_unkF7 != 0) {
+                m_won[1] = i == 0;
+                m_won[0] = i;
+                rtReturnToShell(0, 0);
+            }
+        }
+        break;
+    case 7:
+        for (i = 0; i < m_numMonsters; i++) {
+            Monster *m = m_monsters[i];
+
+            if (m->m_unkF6 != 0) {
+                Monster *k = m->m_killer;
+
+                if (k == 0 || k->m_dead != 0) {
+                    rtReturnToShell(1, 0x1E);
+                    fadeOutAndIn(4);
+                } else {
+                    for (j = 0; j < m_numMonsters; j++) {
+                        if (j != i && m_monsters[j]->m_unkF7 != 0) {
+                            m_won[1] = i;
+                            m_won[0] = j;
+                            rtReturnToShell(1, 0x1E);
+                            fadeOut(4);
+                        }
+                    }
+                }
+            }
+        }
+        break;
+    case 0x3F:
+    case 0x40:
+        printf("Something is really screwed up if we think we're in the shell here.
+");
+        break;
+    default:
+        printf("ERROR - TheGame::gameResolveLifeAndDeath doesn't recognize %i as a valid game mode
+", m_gameMode);
+        break;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameResolveLifeAndDeath__7TheGame);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameCheckForCloseCombat__7TheGame);
 void TheGame::SetGravity(float g)
 {

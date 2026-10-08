@@ -519,6 +519,7 @@ public:
     void SetPlayerMonster(int pIdx, int type, int dup, int view, int skin);
     void SetAIMonster(int aiIdx, int type, int dup, int skin);
     void fadeOutAndIn(int n);
+    void fadeOut(int n);
     void UpdatePadTweaks(void);
     static void traversalCallback(_cs *cs, unsigned a, unsigned b, float (&m)[4][4], _fvector *eo);
     static void genericEventHandler(unsigned event);

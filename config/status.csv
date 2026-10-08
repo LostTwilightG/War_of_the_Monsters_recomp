@@ -708,7 +708,7 @@ game/TheGame,SetAIMonster__7TheGameiiii,0x137b10,820,equivalent
 game/TheGame,gameInitCamera__7TheGameii,0x137e48,76,matched
 game/TheGame,GetCameraMaxHeight__7TheGameP8_fvector,0x137e98,20,matched
 game/TheGame,gameResolveCollisions__7TheGame,0x137eb0,436,equivalent
-game/TheGame,gameResolveLifeAndDeath__7TheGame,0x138068,2008,asm
+game/TheGame,gameResolveLifeAndDeath__7TheGame,0x138068,2008,equivalent
 game/TheGame,gameCheckForCloseCombat__7TheGame,0x138840,1224,asm
 game/TheGame,SetGravity__7TheGamef,0x138d08,16,matched
 game/TheGame,SetOkToUnify__7TheGame,0x138d18,76,matched
