@@ -10,14 +10,77 @@ struct SelectSlot {
 extern SelectSlot monsterSelectMode[];
 extern int numModsLeft;
 extern int unlocked_3092 __asm__("unlocked.3092");
+extern int numSelectablesOne __asm__("numSelectablesOne.3096");
+extern int numSelectablesTwo __asm__("numSelectablesTwo.3097");
+extern int selBeginning __asm__("beginning.3098");
+extern int selEnding __asm__("ending.3099");
+extern int currentSelection[];
+int modelsLeft(int group);
+struct _hierswitch;
+struct _hierobject;
+struct _animHandle;
+struct _SaveGameData;
+void hierSetSwitch(_hierswitch *sw, int which);
+void moviesReadyScreenObject(_hierobject *o, int a, int b);
+int monsterIdToMonsterEnum(int id);
+class AnimQueue {
+public:
+    void Push(_animHandle *h, int a, int b, int c);
+};
+class CMovie {
+public:
+    void Play(bool loop, char *name);
+};
+extern AnimQueue *animq;
+extern CMovie myMovie;
+extern char MainMovie[];
+extern int continueDecoding;
+extern int currScreen;
 
 int monsterIdToMonsterEnum(int id)
 {
     return id / 32;
 }
+#ifdef NON_MATCHING
+/* Starts the main-menu background movie on the shell's screen object. */
+void screenPrepare(void)
+{
+    moviesReadyScreenObject(*(_hierobject **)((char *)shell + 0x160), 8, 7);
+    myMovie.Play(false, MainMovie);
+    continueDecoding = 1;
+    currScreen = 0x10;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenPrepare__Fv);
+#endif
+#ifdef NON_MATCHING
+/* Points the `count` reel switches of the shell (from `first`) at the model and monster enum of each saved entry (0x3C bytes apiece, from +0x10). */
+void setReelSwitches(int first, int count, _SaveGameData *save)
+{
+    int i;
+
+    for (i = 0; i < count; i++) {
+        char *e = (char *)save + 0x10 + i * 0x3C;
+
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x27D4 + first * 0x28 + i * 4), *(int *)e);
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x2784 + first * 0x28 + i * 4), monsterIdToMonsterEnum(*(int *)(e + 4)));
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", setReelSwitches__FiiP13_SaveGameData);
+#endif
+#ifdef NON_MATCHING
+/* Queues the animation of reel `reel`: `from` is stopped, `to` started. Each reel owns 0xA0 bytes of animation handles in the shell. */
+void changeReel(int reel, int from, int to)
+{
+    char *base = (char *)shell + reel * 0xA0 + 0x2644;
+
+    animq->Push((_animHandle *)(base + from * 0x10), 0, 0, 0);
+    animq->Push((_animHandle *)(base + to * 0x10), 1, 1, 1);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", changeReel__Fiii);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenMain__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/screen", updateSelectSwitches__Fiiii);
 INCLUDE_ASM("asm/nonmatchings/game/screen", updateSelectSwitches3P__Fiiiiii);
@@ -132,7 +195,19 @@ int isSlotOpen(int group, int slot)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/screen", isSlotOpen__Fii);
 #endif
+#ifdef NON_MATCHING
+/* Every one of the 12 groups of 4 select slots becomes available again. */
+void resetSelectables(void)
+{
+    int g, i;
+
+    for (g = 0; g < 12; g++)
+        for (i = 3; i >= 0; i--)
+            monsterSelectMode[g * 4 + i].taken = 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", resetSelectables__Fv);
+#endif
 void resetGameMode(void)
 {
     int mode = *(int *)((char *)shell + 0x2B54);
@@ -196,7 +271,59 @@ int levelUnlocked(int level)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/screen", levelUnlocked__Fi);
 #endif
+#ifdef NON_MATCHING
+/* Steps player `player`'s choice in list `list` by `dir` (wrapping inside the selectable range) until a model with a free copy is found.
+   The range depends on the two unlock flags: 1..9 or 2..9 by default, up to 10 once the bonus monster is open. */
+void findAvailableMonster(int dir, int player, int list)
+{
+    int *cur;
+    int a = *(int *)((char *)monsterSelectMode + 4);
+    int b = *(int *)((char *)monsterSelectMode + 0x634);
+
+    if (a == 0 && b == 0) {
+        selBeginning = 2;
+        selEnding = 9;
+        numSelectablesOne = 9;
+        numSelectablesTwo = 9;
+    } else if (a == 1 && b == 0) {
+        selBeginning = a;
+        selEnding = 9;
+        numSelectablesOne = 9;
+        numSelectablesTwo = 9;
+    } else if (a == 0 && b == 1) {
+        numSelectablesTwo = 9;
+        selBeginning = 2;
+        selEnding = 10;
+        numSelectablesOne = 9;
+    } else if (a == 1 && b == a) {
+        selBeginning = b;
+        selEnding = 10;
+        numSelectablesOne = 10;
+        numSelectablesTwo = 10;
+    }
+    cur = (int *)((char *)currentSelection + player * 0x58 + list * 4);
+    do {
+        *cur += dir;
+        if (*cur < selBeginning)
+            *cur = selEnding;
+        if (selEnding < *cur)
+            *cur = selBeginning;
+    } while (modelsLeft(*cur) == 0);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", findAvailableMonster__Fiii);
+#endif
+#ifdef NON_MATCHING
+/* Clears the ten model choices kept in the shell (0x2BE8..0x2C0C). */
+void resetModels(void)
+{
+    int i;
+
+    for (i = 9; i >= 0; i--)
+        *(int *)((char *)shell + 0x2BE8 + i * 4) = 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", resetModels__Fv);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/screen", __static_initialization_and_destruction_0_001A6668);
 INCLUDE_ASM("asm/nonmatchings/game/screen", _GLOBAL_$I$NamecardDistance);
