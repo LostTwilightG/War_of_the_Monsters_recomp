@@ -54,6 +54,10 @@ public:
     void EvaluateOnlineBattleStatus(int r);
     void DisplayLoadBackground(bool b);
     void GenesisMovie(void);
+    void InitGS(short mode);
+    int Use30HzMode(void);
+    int MonsterIsLocked(int i);
+    void SelectAI(void);
     void InitialMemCardScreen(void);
     void LoadLevelDB(void);
     void LoadMonstersDB(void);

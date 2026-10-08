@@ -1,4 +1,5 @@
 #include "common.h"
+#include "memory_stack.h"
 #include "game/shell.h"
 
 extern "C" int printf(const char *, ...);
@@ -24,6 +25,37 @@ void initProgressBar(int a, int b, int c);
 void viewSetNumViews(int n);
 enum _viewports { VIEWPORT_7 = 7 };
 void viewCreate(_viewports vp, int i);
+extern int doTweaks;
+extern int onBitMonsters[] __asm__("on_bit_006EF8E8");
+extern int NUM_LIVES[];
+#define GM(o) (*(int *)((char *)game + (o)))
+#define SHI(o) (*(int *)((char *)this + (o)))
+extern "C" int snd_StreamSafeCdSync(int mode);
+extern "C" int sceCdSync(int mode);
+extern "C" int sceCdDiskReady(int mode);
+void timerInit(int hz);
+struct _cs;
+struct _fvector;
+void hierSetTraversalCallback(void (*cb)(_cs *, unsigned, unsigned, float (&)[4][4], _fvector *));
+void hierInit(void);
+void viewInit(void);
+void viewSetNumViews(int n);
+void psBlockerInit(void);
+class TagList {
+public:
+    void init(void);
+};
+struct Camera {
+    enum CameraPOV { POV_0, POV_1, POV_2, POV_3 };
+};
+class Cameras {
+public:
+    static void LeaveUnifiedView(unsigned id);
+    static void Init(void);
+    static void SetCameraPOV(int view, Camera::CameraPOV pov);
+};
+extern int camerasNum __asm__("_7Cameras$m_numCameras");
+
 void dbsRelocateFileZero(_vramAddrs v, bool b);
 void dbInitDb(_dbheader *db, _vramAddrs v);
 
@@ -287,7 +319,9 @@ extern "C" int main(int argc, char **argv)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", main);
 #endif
-INCLUDE_ASM("asm/nonmatchings/game/Shell", SelectAI__5Shell);
+void Shell::SelectAI(void)
+{
+}
 INCLUDE_ASM("asm/nonmatchings/game/Shell", D_006EF180);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", RandomlySelectAI__5Shell);
 #ifdef NON_MATCHING
@@ -464,11 +498,50 @@ void Shell::InitPlayers(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", InitPlayers__5Shell);
 #endif
+#ifdef NON_MATCHING
+void Shell::InitBeforeUiDbLoad(void)
+{
+    SHI(0x2C14) = 0x2710;
+    SHI(0x2C18) = 0;
+    SHI(0x2BB4) = 0;
+    SHI(0x2BDC) = 0;
+    hierInit();
+    viewInit();
+    viewSetNumViews(1);
+    viewCreate((_viewports)4, 0);
+    camerasNum = 1;
+    Cameras::Init();
+    Cameras::SetCameraPOV(0, Camera::POV_0);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", InitBeforeUiDbLoad__5Shell);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", InitBeforeUserintDbLoad__5Shell);
+#endif
+void Shell::InitBeforeUserintDbLoad(void)
+{
+    hierInit();
+    viewInit();
+    psBlockerInit();
+    viewSetNumViews(1);
+    viewCreate((_viewports)3, 0);
+    camerasNum = 1;
+    Cameras::Init();
+    Cameras::SetCameraPOV(0, Camera::POV_0);
+    MemoryStack::global.clear();
+    ((TagList *)this)->init();
+}
 INCLUDE_ASM("asm/nonmatchings/game/Shell", __5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", _$_5Shell);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", InitRTState__5Shell);
+/* Hands the shell's choices (level, mode, player count) to TheGame before the realtime loop starts. */
+void Shell::InitRTState(void)
+{
+    char *g;
+
+    InitPlayerLives();
+    g = (char *)game + 0x120000;
+    *(int *)(g + 0x3D0) = m_levelNum;
+    *(int *)(g + 0x3C8) = m_mode;
+    *(int *)(g + 0x3D8) = m_numPlayers;
+}
 #ifdef NON_MATCHING
 extern int levelMonsters[][12];
 extern int levelMonsterModels[][4];
@@ -562,13 +635,8 @@ public:
     void playerInit(void);
     void aiInit(void);
 };
-class Cameras {
-public:
-    static void LeaveUnifiedView(unsigned id);
-};
 extern int gUseUnifiedView;
 
-#define GM(o) (*(int *)((char *)game + (o)))
 #define SLOT(i) ((Monster *)((char *)game + 0xB80 + (i) * 0x11190))
 #define HEALTH(m) (*(float *)((char *)(m) + 0x44C))
 
@@ -579,7 +647,6 @@ public:
 extern int craterSwitched;
 extern int numDeadHeads;
 
-#define SHI(o) (*(int *)((char *)this + (o)))
 
 /* Story mode, after rtMain returned `r`: 0 = level cleared, 1 = the player died, 3 = quit, 4 = campaign finished.
    A death with no AI left alive counts as a clear (on level 6 only once more than 2 dead heads are down after the crater switched).
@@ -870,11 +937,49 @@ void Shell::EvaluateDodgeBallStatus(int r)
 void Shell::EvaluateOnlineBattleStatus(int r)
 {
 }
-INCLUDE_ASM("asm/nonmatchings/game/Shell", InitPlayerLives__5Shell);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", BootInitUi__5Shell);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", BootInitUserint__5Shell);
+
+/* Every player starts with the lives of the current game mode (NUM_LIVES[mode]) at shell+0x2BBC. */
+void Shell::InitPlayerLives(void)
+{
+    int i;
+    int *p = (int *)((char *)this + 0x2BBC);
+
+    for (i = 3; i >= 0; i--)
+        *p++ = NUM_LIVES[m_mode];
+}
+/* Boot of the front-end graphics side: GS setup (mode 0), TheGame::Init, 60 Hz timer and the shell font at VRAM 0x78840. */
+void Shell::BootInitUi(void)
+{
+    InitGS(0);
+    ((TheGame *)game)->Init();
+    timerInit(0x3C);
+    fontInit((_vramAddrs)0x78840, 0);
+    hierSetTraversalCallback(0);
+}
+/* Waits for the disc, inflates SHELL.RTX into 0x1B7FFF0 and sets up the GS for the userint (mode 1) with the font at VRAM 0x69880. */
+void Shell::BootInitUserint(void)
+{
+    snd_StreamSafeCdSync(0);
+    sceCdSync(0);
+    sceCdDiskReady(0);
+    zipInflateAll("\\SHELL\\SHELL.RTX;1", (void *)0x01B7FFF0);
+    InitGS(1);
+    timerInit(0x3C);
+    fontInit((_vramAddrs)0x69880, 1);
+    doTweaks = 0;
+    hierSetTraversalCallback(0);
+}
 INCLUDE_ASM("asm/nonmatchings/game/Shell", BootInitUserint1__5Shell);
+#ifdef NON_MATCHING
+void Shell::BootInitGame(void)
+{
+    timerInit(Use30HzMode() == 0 ? 0x3C : 0x1E);
+    fontInit(getVramAddr(), 1);
+    doTweaks = 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", BootInitGame__5Shell);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Shell", ResolveCommandLineArguments__FiPPc);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", InitGS__5Shells);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", LoadUserintTexture__5Shell);
@@ -1137,10 +1242,22 @@ INCLUDE_ASM("asm/nonmatchings/game/Shell", Use30HzMode__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", GetLevelName__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", SetMenuItemFlag__5Shelliii);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", EnableMonsterSelection__5Shelli);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", MonsterIsChosen__5Shelli);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", MonsterExists__5Shelli);
+
+/* Monster ids are (index << 5) | variant; shell+0x2A2C holds one bit per monster index that is already picked. */
+int Shell::MonsterIsChosen(int i)
+{
+    return (SHI(0x2A2C) & onBitMonsters[i >> 5]) != 0;
+}
+int Shell::MonsterExists(int i)
+{
+    return 0;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Shell", DisplayLoadBackground__5Shellb);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", MonsterIsLocked__5Shelli);
+/* shell+0x2A28 holds one bit per monster index that is still locked. */
+int Shell::MonsterIsLocked(int i)
+{
+    return (SHI(0x2A28) & onBitMonsters[i >> 5]) != 0;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Shell", init__7TagList);
 #ifdef NON_MATCHING
 /* 118/148 words: untuned */
@@ -1193,7 +1310,54 @@ INCLUDE_ASM("asm/nonmatchings/game/Shell", LoadLevelFiles__5Shell);
 #endif
 INCLUDE_ASM("asm/nonmatchings/game/Shell", FinishLoadBar__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", ResetLevel__5Shell);
+#ifdef NON_MATCHING
+extern int genesisMov __asm__("mov.2987");
+
+/* After the last story level: remember which hero (m_monsterSel[0]) finished and queue his ending movie. */
+void Shell::GenesisMovie(void)
+{
+    int hero = m_monsterSel[0];
+
+    exitFromAdvStory = 1;
+    genesisMov = hero;
+    needOutro = 1;
+    switch (hero) {
+    case 0x20:
+        nextMovie = 0x15;
+        break;
+    case 0x60:
+        nextMovie = 0x16;
+        break;
+    case 0xA0:
+        nextMovie = 0x17;
+        break;
+    case 0x120:
+    case 0x160:
+        nextMovie = 0x13;
+        break;
+    case 0x40:
+        nextMovie = 0x19;
+        break;
+    case 0x140:
+        nextMovie = 0x1A;
+        break;
+    case 0x80:
+        nextMovie = 0x1B;
+        break;
+    case 0x100:
+        nextMovie = 0x1C;
+        break;
+    case 0xE0:
+        nextMovie = 0x1E;
+        break;
+    default:
+        nextMovie = 0;
+        break;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", GenesisMovie__5Shell);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Shell", FadeScreen__5ShellibUcUcUcUcUcUc);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", FadeScreen__5ShellibRUiT3UcUcUcUcUcUc);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", InitialMemCardScreen__5Shell);
