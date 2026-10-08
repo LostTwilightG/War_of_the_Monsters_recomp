@@ -57,7 +57,229 @@ extern int gWhichMicroSection;
 extern int gWhichMacroSection;
 
 
+#define SH(o) (*(int *)((char *)shell + (o)))
+
+/* Boot and session flow of the whole game:
+   boot -> (optional intro/outro movie) -> front-end menus (userintMain) -> a play session: load the level, the monsters and their
+   textures, build the world, create the players, then run rtMain frame by frame until the session ends, restarting the level on request. */
+extern "C" void __main(void);
+class Destructibles;
+class TheGame;
+extern Destructibles *destructibles;
+extern TheGame *game;
+extern char shellDestructibles[];
+extern char shellInfo[];
+extern char shellGame[];
+extern char resetObj[];
+extern int exitFromAdvStory;
+extern int currScreen;
+extern int needIntro;
+extern int needOutro;
+extern int nextMovie;
+extern int g_frame;
+extern int g_onStartupFrame;
+extern char whichLevel[];
+extern char _10CrushLevel$instance[] __asm__("_10CrushLevel$instance");
+extern char _12BigShotLevel$instance[] __asm__("_12BigShotLevel$instance");
+extern char _14DodgeBallLevel$instance[] __asm__("_14DodgeBallLevel$instance");
+
+class SoundManager {
+public:
+    void doOneTimeInit(void);
+    void loadShellSoundBanks(void);
+    void initSoundManager(void);
+    void manageReverb(void);
+    void loadRTSoundBanks(void);
+    void initVagStreaming(void);
+    void disableSoundForCinema(void);
+};
+class ShellSound {
+public:
+    void terminateShellSound(void);
+    void resetShellSoundFlags(void);
+};
+class StreamingSoundManager {
+public:
+    void initStreamingSoundManager(void);
+};
+class Hud {
+public:
+    void initAfter(int i);
+};
+class resetcom {
+public:
+    void setFileName(char *name, bool b);
+};
+class BigShotLevel {
+public:
+    void initAfterDbLoad(void);
+};
+class CrushLevel {
+public:
+    void initAfterDbLoad(void);
+};
+class DodgeBallLevel {
+public:
+    void initAfterDbLoad(void);
+};
+class TheGame {
+public:
+    void Init(void);
+    void InitBeforeDbLoad(void);
+    void InitAfterDbLoad(void);
+    void ResetLevel(void);
+    void UnpauseLevel(void);
+    void UpdatePadTweaks(void);
+    void gameReestablishViews(void);
+};
+class CsPool {
+public:
+    static void init(void);
+};
+void ResolveCommandLineArguments(int argc, char **argv);
+void fileInitializeCd(void);
+void inputInit(void);
+void hierSetDmaIntHandler(void);
+void inputSetInputMode(int m);
+void uiInit(void);
+void uiMain(int i);
+int userintMain(void);
+int rtMain(bool first);
+void fontInit(_vramAddrs v, int i);
+void threeMileInitAi(void);
+
+#ifdef NON_MATCHING
+/* 33/356 words: untuned, from the m2c draft + asm */
+extern "C" int main(int argc, char **argv)
+{
+    int i;
+
+    __main();
+    destructibles = (Destructibles *)shellDestructibles;
+    SH(0x2BB0) = 0;
+    shell = (Shell *)shellInfo;
+    game = (TheGame *)shellGame;
+    ResolveCommandLineArguments(argc, argv);
+    fileInitializeCd();
+    inputInit();
+    CsPool::init();
+    ((TheGame *)game)->Init();
+    *(int *)(shellGame + 0x1203CC) = 0;
+    hierSetDmaIntHandler();
+    ((SoundManager *)((char *)shell + 0x2C30))->doOneTimeInit();
+    needIntro = 1;
+    needOutro = 0;
+    g_frame = 0;
+    g_onStartupFrame = 0;
+    shell->InitialMemCardScreen();
+    for (;;) {
+        ((SoundManager *)((char *)shell + 0x2C30))->loadShellSoundBanks();
+        uiInit();
+        do {
+            printf("Entering movie selection\n");
+            SH(0x2BD0) = 1;
+            if (needIntro != 0 || needOutro != 0) {
+                shell->m_mode = 0x3F;
+                printf("Intro or Outro needed\n");
+                *(int *)((char *)game + 0x1203C8) = 0x3F;
+                shell->BootInitUi();
+                inputSetInputMode(0);
+                shell->InitBeforeUiDbLoad();
+                if (needIntro != 0) {
+                    nextMovie = 3;
+                    printf("Playing Intro movie\n");
+                    uiMain(0);
+                }
+                if (needOutro != 0) {
+                    printf("Playing Outro movie\n");
+                    uiMain(1);
+                }
+                needIntro = 0;
+                needOutro = 0;
+            } else {
+                ((TheGame *)game)->Init();
+            }
+            shell->m_mode = 0x40;
+            *(int *)((char *)game + 0x1203C8) = 0x40;
+            shell->BootInitUserint();
+            inputSetInputMode(0);
+            shell->InitBeforeUserintDbLoad();
+            shell->LoadUserintDB();
+            shell->LoadUserintTexture();
+            dbsRelocateFileZero(shell->getVramAddr(), UseCommandLineLevel);
+            dbInitDb((_dbheader *)0xA00000, shell->getVramAddr());
+            if (exitFromAdvStory == 1) {
+                printf("Just came out of adventure mode Story\n");
+                currScreen = exitFromAdvStory;
+            }
+        } while (userintMain() != 0);
+        ((ShellSound *)((char *)shell + 0x2918))->terminateShellSound();
+        ((SoundManager *)((char *)shell + 0x2C30))->initSoundManager();
+        if (SH(0x2BD0) == 0)
+            continue;
+        do {
+            SH(0x2BCC) = 1;
+            ResolveCommandLineArguments(argc, argv);
+            ((resetcom *)resetObj)->setFileName(whichLevel, UseCommandLineLevel);
+            shell->InitRTState();
+            ((SoundManager *)((char *)shell + 0x2C30))->disableSoundForCinema();
+            shell->BootInitGame();
+            inputSetInputMode(1);
+            fontInit((_vramAddrs)0x69840, 1);
+            ((TheGame *)game)->InitBeforeDbLoad();
+            shell->LoadLevelFiles();
+            shell->FinishLoadBar();
+            shell->FadeScreen(0, false, 0, 0, 0, 0, 0x80, 2);
+            ((TheGame *)game)->InitAfterDbLoad();
+            shell->InitPlayers();
+            ((SoundManager *)((char *)shell + 0x2C30))->manageReverb();
+            for (i = 0; i < 4; i++)
+                ((Hud *)((char *)game + i * 0x2E0))->initAfter(i);
+            switch (shell->m_mode) {
+            case 8:
+                ((BigShotLevel *)_12BigShotLevel$instance)->initAfterDbLoad();
+                break;
+            case 9:
+                ((CrushLevel *)_10CrushLevel$instance)->initAfterDbLoad();
+                break;
+            case 7:
+                ((DodgeBallLevel *)_14DodgeBallLevel$instance)->initAfterDbLoad();
+                break;
+            }
+            if (shell->m_levelNum == 6 && shell->m_mode == 1)
+                threeMileInitAi();
+            ((TheGame *)game)->UpdatePadTweaks();
+            ((SoundManager *)((char *)shell + 0x2C30))->initVagStreaming();
+            ((SoundManager *)((char *)shell + 0x2C30))->loadRTSoundBanks();
+            ((TheGame *)game)->gameReestablishViews();
+            ((StreamingSoundManager *)((char *)game + 0x1204C0))->initStreamingSoundManager();
+            SH(0x2B60) = 0;
+            SH(0x2B64) = 0;
+            if (SH(0x2BCC) != 0) {
+                bool first = true;
+
+                do {
+                    int r;
+
+                    SH(0x2BA4) = 0;
+                    r = rtMain(first);
+                    first = false;
+                    shell->EvaluateGameStatus(r);
+                    if (SH(0x2BCC) != 0) {
+                        if (SH(0x2BA8) != 0)
+                            ((TheGame *)game)->ResetLevel();
+                        else
+                            ((TheGame *)game)->UnpauseLevel();
+                    }
+                } while (SH(0x2BCC) != 0);
+            }
+            ((ShellSound *)((char *)shell + 0x2918))->resetShellSoundFlags();
+        } while (SH(0x2BD0) != 0);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", main);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Shell", SelectAI__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", D_006EF180);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", RandomlySelectAI__5Shell);

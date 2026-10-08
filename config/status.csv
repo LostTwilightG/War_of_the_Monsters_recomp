@@ -2261,7 +2261,7 @@ game/screen,findAvailableMonster__Fiii,0x1a64d0,352,asm
 game/screen,resetModels__Fv,0x1a6630,52,asm
 game/screen,__static_initialization_and_destruction_0,0x1a6668,48,asm
 game/screen,_GLOBAL_$I$NamecardDistance,0x1a6698,32,asm
-game/Shell,main,0x1a66b8,1344,asm
+game/Shell,main,0x1a66b8,1344,equivalent
 game/Shell,SelectAI__5Shell,0x1a6bf8,8,asm
 game/Shell,RandomlySelectAI__5Shell,0x1a6c00,348,asm
 game/Shell,InitPlayers__5Shell,0x1a6d60,2468,asm

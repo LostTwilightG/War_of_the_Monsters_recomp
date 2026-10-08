@@ -22,6 +22,19 @@ public:
 
     char *GetLevelName(void);
     void LoadLevelFiles(void);
+    void BootInitUi(void);
+    void BootInitUserint(void);
+    void BootInitGame(void);
+    void InitBeforeUiDbLoad(void);
+    void InitBeforeUserintDbLoad(void);
+    void LoadUserintDB(void);
+    void LoadUserintTexture(void);
+    void InitRTState(void);
+    void FinishLoadBar(void);
+    void FadeScreen(int a, bool b, unsigned char c, unsigned char d, unsigned char e, unsigned char f, unsigned char g, unsigned char h);
+    void InitPlayers(void);
+    void EvaluateGameStatus(int r);
+    void InitialMemCardScreen(void);
     void LoadLevelDB(void);
     void LoadMonstersDB(void);
     void LoadResTexture(void);
