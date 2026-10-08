@@ -2,9 +2,7 @@
 
 struct Monster;
 struct _ParticleType;
-struct FxTextureId {
-    int id;
-};
+enum FxTextureId { FX_TEXTURE_14 = 0x14 };
 
 _ParticleType *chainCreate(float a, float b, int n, unsigned flags, FxTextureId tex, float c);
 
@@ -31,7 +29,7 @@ public:
 /* 31/61 words, untuned: chain pointer temporaries */
 void MonkeyChains::init(Monster *m)
 {
-    FxTextureId tex = {0x14};
+    FxTextureId tex = FX_TEXTURE_14;
     Chain *c = &chains[1];
 
     owner = m;

@@ -47,6 +47,8 @@ def main():
         if not funcs:
             continue
         b = difftest.Bench(tu)
+        if b.missing:
+            print(f'{tu}: WARNING unresolved symbols (calls into them go to address 0): {b.missing}')
         for mangled, ret in funcs:
             spec = spec_from_mangled(mangled)
             if spec is None:

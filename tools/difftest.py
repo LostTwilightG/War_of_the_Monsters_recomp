@@ -225,6 +225,14 @@ class Run:
                 pass
             uc.mem_write(addr, patch_code(data, addr, self.qw))
         uc.mem_map(0, 0x10000)
+        # Every callee outside the function under test becomes `jr ra; nop`: the code hook logs the call and sets the
+        # stub return values, and no PC rewriting (which made unicorn fire hooks twice) is needed.
+        for a in entries:
+            if not (fn_range[0] <= a < fn_range[1]):
+                try:
+                    uc.mem_write(a, struct.pack('<II', 0x03E00008, 0))
+                except UcError:
+                    pass
         uc.mem_map(ARENA, ARENA_SIZE)
         uc.mem_map(STACK_TOP - STACK_SIZE, STACK_SIZE)
         rnd = random.Random(seed)
@@ -270,15 +278,42 @@ class Run:
                 val = rnd.randrange(0, 2)
             elif t == 'f':
                 fv = rnd.uniform(-10, 10)
+                if nf >= len(freg):
+                    raise SystemExit('more than 2 float arguments')
                 uc.reg_write(freg[nf], struct.unpack('<I', struct.pack('<f', fv))[0])
                 nf += 1
                 continue
             else:
                 raise SystemExit(f'bad arg spec {t}')
+            if ni >= 4:
+                raise SystemExit('more than 4 integer arguments (stack arguments are not supported)')
             uc.reg_write(ireg[ni], val)
             ni += 1
 
+    def norm(self, v):
+        if v in self.entries and v != 0:
+            return 'fn:' + self.entries[v]
+        """Pointers into static data that point at a C string are compared by their text (the string lives at a different
+        address in the alt image)."""
+        if (ALT_DATA <= v < ALT_DATA + 0x200000) or (0x400000 <= v < 0x1000000):
+            try:
+                raw = bytes(self.uc.mem_read(v, 64))
+            except UcError:
+                return v
+            end = raw.find(bytes([0]))
+            if end >= 2 and all(32 <= c or c in (9, 10) for c in raw[:end]) and 127 not in raw[:end]:
+                return 'str:' + raw[:end].decode('latin-1')
+        return v
+
     def hook_code(self, uc, addr, size, ud):
+        try:
+            self._hook_code(uc, addr, size, ud)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            raise
+
+    def _hook_code(self, uc, addr, size, ud):
         q = self.qw.get(addr)
         if q:
             kind, rt, base, off = q
@@ -286,9 +321,6 @@ class Run:
             try:
                 if kind == 'sq':
                     uc.mem_write(ea + 8, struct.pack('<Q', self.high[rt] & 0xFFFFFFFFFFFFFFFF))
-                    if not (STACK_TOP - STACK_SIZE <= ea < STACK_TOP):
-                        for k in range(8):
-                            self.writes[ea + 8 + k] = (self.high[rt] >> (8 * k)) & 0xFF
                 else:
                     self.high[rt] = struct.unpack('<Q', bytes(uc.mem_read(ea + 8, 8)))[0] if rt else 0
             except UcError:
@@ -304,16 +336,20 @@ class Run:
             else:
                 ni = min(4, sum(1 for t in cs if t != 'f'))
                 nf = min(2, sum(1 for t in cs if t == 'f'))
-            a = tuple(uc.reg_read(UC_MIPS_REG_4 + i) & 0xFFFFFFFF for i in range(ni))
+            a = tuple(self.norm(uc.reg_read(UC_MIPS_REG_4 + i) & 0xFFFFFFFF) for i in range(ni))
             f12 = uc.reg_read(UC_MIPS_REG_F12) & 0xFFFFFFFF if nf >= 1 else 0
             f13 = uc.reg_read(UC_MIPS_REG_F13) & 0xFFFFFFFF if nf >= 2 else 0
             self.calls.append((name, a, f12, f13))
             n = len(self.calls)
             uc.reg_write(UC_MIPS_REG_2, ARENA + 0x100000 + 0x40 * (n % 64))
             uc.reg_write(UC_MIPS_REG_F0, 0)
-            uc.reg_write(UC_MIPS_REG_PC, uc.reg_read(UC_MIPS_REG_31))
-            self.redirected = True
-            uc.emu_stop()
+
+    def snapshot(self, segs):
+        """Final contents of the arena and of the retail data/bss (everything the function could have changed)."""
+        out = {'arena': bytes(self.uc.mem_read(ARENA, ARENA_SIZE))}
+        hi = max(v + m for v, _, m in segs)
+        out['data'] = bytes(self.uc.mem_read(0x400000, hi - 0x400000))
+        return out
 
     def hook_write(self, uc, access, addr, size, value, ud):
         if STACK_TOP - STACK_SIZE <= addr < STACK_TOP:
@@ -325,7 +361,6 @@ class Run:
         uc = self.uc
         self.started = False
         uc.hook_add(UC_HOOK_CODE, self.hook_code)
-        uc.hook_add(UC_HOOK_MEM_WRITE, self.hook_write)
         pc = self.entry
         steps = 0
         while True:
@@ -388,7 +423,7 @@ def run_test(b, func, altname, spec, ret, runs, verbose, objsize=0x4000):
     ok = bad = skipped = 0
     for seed in range(o.runs):
         ra = Run('retail', segs, [], r_entry, (r_entry, r_entry + r_size), r_entries, seed, spec, objsize)
-        rb = Run('alt', segs, alt_secs, a_entry, (a_entry, a_entry + a_size), {**a_entries}, seed, spec, objsize)
+        rb = Run('alt', segs, alt_secs, a_entry, (a_entry, a_entry + a_size), {**r_entries, **a_entries}, seed, spec, objsize)
         # both runs patch the retail code identically; the alt run must also intercept calls into retail code
         rb.entries = {**r_entries, **a_entries}
         fa = ra.execute()
@@ -406,10 +441,14 @@ def run_test(b, func, altname, spec, ret, runs, verbose, objsize=0x4000):
         if ra.calls != rb.calls:
             k = next((i for i in range(min(len(ra.calls), len(rb.calls))) if ra.calls[i] != rb.calls[i]), min(len(ra.calls), len(rb.calls)))
             diffs.append(('calls', f'first difference at call #{k} of {len(ra.calls)}/{len(rb.calls)}', ra.calls[k:k + 2], rb.calls[k:k + 2]))
-        if ra.writes != rb.writes:
-            keys = sorted(set(ra.writes) | set(rb.writes))
-            d = [(hex(k), ra.writes.get(k), rb.writes.get(k)) for k in keys if ra.writes.get(k) != rb.writes.get(k)]
-            diffs.append(("writes", d[:40]))
+        sa, sb = ra.snapshot(segs), rb.snapshot(segs)
+        for region, base in (('arena', ARENA), ('data', 0x400000)):
+            if sa[region] != sb[region]:
+                x = np.frombuffer(sa[region], dtype=np.uint8)
+                y = np.frombuffer(sb[region], dtype=np.uint8)
+                idx = np.nonzero(x != y)[0]
+                d = [(hex(base + int(i)), int(x[i]), int(y[i])) for i in idx[:40]]
+                diffs.append(('writes', region, f'{len(idx)} bytes differ', d))
         if diffs:
             bad += 1
             if bad <= 3:

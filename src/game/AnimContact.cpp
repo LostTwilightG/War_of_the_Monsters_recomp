@@ -105,7 +105,7 @@ int AnimContact::numNewContacts(void)
         int isNew = 0;
 
         if (contacts[cur][i] > 0.5f) {
-            if (contacts[1 - cur][i] < 0.5f)
+            if (contacts[cur ? 0 : 1][i] < 0.5f)
                 isNew = 1;
         }
         n += isNew;
@@ -126,7 +126,7 @@ int AnimContact::numNewHandContacts(void)
         int isNew = 0;
 
         if (contacts[cur][i] > 0.5f) {
-            if (contacts[1 - cur][i] < 0.5f)
+            if (contacts[cur ? 0 : 1][i] < 0.5f)
                 isNew = 1;
         }
         n += isNew;
@@ -147,7 +147,7 @@ int AnimContact::numNewFootContacts(void)
         int isNew = 0;
 
         if (contacts[cur][i] > 0.5f) {
-            if (contacts[1 - cur][i] < 0.5f)
+            if (contacts[cur ? 0 : 1][i] < 0.5f)
                 isNew = 1;
         }
         n += isNew;
