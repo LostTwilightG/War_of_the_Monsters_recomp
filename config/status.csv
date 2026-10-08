@@ -1375,7 +1375,7 @@ game/Monster,updateCinema__7Monster,0x15ba10,308,equivalent
 game/Monster,endCinema__7Monster,0x15bb48,28,matched
 game/Monster,updateBoundingSphere__7Monster,0x15bb68,956,asm
 game/Monster,updateReticle__7Monster,0x15bf28,1004,asm
-game/Monster,setReticles__7Monsteri,0x15c318,376,asm
+game/Monster,setReticles__7Monsteri,0x15c318,376,matched
 game/Monster,setTrans__7MonsterR8_fvector,0x15c490,128,asm
 game/Monster,setRot__7Monsterfff,0x15c510,108,matched
 game/Monster,setMat__7MonsterRA3_A3_f,0x15c580,84,matched
