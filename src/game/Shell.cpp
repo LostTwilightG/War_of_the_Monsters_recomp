@@ -30,6 +30,8 @@ void dbInitDb(_dbheader *db, _vramAddrs v);
 extern char D_00731500[];                 /* path of the file being loaded */
 extern char whichLevel[];                 /* name of the command-line level */
 extern char D_006F81D0[];                 /* "ngp" */
+extern char D_006F81C0[];                 /* "rtx" */
+extern char D_006F81C8[];                 /* "tex" */
 extern char D_006F81E0[];                 /* disc root prefix */
 extern char D_006F81E8[];                 /* name suffix */
 extern char GameLevelNames_006EF748[][10];
@@ -41,6 +43,15 @@ extern char D_006EF498[];                 /* "Unknown monster (%d) for ai %d..."
 int fileReadf(char *name, void *dest);
 void fileAddNgpFile(char *addr, int size);
 char *getNextNgpLoadAddr(void);
+char *getNextResLoadAddr(void);
+char *getNextTexLoadAddr(void);
+void fileAddResFile(char *addr, int size);
+void fileAddTexFile(char *addr, int size);
+void fileOnlyResFile(char *dest, int size);
+void fileOnlyTexFile(char *dest, int size);
+struct QwData;
+void texmResInit(_vramAddrs v, QwData *q);
+void texmInit(_vramAddrs v);
 extern int UseCommandLineLevel;
 extern int gWhichMicroSection;
 extern int gWhichMacroSection;
@@ -78,10 +89,153 @@ INCLUDE_ASM("asm/nonmatchings/game/Shell", LoadUserintTexture__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", LoadUserintTexture1__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", LoadUserintDB__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", LoadUserintDB1__5Shell);
+#ifdef NON_MATCHING
+/* 97/279 words: untuned, from the m2c draft + asm */
+void Shell::LoadResTexture(void)
+{
+    char path[0x80];
+    int i;
+    int j;
+
+    if (m_levelNum == 0 || UseCommandLineLevel != 0)
+        formatFilename(path, whichLevel, D_006F81C0, SH_FILE_0);
+    else if (m_levelNum < 0x1D)
+        formatFilename(path, GameLevelNames_006EF748[m_levelNum], D_006F81C0, SH_FILE_0);
+    else
+        sprintf(path, "host0:monster.rtx");
+    informProgressBar(0.0f);
+    char *levelAddr = getNextNgpLoadAddr();
+    fileOnlyResFile(levelAddr, zipInflateAll(path, levelAddr));
+    gWhichMicroSection++;
+    informProgressBar(0.0f);
+    if (m_mode == 6) {
+        for (i = 1; i < 6; i++) {
+            informProgressBar(0.0f);
+            formatFilename1(path, MonsterLongNames_006EF860[i], 0, D_006F81C0, SH_FILE_PLAYER);
+            int sz = fileReadf(path, getNextResLoadAddr());
+            fileAddResFile(getNextResLoadAddr(), sz);
+            gWhichMicroSection++;
+            informProgressBar(0.0f);
+        }
+        for (i = 7; i < 12; i++) {
+            informProgressBar(0.0f);
+            formatFilename1(path, MonsterLongNames_006EF860[i], 0, D_006F81C0, SH_FILE_PLAYER);
+            int sz = fileReadf(path, getNextResLoadAddr());
+            fileAddResFile(getNextResLoadAddr(), sz);
+            gWhichMicroSection++;
+            informProgressBar(0.0f);
+        }
+    } else {
+        for (i = 0; i < m_numPlayers; i++) {
+            if ((m_monsterSel[i] >> 5) < 0x10) {
+                informProgressBar(0.0f);
+                if (i == 0)
+                    formatFilename1(path, MonsterLongNames_006EF860[m_monsterSel[0] >> 5], m_costume[0], D_006F81C0, SH_FILE_PLAYER);
+                else if (i == 1)
+                    formatFilename1(path, MonsterLongNames_006EF860[m_monsterSel[1] >> 5], m_costume[1], D_006F81C0, SH_FILE_PLAYER);
+                else
+                    formatFilename(path, MonsterLongNames_006EF860[m_monsterSel[i] >> 5], D_006F81C0, SH_FILE_PLAYER);
+                int sz = fileReadf(path, getNextResLoadAddr());
+                fileAddResFile(getNextResLoadAddr(), sz);
+                gWhichMicroSection++;
+                informProgressBar(0.0f);
+            } else {
+                printf(D_006EF458, m_monsterSel[i], i);
+            }
+        }
+    }
+    for (j = 0; j < m_numAIs; j++) {
+        int sel = m_monsterSel[4 + j];
+
+        if ((sel >> 5) < 0x10) {
+            informProgressBar(0.0f);
+            formatFilename1(path, MonsterLongNames_006EF860[sel >> 5], m_costume[2 + j], D_006F81C0, SH_FILE_AI);
+            int sz = fileReadf(path, getNextResLoadAddr());
+            fileAddResFile(getNextResLoadAddr(), sz);
+            gWhichMicroSection++;
+            informProgressBar(0.0f);
+        } else {
+            printf(D_006EF498, sel, j);
+        }
+    }
+    texmResInit(getVramAddr(), (QwData *)levelAddr);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", LoadResTexture__5Shell);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Shell", D_006EF458);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", D_006EF498);
+#ifdef NON_MATCHING
+/* 11/267 words: untuned, from the m2c draft + asm */
+void Shell::LoadTexture(void)
+{
+    char path[0x80];
+    int i;
+    int j;
+
+    if (m_levelNum == 0 || UseCommandLineLevel != 0)
+        formatFilename(path, whichLevel, D_006F81C8, SH_FILE_0);
+    else if (m_levelNum < 0x1D)
+        formatFilename(path, GameLevelNames_006EF748[m_levelNum], D_006F81C8, SH_FILE_0);
+    else
+        sprintf(path, "host0:monster.tex");
+    informProgressBar(0.0f);
+    int size = zipInflateAll(path, getNextNgpLoadAddr());
+    fileOnlyTexFile(getNextNgpLoadAddr(), size);
+    gWhichMicroSection++;
+    informProgressBar(0.0f);
+    if (m_mode == 6) {
+        for (i = 1; i < 6; i++) {
+            informProgressBar(0.0f);
+            formatFilename1(path, MonsterLongNames_006EF860[i], 0, D_006F81C8, SH_FILE_PLAYER);
+            int sz = fileReadf(path, getNextTexLoadAddr());
+            fileAddTexFile(getNextTexLoadAddr(), sz);
+            gWhichMicroSection++;
+            informProgressBar(0.0f);
+        }
+        for (i = 7; i < 12; i++) {
+            informProgressBar(0.0f);
+            formatFilename1(path, MonsterLongNames_006EF860[i], 0, D_006F81C8, SH_FILE_PLAYER);
+            int sz = fileReadf(path, getNextTexLoadAddr());
+            fileAddTexFile(getNextTexLoadAddr(), sz);
+            gWhichMicroSection++;
+            informProgressBar(0.0f);
+        }
+    } else {
+        for (i = 0; i < m_numPlayers; i++) {
+            if ((m_monsterSel[i] >> 5) < 0x10) {
+                if (i == 0)
+                    formatFilename1(path, MonsterLongNames_006EF860[m_monsterSel[0] >> 5], m_costume[0], D_006F81C8, SH_FILE_PLAYER);
+                else if (i == 1)
+                    formatFilename1(path, MonsterLongNames_006EF860[m_monsterSel[1] >> 5], m_costume[1], D_006F81C8, SH_FILE_PLAYER);
+                else
+                    formatFilename(path, MonsterLongNames_006EF860[m_monsterSel[i] >> 5], D_006F81C8, SH_FILE_PLAYER);
+                int sz = fileReadf(path, getNextTexLoadAddr());
+                fileAddTexFile(getNextTexLoadAddr(), sz);
+                gWhichMicroSection++;
+                informProgressBar(0.0f);
+            }
+        }
+    }
+    for (j = 0; j < m_numAIs; j++) {
+        int sel = m_monsterSel[4 + j];
+
+        if ((sel >> 5) < 0x10) {
+            informProgressBar(0.0f);
+            formatFilename1(path, MonsterLongNames_006EF860[sel >> 5], m_costume[2 + j], D_006F81C8, SH_FILE_AI);
+            int sz = fileReadf(path, getNextTexLoadAddr());
+            fileAddTexFile(getNextTexLoadAddr(), sz);
+            gWhichMicroSection++;
+            informProgressBar(0.0f);
+        } else {
+            printf(D_006EF498, sel, j);
+        }
+    }
+    texmInit(getVramAddr());
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", LoadTexture__5Shell);
+#endif
 #ifdef NON_MATCHING
 /* 14/80 words: untuned, written from the m2c draft + asm */
 void Shell::LoadLevelDB(void)
