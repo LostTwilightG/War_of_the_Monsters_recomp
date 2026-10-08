@@ -440,7 +440,7 @@ game/AiNavigator,target__11AiNavigatorR8_fvectorf,0x114270,28,matched
 game/AiNavigator,arrive__11AiNavigatorR8_fvectorfff,0x114290,144,asm
 game/AiNavigator,arrive__11AiNavigatorR13DbInteractivefff,0x114320,80,asm
 game/AiNavigator,tag__11AiNavigatorR8_fvectorf,0x114370,128,asm
-game/AiNavigator,flee__11AiNavigatorR8_fvectorf,0x1143f0,48,matched
+game/AiNavigator,flee__11AiNavigatorR8_fvectorf,0x1143f0,48,equivalent
 game/AiNavigator,updateSeek__11AiNavigator,0x114420,652,asm
 game/AiNavigator,updateTarget__11AiNavigator,0x1146b0,76,asm
 game/AiNavigator,updateArrive__11AiNavigator,0x114700,28,matched

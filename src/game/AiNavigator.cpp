@@ -1,13 +1,24 @@
 #include "common.h"
 #include "hieri_types.h"
+#include "vecmath.h"
 
 class Monster;
 class AiPath;
 class AiPathNet;
 struct _hdResult;
+struct DbInteractive;
 
 extern AiPathNet *s_net;
 __asm__("#SNFIX_SMALL s_net");
+
+static inline _cs *navCs(Monster *m)
+{
+    return *(_cs **)((char *)m + 0xC);
+}
+static inline unsigned hatId(DbInteractive &it)
+{
+    return (*(unsigned *)(*(_cs **)((char *)&it + 0xC))->epNode >> 7) & 0x7FF;
+}
 
 class AiPathFinder {
 public:
@@ -58,10 +69,20 @@ public:
         float getFloorHeight(void);
     };
 
+    class PathInfo {
+    public:
+        char pad[0x20];
+        void init(AiPath *path, _fvector *pos);
+        void init(AiPath *path, int dir);
+        void init(AiPath *path, AiPath *from, bool b);
+    };
+
     Monster *monster;           /* 0x000 */
     float f4;                   /* 0x004 */
     float f8;                   /* 0x008 */
-    char padC[0x18 - 0xC];
+    float turn;                 /* 0x00C: accumulated steering to the side (orientTo) */
+    char pad10[4];
+    float strafe;               /* 0x014 */
     int mode;                   /* 0x018: 0 off, 1 wander, 3 target, 6 flee ... */
     int status;                 /* 0x01C */
     int failureHint;            /* 0x020 */
@@ -77,7 +98,19 @@ public:
     char pad1A0[0x218 - 0x1A0];
     int f218;                   /* 0x218 */
     int f21C;                   /* 0x21C */
+    PathInfo pathInfo;          /* 0x220 */
+    PathInfo nextPathInfo;      /* 0x240 */
 
+    AiNavigator(Monster &m);
+    void init(void);
+    float orientTo(_fvector &dir, float tol);
+    float strafeTo(_fvector &pos, float width, float tol);
+    float targetPin(_fvector &p);
+    void updateTarget(void);
+    void seek(_fvector &p, float r);
+    void seek(DbInteractive &it, float r);
+    void arrive(_fvector &p, float a, float b, float c);
+    void arrive(DbInteractive &it, float a, float b, float c);
     void wander(_fvector &p);
     void target(_fvector &p, float r);
     void flee(_fvector &p, float r);
@@ -87,8 +120,22 @@ public:
     AiPath *getFleePath(_fvector &p);
 };
 
-INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", __11AiNavigatorR7Monster);
+AiNavigator::AiNavigator(Monster &m) : monster(&m), sensor(*this), pathFinder(*s_net, m)
+{
+}
+#ifdef NON_MATCHING
+/* 21/23 words: store/call scheduling */
+void AiNavigator::init(void)
+{
+    disable(STATUS_3, HINT_0);
+    f4 = 1.0f;
+    f8 = 1.0f;
+    pathInfo.init(*(AiPath **)((char *)monster + 0x1A10), (_fvector *)((char *)navCs(monster) + 0x10));
+    sensor.init();
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", init__11AiNavigator);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", update__11AiNavigatorR7GamePad);
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", updateSteering__11AiNavigatorR7GamePad);
 void AiNavigator::disable(Status s, FailureHint h)
@@ -106,7 +153,11 @@ void AiNavigator::wander(_fvector &p)
     status = 0;
 }
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", seek__11AiNavigatorR8_fvectorf);
-INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", seek__11AiNavigatorR13DbInteractivef);
+void AiNavigator::seek(DbInteractive &it, float r)
+{
+    seek(*(_fvector *)((char *)*(_cs **)((char *)&it + 0xC) + 0x10), r);
+    f18C = hatId(it);
+}
 void AiNavigator::target(_fvector &p, float r)
 {
     status = 0;
@@ -116,7 +167,11 @@ void AiNavigator::target(_fvector &p, float r)
     goal = &p;
 }
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", arrive__11AiNavigatorR8_fvectorfff);
-INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", arrive__11AiNavigatorR13DbInteractivefff);
+void AiNavigator::arrive(DbInteractive &it, float a, float b, float c)
+{
+    arrive(*(_fvector *)((char *)*(_cs **)((char *)&it + 0xC) + 0x10), a, b, c);
+    f18C = hatId(it);
+}
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", tag__11AiNavigatorR8_fvectorf);
 #ifdef NON_MATCHING
 /* 10/12 words: store order of the eight fields differs */
@@ -135,14 +190,43 @@ void AiNavigator::flee(_fvector &p, float r)
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", flee__11AiNavigatorR8_fvectorf);
 #endif
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", updateSeek__11AiNavigator);
+#ifdef NON_MATCHING
+/* 16/19 words: register choice */
+void AiNavigator::updateTarget(void)
+{
+    float t = targetPin(*goal);
+
+    if (fabsf(t) <= f19C)
+        disable(STATUS_1, HINT_0);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", updateTarget__11AiNavigator);
+#endif
 void AiNavigator::updateArrive(void)
 {
     updateSeek();
 }
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", updateTag__11AiNavigator);
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", updateFlee__11AiNavigator);
+#ifdef NON_MATCHING
+/* 9/36 words: register allocation of the normalising multiplies */
+float AiNavigator::targetPin(_fvector &p)
+{
+    _fvector d;
+    register float inv;
+
+    vecSub(&d, &p, (_fvector *)((char *)navCs(monster) + 0x10));
+    float len2 = vecLenSq(&d);
+
+    __asm__("rsqrt.s %0, %1, %2" : "=f"(inv) : "f"(1.0f), "f"(len2));
+    d.x *= inv;
+    d.y *= inv;
+    d.z *= inv;
+    return orientTo(d, 0.05f);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", targetPin__11AiNavigatorR8_fvector);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", pathSeekIntercept__11AiNavigator);
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", pathSeek__11AiNavigator);
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", avoid__11AiNavigatorR8_fvector);
@@ -152,8 +236,42 @@ INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", avoidFlying__11AiNavigatorR8_fv
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", avoidGeneral__11AiNavigatorR8_fvectorT1);
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", attemptClimb__11AiNavigatorR8_fvector);
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", handleNoJumpOrClimb__11AiNavigatorP9_hdResultR8_fvectorT2);
+#ifdef NON_MATCHING
+/* 0/45 words: retail builds both dot products with mula.s/madda.s/madd.s */
+float AiNavigator::orientTo(_fvector &dir, float tol)
+{
+    float (*m)[4] = (float (*)[4])((char *)navCs(monster) + 0x20);
+    float side = m[0][0] * dir.x + m[0][1] * dir.y + m[0][2] * dir.z;
+    float fwd = m[1][0] * dir.x + m[1][1] * dir.y + m[1][2] * dir.z;
+
+    if (fwd <= 0.0f)
+        side = (side > 0.0f) ? 1.0f : -1.0f;
+    if (tol < fabsf(side))
+        turn += side;
+    return side;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", orientTo__11AiNavigatorR8_fvectorf);
+#endif
+#ifdef NON_MATCHING
+/* 2/45 words: retail uses mula.s dot product and branch-likely layout */
+float AiNavigator::strafeTo(_fvector &pos, float width, float tol)
+{
+    _fvector d;
+    float (*m)[4] = (float (*)[4])((char *)navCs(monster) + 0x20);
+
+    vecSub(&d, (_fvector *)((char *)navCs(monster) + 0x10), &pos);
+    float side = m[0][0] * d.x + m[0][1] * d.y + m[0][2] * d.z;
+
+    if (side - width > tol)
+        strafe -= 1.0f;
+    else if (side + width < -tol)
+        strafe += 1.0f;
+    return side;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", strafeTo__11AiNavigatorR8_fvectorff);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", followPath__11AiNavigatorRQ211AiNavigator8PathInfoT1R8_fvector);
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", nextPathPoint__11AiNavigator);
 AiPath *AiNavigator::getFleePath(_fvector &p)
