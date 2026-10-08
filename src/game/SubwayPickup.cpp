@@ -10,4 +10,12 @@ INCLUDE_ASM("asm/nonmatchings/game/SubwayPickup", update__12SubwayPickup);
 INCLUDE_ASM("asm/nonmatchings/game/SubwayPickup", func_001CF870);
 INCLUDE_ASM("asm/nonmatchings/game/SubwayPickup", func_001CF880);
 INCLUDE_ASM("asm/nonmatchings/game/SubwayPickup", __tf12SubwayPickup);
-INCLUDE_ASM("asm/nonmatchings/game/SubwayPickup", getVel__12SubwayPickup);
+struct _fvector;
+class SubwayPickup {
+public:
+    _fvector *getVel(void);
+};
+_fvector *SubwayPickup::getVel(void)
+{
+    return (_fvector *)((char *)this + 0x230);
+}

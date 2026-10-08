@@ -96,8 +96,16 @@ INCLUDE_ASM("asm/nonmatchings/game/PadFlags", updateViewChanges__8PadFlagsR7Game
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", okToChangeMap__8PadFlags);
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", dashDoubleTap__8PadFlagsR7GamePad);
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", checkCombos__8PadFlagsR7GamePad);
-INCLUDE_ASM("asm/nonmatchings/game/PadFlags", checkTaunt__8PadFlags);
-INCLUDE_ASM("asm/nonmatchings/game/PadFlags", clearSecretCode__8PadFlags);
+void PadFlags::checkTaunt(void)
+{
+}
+void PadFlags::clearSecretCode(void)
+{
+    *(int *)((char *)this + 0x17F0) = 0;
+    *(int *)((char *)this + 0x17F8) = 0;
+    *(int *)((char *)this + 0x180C) = 0;
+    *(int *)((char *)this + 0x17FC) = 0;
+}
 void PadFlags::clearCombo(void)
 {
     int i;

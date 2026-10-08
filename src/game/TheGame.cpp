@@ -54,7 +54,9 @@ void hierSetCsDrawMe(_cs *cs, unsigned char v);
 void checkTriggerTree(void);
 
 
-INCLUDE_ASM("asm/nonmatchings/game/TheGame", Init__7TheGame);
+void TheGame::Init(void)
+{
+}
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", InitBeforeDbLoad__7TheGame);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", traversalCallback__7TheGameP3_csUiUiRA3_A3_fP8_fvector);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", genericEventHandler__7TheGameUi);

@@ -9,6 +9,12 @@ struct RtReturn {
 extern RtReturn gRtReturn;
 extern volatile int objsInPacket;
 extern volatile int objsInAlphaPacket;
+class RtLoopView {
+public:
+    static void startFrame(void) __asm__("startFrame__10RtLoopViewv");
+    static void start(int sync);
+    static void end(unsigned color, int sync);
+};
 extern "C" int sceGsSyncPath(int mode, int timeout);
 void inputStopActuator(int pad, unsigned char which);
 class TheGame;
@@ -16,9 +22,15 @@ extern TheGame *game;
 int rtTimeToReturnToShell(void);
 void rtReturnToShell(int code, int delay);
 
-INCLUDE_ASM("asm/nonmatchings/game/rt", startFrame__10RtLoopViewv);
-INCLUDE_ASM("asm/nonmatchings/game/rt", start__10RtLoopViewi);
-INCLUDE_ASM("asm/nonmatchings/game/rt", end__10RtLoopViewUii);
+void RtLoopView::startFrame(void)
+{
+}
+void RtLoopView::start(int sync)
+{
+}
+void RtLoopView::end(unsigned color, int sync)
+{
+}
 #ifdef NON_MATCHING
 /* Callees are bound to their retail symbols by asm label, so each can be declared with the C-style signature this code needs. */
 #define SYM(n) __asm__(n)
@@ -28,11 +40,6 @@ extern "C" void hierSetCamera(int a, int b, int c);
 extern "C" void snd_FlushSoundCommands(void);
 extern "C" int printf(const char *, ...);
 
-class RtLoopView {
-public:
-    static void start(int sync);
-    static void end(unsigned color, int sync);
-};
 void rtLoopStartFrame(void) SYM("startFrame__10RtLoopViewv");
 void rtPauseRT(unsigned frame);
 void rtFadeScreen(int view, unsigned amount);

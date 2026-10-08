@@ -596,9 +596,9 @@ game/CarPickup,regen__9CarPickup,0x122838,64,asm
 game/CarPickup,updateInputs__9CarPickupR7GamePad,0x122878,76,asm
 game/CarPickup,__tf9CarPickup,0x122900,80,asm
 game/CarPickup,getVehicle__9CarPickup,0x122950,8,matched
-game/central,centralInitBefore__Fv,0x122958,8,asm
+game/central,centralInitBefore__Fv,0x122958,8,matched
 game/central,centralInitAfter__Fv,0x122960,280,asm
-game/central,centralUpdate__Fv,0x122a78,8,asm
+game/central,centralUpdate__Fv,0x122a78,8,matched
 game/charreset,__9charreset11CREATOR_KEY,0x122a80,64,asm
 game/charreset,setCharacter__9charresetP7Monster,0x122ac0,100,asm
 game/charreset,writeKeys__9charresetPc,0x122b28,15012,asm
@@ -693,7 +693,7 @@ game/PedGroup,isVisible__8PedGroup,0x136200,112,asm
 game/PedGroup,squish__8PedGroupR8_fvectorfP7Monster,0x136270,316,asm
 game/PedGroup,flee__8PedGroupR8_fvectorfT1,0x1363b0,392,asm
 game/PedGroup,update__8PedGroupPv,0x136538,28,asm
-game/TheGame,Init__7TheGame,0x136558,8,asm
+game/TheGame,Init__7TheGame,0x136558,8,matched
 game/TheGame,InitBeforeDbLoad__7TheGame,0x136560,1824,asm
 game/TheGame,traversalCallback__7TheGameP3_csUiUiRA3_A3_fP8_fvector,0x136c80,256,asm
 game/TheGame,genericEventHandler__7TheGameUi,0x136d80,472,asm
@@ -877,7 +877,7 @@ game/Hud,initAfter__3Hudi,0x143188,1036,asm
 game/Hud,initForReplay__3Hud,0x143598,256,asm
 game/Hud,update__3Hud,0x143698,3588,asm
 game/Hud,parseHudElements__3HudP9_hierhead,0x1444a0,512,asm
-game/Hud,print__3Hud,0x1446a0,8,asm
+game/Hud,print__3Hud,0x1446a0,8,matched
 game/Hud,buildPacketHead__3HudP6QwData,0x1446a8,120,asm
 game/Hud,dmaPacket__3Hud,0x144720,116,asm
 game/Hud,buildSeparator__3Hud,0x144798,432,asm
@@ -891,7 +891,7 @@ game/Hud,addMessage__3Hudii,0x1457d0,536,asm
 game/Hud,updateMessage__3Hud,0x1459e8,1420,asm
 game/Hud,addTextBoxMessage__3Hudi,0x145f78,184,asm
 game/Hud,updateTextBoxMessage__3Hud,0x146030,3592,asm
-game/Hud,initBefore__12Letterboxing,0x146e38,16,asm
+game/Hud,initBefore__12Letterboxing,0x146e38,16,matched
 game/Hud,initAfter__12Letterboxing,0x146e48,88,asm
 game/Hud,setEnabled__12Letterboxingb,0x146ea0,312,asm
 game/Hud,setLetterboxCS__12LetterboxingP9_hierhead,0x146fd8,48,asm
@@ -1844,7 +1844,7 @@ game/MonsterTriggers,doCamUnifyVolume__FP7MonsterP11TriggerHead,0x16df80,8,match
 game/MonsterTriggers,doCamVolume__FP7MonsterP11TriggerHead,0x16df88,256,asm
 game/MonsterTweaks,init__13MonsterTweaks,0x16e088,32,asm
 game/MonsterTweaks,setActiveMonster__13MonsterTweaksP7Monsterb,0x16e0a8,88,asm
-game/MonsterTweaks,resetTweaks__13MonsterTweaks,0x16e100,8,asm
+game/MonsterTweaks,resetTweaks__13MonsterTweaks,0x16e100,8,matched
 game/MonsterTweaks,__static_initialization_and_destruction_0,0x16e108,48,asm
 game/MonsterTweaks,_GLOBAL_$I$init__13MonsterTweaks,0x16e138,32,asm
 game/MovementStates,__13StateButtSlam,0x16e158,476,asm
@@ -1964,8 +1964,8 @@ game/PadFlags,updateViewChanges__8PadFlagsR7GamePad,0x178028,244,asm
 game/PadFlags,okToChangeMap__8PadFlags,0x178120,468,asm
 game/PadFlags,dashDoubleTap__8PadFlagsR7GamePad,0x1782f8,240,asm
 game/PadFlags,checkCombos__8PadFlagsR7GamePad,0x1783e8,2288,asm
-game/PadFlags,checkTaunt__8PadFlags,0x178cd8,8,asm
-game/PadFlags,clearSecretCode__8PadFlags,0x178ce0,20,asm
+game/PadFlags,checkTaunt__8PadFlags,0x178cd8,8,matched
+game/PadFlags,clearSecretCode__8PadFlags,0x178ce0,20,matched
 game/PadFlags,clearCombo__8PadFlags,0x178cf8,96,matched
 game/PadFlags_2,updateInput0ConfigCR__8PadFlagsR7GamePad,0x178d58,2272,asm
 game/PadFlags_2,updateInput0ConfigSR__8PadFlagsR7GamePad,0x179638,3748,asm
@@ -2132,9 +2132,9 @@ game/PowerUpTool,__static_initialization_and_destruction_0,0x188250,40,asm
 game/PowerUpTool,__tf11PowerUpTool,0x188278,80,asm
 game/PowerUpTool,__11PowerUpTool,0x1882c8,20,asm
 game/PowerUpTool,_GLOBAL_$I$_11PowerUpTool$instance,0x1882e0,32,asm
-game/rt,startFrame__10RtLoopViewv,0x188300,8,asm
-game/rt,start__10RtLoopViewi,0x188308,8,asm
-game/rt,end__10RtLoopViewUii,0x188310,8,asm
+game/rt,startFrame__10RtLoopViewv,0x188300,8,matched
+game/rt,start__10RtLoopViewi,0x188308,8,matched
+game/rt,end__10RtLoopViewUii,0x188310,8,matched
 game/rt,rtMain__Fb,0x188318,2120,equivalent
 game/rt,rtPauseRT__FUi,0x188b60,632,equivalent
 game/rt,rtReturnToShell__Fii,0x188dd8,40,matched
@@ -2861,7 +2861,7 @@ game/SubwayPickup,kill__12SubwayPickup,0x1cf5e8,60,asm
 game/SubwayPickup,drop__12SubwayPickup,0x1cf628,64,asm
 game/SubwayPickup,update__12SubwayPickup,0x1cf668,516,asm
 game/SubwayPickup,__tf12SubwayPickup,0x1cf8a8,80,asm
-game/SubwayPickup,getVel__12SubwayPickup,0x1cf8f8,8,asm
+game/SubwayPickup,getVel__12SubwayPickup,0x1cf8f8,8,matched
 game/TankPickup,__10TankPickup,0x1cf900,92,asm
 game/TankPickup,initAfterDbLoad__10TankPickup,0x1cf960,204,asm
 game/TankPickup,setTrans__10TankPickupR8_fvector,0x1cfa30,72,matched
@@ -2980,8 +2980,8 @@ game/tokyo,takeHit__8UfoTokyoP8_fvectorfi,0x1d72d0,192,asm
 game/tokyo,__static_initialization_and_destruction_0,0x1d7390,76,asm
 game/tokyo,__tf8UfoTokyo,0x1d7428,80,asm
 game/tokyo,_GLOBAL_$I$tidalWaveAnim,0x1d74b8,32,asm
-game/ufo,ufoInitBefore__Fv,0x1d74d8,8,asm
-game/ufo,ufoInitAfter__Fv,0x1d74e0,20,asm
+game/ufo,ufoInitBefore__Fv,0x1d74d8,8,matched
+game/ufo,ufoInitAfter__Fv,0x1d74e0,20,matched
 game/ufo,ufoUpdate__Fv,0x1d74f8,528,asm
 game/UfoNav,__6UfoNavR9UfoPickupP7PathNet,0x1d7708,32,asm
 game/UfoNav,init__6UfoNav,0x1d7728,144,asm
@@ -3179,7 +3179,7 @@ game/Weapon,ricochetParticlesOffSurface__FiP8_fvectorN31,0x1e3890,408,asm
 game/Weapon,DetonateWeapon__6WeaponR9_hdResult,0x1e3a28,4640,asm
 game/Weapon,DispatchRangeBasedDamage__6Weapon,0x1e4c48,312,asm
 game/Weapon,GetVel__6WeaponR8_fvector,0x1e4d80,100,asm
-game/Weapon,DecrementWeaponCount__7WeaponsP7Monsteri,0x1e4de8,8,asm
+game/Weapon,DecrementWeaponCount__7WeaponsP7Monsteri,0x1e4de8,8,matched
 game/Weapon,AddWeaponEpNode__7WeaponsiP9_hierhead,0x1e4df0,368,asm
 game/Weapon,CreateFire__7WeaponsP8_fvectorfi,0x1e4f60,380,asm
 game/Weapon,UpdateFlames__7Weapons,0x1e50e0,640,asm

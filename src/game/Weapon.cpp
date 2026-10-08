@@ -25,7 +25,14 @@ INCLUDE_ASM("asm/nonmatchings/game/Weapon", ricochetParticlesOffSurface__FiP8_fv
 INCLUDE_ASM("asm/nonmatchings/game/Weapon", DetonateWeapon__6WeaponR9_hdResult);
 INCLUDE_ASM("asm/nonmatchings/game/Weapon", DispatchRangeBasedDamage__6Weapon);
 INCLUDE_ASM("asm/nonmatchings/game/Weapon", GetVel__6WeaponR8_fvector);
-INCLUDE_ASM("asm/nonmatchings/game/Weapon", DecrementWeaponCount__7WeaponsP7Monsteri);
+class Monster;
+class Weapons {
+public:
+    void DecrementWeaponCount(Monster *m, int type);
+};
+void Weapons::DecrementWeaponCount(Monster *m, int type)
+{
+}
 INCLUDE_ASM("asm/nonmatchings/game/Weapon", AddWeaponEpNode__7WeaponsiP9_hierhead);
 INCLUDE_ASM("asm/nonmatchings/game/Weapon", CreateFire__7WeaponsP8_fvectorfi);
 INCLUDE_ASM("asm/nonmatchings/game/Weapon", UpdateFlames__7Weapons);

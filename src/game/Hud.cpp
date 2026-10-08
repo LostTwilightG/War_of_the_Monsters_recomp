@@ -5,7 +5,13 @@ INCLUDE_ASM("asm/nonmatchings/game/Hud", initAfter__3Hudi);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", initForReplay__3Hud);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", update__3Hud);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", parseHudElements__3HudP9_hierhead);
-INCLUDE_ASM("asm/nonmatchings/game/Hud", print__3Hud);
+class Hud {
+public:
+    void print(void);
+};
+void Hud::print(void)
+{
+}
 INCLUDE_ASM("asm/nonmatchings/game/Hud", buildPacketHead__3HudP6QwData);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", dmaPacket__3Hud);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", buildSeparator__3Hud);
@@ -20,7 +26,16 @@ INCLUDE_ASM("asm/nonmatchings/game/Hud", updateMessage__3Hud);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", addTextBoxMessage__3Hudi);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", updateTextBoxMessage__3Hud);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", MonsterNewNames_006EAA78);
-INCLUDE_ASM("asm/nonmatchings/game/Hud", initBefore__12Letterboxing);
+class Letterboxing {
+public:
+    void initBefore(void);
+};
+void Letterboxing::initBefore(void)
+{
+    *(int *)((char *)this + 0x2C) = 0;
+    *(int *)((char *)this + 0x0) = 0;
+    *(int *)((char *)this + 0x24) = 0;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Hud", initAfter__12Letterboxing);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", setEnabled__12Letterboxingb);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", setLetterboxCS__12LetterboxingP9_hierhead);
