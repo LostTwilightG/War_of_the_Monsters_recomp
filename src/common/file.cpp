@@ -16,6 +16,9 @@ struct FileStatus {
     unsigned short maxResAddr[FILE_MAX_SLOTS]; // 0x168
 };
 extern FileStatus fileStatus;
+extern unsigned char cdSectorBuffer[];
+
+int fileStringCompare(char *a, char *b);
 
 INCLUDE_ASM("asm/nonmatchings/common/file", fileInitializeCd__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileReadf__FPcPv);
@@ -88,23 +91,101 @@ void setMaxResAddr(int i, unsigned short v)
 {
     fileStatus.maxResAddr[i] = v;
 }
-INCLUDE_ASM("asm/nonmatchings/common/file", getIdxOfAddr__FPc);
-INCLUDE_ASM("asm/nonmatchings/common/file", getIdxOfResAddr__FPc);
-INCLUDE_ASM("asm/nonmatchings/common/file", getIdxOfName__FPc);
+signed char getIdxOfAddr(char *addr)
+{
+    int i;
+
+    for (i = 0; i < fileStatus.texLoaded; i++)
+        if (fileStatus.texAddr[i] == addr)
+            return i;
+    return -1;
+}
+signed char getIdxOfResAddr(char *addr)
+{
+    int i;
+
+    for (i = 0; i < fileStatus.resLoaded; i++)
+        if (fileStatus.resAddr[i] == addr)
+            return i;
+    return -1;
+}
+signed char getIdxOfName(char *name)
+{
+    int i;
+
+    for (i = 0; i < fileStatus.ngpLoaded; i++)
+        if (fileStringCompare(name, fileStatus.names[i]))
+            return i;
+    return -1;
+}
 INCLUDE_ASM("asm/nonmatchings/common/file", fileAddNgpFile__FPci);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileAddTexFile__FPci);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileAddResFile__FPci);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileAddName__FPc);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileOnlyNgpFile__FPci);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileOnlyTexFile__FPci);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileOnlyResFile__FPci);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileInitBeforeDbLoad__Fv);
+void fileOnlyNgpFile(char *addr, int size)
+{
+    char *end = addr + size;
+    int rem, pad;
+
+    fileStatus.ngpAddr[0] = addr;
+    fileStatus.ngpLoaded = 1;
+    fileStatus.ngpAddr[1] = end;
+    rem = (int)end & 0x7F;
+    if (rem) {
+        pad = 0x80 - rem;
+        fileStatus.ngpAddr[1] = end + (signed char)pad + 0x80;
+    }
+}
+void fileOnlyTexFile(char *addr, int size)
+{
+    char *end = addr + size;
+    int rem, pad;
+
+    fileStatus.texAddr[0] = addr;
+    fileStatus.texLoaded = 1;
+    fileStatus.texAddr[1] = end;
+    rem = (int)end & 0x7F;
+    if (rem) {
+        pad = 0x80 - rem;
+        fileStatus.texAddr[1] = end + (signed char)pad + 0x70;
+    }
+}
+void fileOnlyResFile(char *addr, int size)
+{
+    char *end = addr + size;
+    int rem, pad;
+
+    fileStatus.resAddr[0] = addr;
+    fileStatus.resLoaded = 1;
+    fileStatus.resAddr[1] = end;
+    rem = (int)end & 0x7F;
+    if (rem) {
+        pad = 0x80 - rem;
+        fileStatus.resAddr[1] = end + (signed char)pad + 0x70;
+    }
+}
+void fileInitBeforeDbLoad(void)
+{
+    int i;
+
+    for (i = 0; i < FILE_MAX_SLOTS; i++) {
+        fileStatus.maxTexId[i] = 0;
+        fileStatus.maxTexAddr[i] = 0;
+        fileStatus.maxResAddr[i] = 0;
+    }
+}
 void filePrintFileStatus(void)
 {
 }
 INCLUDE_ASM("asm/nonmatchings/common/file", fileMakeDirTree__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/file", fourCharsToInt__Fi);
-INCLUDE_ASM("asm/nonmatchings/common/file", twoCharsToShort__Fi);
+int fourCharsToInt(int i)
+{
+    return cdSectorBuffer[i] + (cdSectorBuffer[i + 1] << 8) + (cdSectorBuffer[i + 2] << 16) + (cdSectorBuffer[i + 3] << 24);
+}
+short twoCharsToShort(int i)
+{
+    return cdSectorBuffer[i] + (cdSectorBuffer[i + 1] << 8);
+}
 INCLUDE_ASM("asm/nonmatchings/common/file", fileCdRead__FllPc);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileCdSearchFile__FP10sceCdlFILEPc);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileHierAddrOfSect__FUi);
