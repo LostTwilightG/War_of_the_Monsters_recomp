@@ -149,7 +149,7 @@ segments:
       - [0x0833C8, asm, game/PlantBoss]  # c++, 27 funcs, name: manual
       - [0x086AA8, asm, game/PowerUps]  # c++, 29 funcs, name: guess
       - [0x088100, cpp, game/PowerUpTool]  # c++, 7 funcs, name: guess
-      - [0x088300, asm, game/rt]  # c++, 9 funcs, name: guess
+      - [0x088300, cpp, game/rt]  # c++, 9 funcs, name: guess
       - [0x089030, cpp, game/reset]  # c++, 5 funcs, name: guess
       - [0x089570, asm, game/RigidDebris]  # c++, 15 funcs, name: guess
       - [0x08A4B0, asm, game/RigidPickup]  # c++, 37 funcs, name: guess
@@ -558,7 +558,7 @@ segments:
       - [0x5ED8C0, .rodata, game/Pickup]
       - [0x5EDC10, rodata, game/PlantBoss]
       - [0x5EDEC0, .rodata, game/PowerUpTool]
-      - [0x5EDEF8, rodata, game/rt]
+      - [0x5EDEF8, .rodata, game/rt]
       - [0x5EDF28, .rodata, game/reset]
       - [0x5EDF50, rodata, game/RigidDebris]
       - [0x5EDFB0, rodata, game/RigidPickup]

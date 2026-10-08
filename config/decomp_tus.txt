@@ -102,3 +102,4 @@ common/file
 game/MonsterInit
 game/ui
 game/screen
+game/rt

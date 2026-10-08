@@ -2135,12 +2135,12 @@ game/PowerUpTool,_GLOBAL_$I$_11PowerUpTool$instance,0x1882e0,32,asm
 game/rt,startFrame__10RtLoopViewv,0x188300,8,asm
 game/rt,start__10RtLoopViewi,0x188308,8,asm
 game/rt,end__10RtLoopViewUii,0x188310,8,asm
-game/rt,rtMain__Fb,0x188318,2120,asm
+game/rt,rtMain__Fb,0x188318,2120,equivalent
 game/rt,rtPauseRT__FUi,0x188b60,632,asm
-game/rt,rtReturnToShell__Fii,0x188dd8,40,asm
-game/rt,rtTimeToReturnToShell__Fv,0x188e00,160,asm
+game/rt,rtReturnToShell__Fii,0x188dd8,40,matched
+game/rt,rtTimeToReturnToShell__Fv,0x188e00,160,matched
 game/rt,rtFadeScreen__FiUi,0x188ea0,312,asm
-game/rt,rtWaitForVu1__Fv,0x188fd8,84,asm
+game/rt,rtWaitForVu1__Fv,0x188fd8,84,matched
 game/reset,__5reset11CREATOR_KEY,0x189030,60,asm
 game/reset,writeKeys__5resetPc,0x189070,304,asm
 game/reset,readKey__5resetPc,0x1891a0,316,asm
