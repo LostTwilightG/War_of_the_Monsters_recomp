@@ -4,8 +4,12 @@
 # moved behind the image. Output (program headers patched so p_paddr == p_vaddr, PCSX2 loads by p_paddr):
 #   build/pcsx2_test/SCUS_971.97_<name>.elf             equivalents compiled in
 #   build/pcsx2_test/SCUS_971.97_control_matching.elf   the normal (retail-identical) build, as a control
-# Usage (WSL):  sh tools/wsl/build_nm.sh [name [tu ...]]     e.g.  sh tools/wsl/build_nm.sh monster game/Monster
-#   no TUs = every NON_MATCHING block in the project.  PCSX2:  pcsx2-qt.exe -elf <elf> -- "<iso>"
+# Usage (WSL):  sh tools/wsl/build_nm.sh [name [spec ...]]
+#   no spec            every NON_MATCHING block in the project
+#   game/Monster       every NON_MATCHING block of that TU
+#   game/Monster:symA,symB     only those mangled symbols of the TU
+#   game/Monster:-symA,symB    every block of the TU except those
+# PCSX2:  pcsx2-qt.exe -elf <elf> -- "<iso>"
 set -e
 name=${1:-halfcpp}
 [ $# -gt 0 ] && shift
@@ -18,21 +22,7 @@ export PATH=$HOME/.venvs/wotm/bin:$PATH
 # CrushLevel's NM code brings its own .sdata strings; -G0 keeps them out of the gp-relative area (which has no free room)
 echo 'game/CrushLevel -G0' >> config/tu_flags.txt
 if [ $# -gt 0 ]; then
-    # only the listed TUs get -DNON_MATCHING (the others keep their INCLUDE_ASM and stay retail-identical)
-    python3 - "$@" <<'PYEOF'
-import sys
-tus = set(sys.argv[1:])
-lines = open('config/tu_flags.txt').read().splitlines()
-out, seen = [], set()
-for ln in lines:
-    p = ln.split(None, 1)
-    if p and not ln.startswith('#') and p[0] in tus:
-        ln += ' -DNON_MATCHING'
-        seen.add(p[0])
-    out.append(ln)
-out += [f'{t} -DNON_MATCHING' for t in sorted(tus - seen)]
-open('config/tu_flags.txt', 'w').write('\n'.join(out) + '\n')
-PYEOF
+    python3 "$src/tools/nm_select.py" "$@"
     unset WOTM_EXTRA_CFLAGS
 else
     export WOTM_EXTRA_CFLAGS=-DNON_MATCHING
@@ -43,19 +33,5 @@ python3 tools/gen_nm_ld.py "$src" "$dst"
 mips-linux-gnu-ld -EL --no-check-sections -T SCUS_971.97.nm.ld -T undefined_syms_auto.txt -T undefined_funcs_auto.txt \
     -T linker_script_extra.ld -Map nm.map -o build/SCUS_971.97.nm.elf 2>&1 | grep -v RWX || true
 mkdir -p "$src/build/pcsx2_test"
-python3 - "$dst/build/SCUS_971.97.nm.elf" "$src/build/SCUS_971.97.elf" "$src/build/pcsx2_test" "$name" <<'PYEOF'
-import struct, sys
-def patch(srcf, dstf):
-    d = bytearray(open(srcf, 'rb').read())
-    phoff, = struct.unpack_from('<I', d, 0x1C)
-    phentsize, phnum = struct.unpack_from('<HH', d, 0x2A)
-    for i in range(phnum):
-        o = phoff + i * phentsize
-        t, off, va, pa, fs, ms, fl, al = struct.unpack_from('<8I', d, o)
-        if t == 1:
-            struct.pack_into('<I', d, o + 12, va)
-    open(dstf, 'wb').write(d)
-patch(sys.argv[1], f'{sys.argv[3]}/SCUS_971.97_{sys.argv[4]}.elf')
-patch(sys.argv[2], sys.argv[3] + '/SCUS_971.97_control_matching.elf')
-print('written', f'{sys.argv[3]}/SCUS_971.97_{sys.argv[4]}.elf')
-PYEOF
+python3 "$src/tools/patch_paddr.py" "$dst/build/SCUS_971.97.nm.elf" "$src/build/pcsx2_test/SCUS_971.97_$name.elf"
+python3 "$src/tools/patch_paddr.py" "$src/build/SCUS_971.97.elf" "$src/build/pcsx2_test/SCUS_971.97_control_matching.elf"
