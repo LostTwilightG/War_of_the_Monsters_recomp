@@ -60,6 +60,13 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    float getCollisionDamage(float m);
+    void drainStamina(float amount, bool b);
+    void endCinema(void);
+    void *getEnemyInfo(Monster &m);
+    void updateMove(bool b);
+    void updateTurn(bool b);
+    void startSpecialPowerUpGlow(int a);
     void updateDeathSequence(void);
     void playerUpdateInputs(void);
     void updateOnFire(void);
@@ -270,7 +277,9 @@ public:
     float m_climbSpeedBase;   /* 0x298 */
     float m_climbStrafeSpeed;   /* 0x29C */
     float m_climbStrafeBase;   /* 0x2A0 */
-    char pad2A4[0x448 - 0x2A4];
+    char pad2A4[0x440 - 0x2A4];
+    float m_collisionBase;   /* 0x440 */
+    float m_collisionScale;   /* 0x444 */
     float m_maxHealth;   /* 0x448 */
     float m_health;   /* 0x44C */
     char pad450[0x460 - 0x450];
@@ -280,7 +289,8 @@ public:
     char pad4AD[0x4B0 - 0x4AD];
     int m_healthGlow[3];   /* 0x4B0 */
     int m_staminaGlow[3];   /* 0x4BC */
-    char pad4C8[0x4D8 - 0x4C8];
+    int m_specialGlow[3];   /* 0x4C8 */
+    char pad4D4[0x4D8 - 0x4D4];
     PlayerDat * m_playerInfo;   /* 0x4D8 */
     char pad4DC[0x1A10 - 0x4DC];
     AiPath * m_closestPath;   /* 0x1A10 */

@@ -33,6 +33,7 @@ EXISTING = {
     0x44: ('int', 'm_frameTime', 4), 0xEA: ('signed char', 'm_unkEA', 1), 0xEB: ('signed char', 'm_unkEB', 1), 0xF5: ('signed char', 'm_unkF5', 1),
     0x7978: ('int *', 'm_stateRef', 4), 0x6874: ('char *', 'm_x6874', 4), 0x69A0: ('float', 'm_padScale', 4),
     0x6CB4: ('int', 'm_fireFx', 4), 0x6CBC: ('float', 'm_onFireDamage', 4), 0x6CC0: ('Monster *', 'm_fireSource', 4),
+    0x440: ('float', 'm_collisionBase', 4), 0x444: ('float', 'm_collisionScale', 4), 0x4C8: ('int', 'm_specialGlow[3]', 12),
     0x34: ('int *', 'm_state', 4), 0x38: ('int *', 'm_prevState', 4), 0xB4: ('float', 'm_bodyHeight', 4),
     0xEF: ('signed char', 'm_cloaked', 1), 0x1A3C: ('_cs *', 'm_shadow', 4), 0x846C: ('Monster *', 'm_killer', 4),
     0x4B0: ('int', 'm_healthGlow[3]', 12), 0x4BC: ('int', 'm_staminaGlow[3]', 12),
