@@ -18,3 +18,18 @@ python3 -m venv ~/.venvs/wotm && ~/.venvs/wotm/bin/pip install "splat64[mips]" p
 `tools/symdiff.py` lista símbolos fora do lugar e `tools/romdiff.py` mostra as palavras que diferem quando o checksum falha.
 
 Veja [docs/ANALYSIS.md](docs/ANALYSIS.md) para o que já se sabe sobre o executável.
+
+<!-- PROGRESS:START -->
+## Progresso da decompilação
+
+![Progresso da decompilação](docs/progress.svg)
+
+| Área | Feitas | Total | % | Bytes |
+|---|---:|---:|---:|---|
+| `game` | 466 | 3181 | 14,6% | 27,8 KB de 909,0 KB (3,1%) |
+| `common` / engine | 192 | 1144 | 16,8% | 23,1 KB de 252,4 KB (9,2%) |
+
+"Feita" = função `matched` (byte a byte igual ao original) ou `equivalent` (C++ equivalente, ainda sem bater).
+Ignoradas: **1212** funções, sendo 1056 de bibliotecas/SDK (`libs`: gcc, newlib, sce, lib989snd, crt0) e 156 de código de hardware do PS2 (`hw`) que o port substitui.
+Gerado por `tools/update_readme.py` a partir de `config/status.csv` (veja `tools/progress.py`); total de 5381 funções.
+<!-- PROGRESS:END -->
