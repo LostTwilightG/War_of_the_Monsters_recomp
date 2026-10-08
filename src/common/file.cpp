@@ -104,6 +104,9 @@ int fileStringCompare(char *a, char *b);
 void fileAdjustFileName(char *dst, char *src);
 int fileCdSearchFile(sceCdlFILE *f, char *path);
 void fileMakeDirTree(void);
+int fourCharsToInt(int i);
+int fileCdRead(long sectors, long lsn, char *buf);
+_cdFileSystem *fileHierAddrOfSect(unsigned int sector);
 
 __asm__("#SNFIX_SMALL cdHasBeenInitialized");
 void fileInitializeCd(void)
@@ -446,7 +449,97 @@ void fileInitBeforeDbLoad(void)
 void filePrintFileStatus(void)
 {
 }
+#ifdef NON_MATCHING
+/* equivalent, not tuned (size 0x438 vs 0x448): retail spills the queue indices and pointers to the stack */
+void fileMakeDirTree(void)
+{
+    struct {
+        long sector;
+        long sectors;
+    } queue[256];
+    _cdFileSystem *node = &cdFileSystemToc;
+    _cdFileSystem *parent;
+    int sector, sectors;
+    int tail = 0, head = 0, newEntry = 0;
+    int i, j, off, child, filled, len;
+    long extent;
+    unsigned long size;
+
+    cdReadMode.trycount = 20;
+    cdReadMode.spindlctrl = 1;
+    cdReadMode.datapattern = 0;
+    for (i = 0; i < 0x810; i++)
+        cdSectorBuffer[i] = 0;
+    for (i = 0; i <= 0x7000; i++)
+        ((char *)&cdFileSystemToc)[i] = 0;
+    /* primary volume descriptor: root directory extent and size */
+    fileCdRead(1, 16, (char *)cdSectorBuffer);
+    sector = fourCharsToInt(0x9E);
+    sectors = (fourCharsToInt(0xA6) + 0x7FF) / 0x800;
+    queue[tail].sector = sector;
+    queue[tail].sectors = sectors;
+    tail++;
+    while (head != tail) {
+        parent = node;
+        child = 0;
+        sectors = queue[head].sectors;
+        sector = queue[head].sector;
+        head++;
+        for (i = 0; i < sectors; i++) {
+            fileCdRead(1, sector + i, (char *)cdSectorBuffer);
+            for (off = 0; cdSectorBuffer[off] != 0; off += cdSectorBuffer[off]) {
+                extent = fourCharsToInt(off + 2);
+                size = fourCharsToInt(off + 10);
+                filled = 0;
+                if (cdSectorBuffer[off + 32] == 1 && cdSectorBuffer[off + 33] == 1) {
+                    /* ".." */
+                } else if (cdSectorBuffer[off + 32] == 1 && cdSectorBuffer[off + 33] == 0) {
+                    /* "." describes the directory itself: the root fills its own node, other directories find theirs */
+                    if (head < 2) {
+                        filled = 1;
+                        node->name[0] = '.';
+                        node->name[1] = 0;
+                    } else {
+                        parent = fileHierAddrOfSect(sector);
+                        if (!parent)
+                            printf("fileMakeDirTree(%p); Shit, it didn't work.  I hit a directory I haven't cached.\n", &cdFileSystemToc);
+                    }
+                } else {
+                    filled = 1;
+                    newEntry = 1;
+                    parent->entries[child++] = node;
+                    parent->numEntries++;
+                }
+                if (filled) {
+                    node->size = size;
+                    node->sector = extent;
+                    node->sectors = ((size - 1) >> 11) + 1;
+                    node->type = cdSectorBuffer[off + 25];
+                    if (node->type == 2 && newEntry) {
+                        queue[tail].sector = extent;
+                        queue[tail].sectors = (size + 0x7FF) >> 11;
+                        newEntry = 0;
+                        tail++;
+                    }
+                    len = cdSectorBuffer[off + 32];
+                    for (j = 0; j < len; j++)
+                        node->name[j] = cdSectorBuffer[off + 33 + j];
+                    node->name[j] = 0;
+                    if (node->type == 2) {
+                        /* room for 40 child pointers per directory sector */
+                        len = node->sectors;
+                        for (j = 0; j < len; j++)
+                            node = (_cdFileSystem *)((char *)node + 0xA0);
+                    }
+                    node = (_cdFileSystem *)((char *)node + 0x20);
+                }
+            }
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/file", fileMakeDirTree__Fv);
+#endif
 int fourCharsToInt(int i)
 {
     return cdSectorBuffer[i] + (cdSectorBuffer[i + 1] << 8) + (cdSectorBuffer[i + 2] << 16) + (cdSectorBuffer[i + 3] << 24);
