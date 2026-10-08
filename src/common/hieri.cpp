@@ -7,6 +7,7 @@ extern int objsInAlphaPacket;
 extern int dmaVu1[];
 
 int hierDmaHandler(int);
+void hierFlushObjQ(void);
 
 /* this TU was built without optimization (-O0, see config/tu_flags.txt) */
 #ifdef NON_MATCHING
