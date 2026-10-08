@@ -2222,7 +2222,7 @@ game/screen,screenGameModes1P__Fv,0x18f040,1512,asm
 game/screen,screenCharSelect1P__Fv,0x18f628,4240,asm
 game/screen,screenSelect1AI__Fv,0x1906b8,5032,asm
 game/screen,screenCtlrCfg__Fv,0x191a60,1188,asm
-game/screen,screenGameModes2P__Fv,0x191f08,1204,asm
+game/screen,screenGameModes2P__Fv,0x191f08,1204,equivalent
 game/screen,screenCharSelect3P__Fv,0x1923c0,16656,asm
 game/screen,screenCharSelect2P__Fv,0x1964d0,12784,asm
 game/screen,screenMinigames2P__Fv,0x1996c0,7504,asm
