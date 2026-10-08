@@ -189,9 +189,9 @@ void Monster::update(void)
     updateAnimContacts(true);
     if (m_x6874 != 0) {
         if (m_stamina.exhausted == 0 || m_dead != 0) {
-            *(int *)(m_x6874 + 0xC) = 0;
+            m_x6874[0xC] = 0;
         } else {
-            *(int *)(m_x6874 + 0xC) = 1;
+            m_x6874[0xC] = 1;
             *(QwData *)(m_x6874 + 0x10) = *(QwData *)((char *)this + 0x3E60);
         }
     }

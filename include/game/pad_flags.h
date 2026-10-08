@@ -15,7 +15,8 @@ struct PadEntry {
     char pad34[0x3E - 0x34];
     short f3E;
     char pad40[0x5C - 0x40];
-    unsigned short f5C;
+    signed char f5C; /* retail reads it with lb */
+    char pad5D;
 };
 class Monster;
 
