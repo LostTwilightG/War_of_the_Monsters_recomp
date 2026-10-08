@@ -409,8 +409,8 @@ public:
     int f120468;                     /* set to 1 by InitAfterDbLoad */
     struct PadTweaks {               /* 0x12046C: copied into every monster's PadFlags by UpdatePadTweaks */
         int t16C4;
-        float t16D0;
-        float t16D4;
+        int t16D0;
+        int t16D4;
         int t16C8;
         int t16F4;
         int t16F8;

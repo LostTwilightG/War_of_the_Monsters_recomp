@@ -13,6 +13,7 @@ instructions other than the few patched below cannot be run.
 Run inside WSL (needs unicorn and pyelftools in ~/.venvs/wotm, plus mips-linux-gnu binutils).
 """
 import argparse
+import re
 import numpy as np
 import random
 import struct
@@ -77,8 +78,11 @@ def build_alt(tu, workdir):
            '-o', str(workdir / 'alt.elf'), str(obj)]
     missing = []
     for u in und:
+        m = re.search(r'_([0-9A-Fa-f]{8})$', u)
         if u in sym:
             cmd.append(f'--defsym={u}={sym[u]:#x}')
+        elif m:                                  # splat data label: the address is part of the name
+            cmd.append(f'--defsym={u}={int(m.group(1), 16):#x}')
         else:
             missing.append(u)
     r = subprocess.run(cmd, capture_output=True, text=True)
@@ -95,15 +99,19 @@ def build_alt(tu, workdir):
     return secs, asym, missing
 
 
-def patch_code(buf):
+def patch_code(buf, base=0, rec=None):
     """R5900-only encodings -> plain MIPS64 equivalents (see module docstring)."""
     out = bytearray(buf)
     for i in range(0, len(out) - 3, 4):
         w = struct.unpack_from('<I', out, i)[0]
         op = w >> 26
-        if op == 0x1F:      # sq -> sd
+        if op == 0x1F:      # sq -> sd (the hook writes the shadow upper half)
+            if rec is not None:
+                rec[base + i] = ('sq', (w >> 16) & 31, (w >> 21) & 31, struct.unpack('<h', struct.pack('<H', w & 0xFFFF))[0])
             w = (0x3F << 26) | (w & 0x03FFFFFF)
-        elif op == 0x1E:    # lq -> ld
+        elif op == 0x1E:    # lq -> ld (the hook loads the shadow upper half)
+            if rec is not None:
+                rec[base + i] = ('lq', (w >> 16) & 31, (w >> 21) & 31, struct.unpack('<h', struct.pack('<H', w & 0xFFFF))[0])
             w = (0x37 << 26) | (w & 0x03FFFFFF)
         elif op == 0 and (w & 0x3F) in (0x18, 0x19) and ((w >> 11) & 31) != 0:   # mult/multu rd,rs,rt -> mul
             w = (0x1C << 26) | (w & 0x03FFFFC0) | 0x02
@@ -115,8 +123,80 @@ def patch_code(buf):
     return bytes(out)
 
 
+BASIC = {'i': 'i', 'b': 'b', 'f': 'f', 'c': 'i', 's': 'i', 'l': 'i', 'U': None}
+
+
+def parse_params(rest):
+    """gcc 2.x mangled parameter list -> list of difftest arg tokens, or None when unsupported."""
+    if rest == 'v':
+        return []
+    toks = []
+    i = 0
+    while i < len(rest):
+        c = rest[i]
+        if c == 'U':
+            i += 1
+            c = rest[i]
+            toks.append('i')
+            i += 1
+            continue
+        if c in 'PRC':
+            ptr = False
+            while i < len(rest) and rest[i] in 'PRC':
+                ptr = ptr or rest[i] in 'PR'
+                i += 1
+            if i < len(rest) and rest[i].isdigit():
+                m = re.match(r'(\d+)', rest[i:])
+                n = int(m.group(1))
+                i += len(m.group(1)) + n
+            elif i < len(rest) and rest[i] == 'A':
+                m = re.match(r'A\d+_', rest[i:])
+                i += len(m.group(0))
+                continue
+            else:
+                i += 1
+            toks.append('p')
+            continue
+        if c in BASIC and BASIC[c]:
+            toks.append(BASIC[c])
+            i += 1
+            continue
+        if c == 'T':
+            m = re.match(r'T(\d+)', rest[i:])
+            idx = int(m.group(1))
+            if idx >= len(toks):
+                return None
+            toks.append(toks[idx])
+            i += len(m.group(0))
+            continue
+        if c == 'N':
+            m = re.match(r'N(\d)(\d)', rest[i:])
+            if not m:
+                return None
+            for _ in range(int(m.group(1))):
+                toks.append(toks[int(m.group(2))])
+            i += 3
+            continue
+        return None
+    return toks
+
+
+def spec_from_mangled(sym):
+    m = re.match(r'^(\w+?)__(C?)(\d+)(\w+)$', sym)
+    if m:
+        cls_len = int(m.group(3))
+        body = m.group(4)
+        rest = body[cls_len:]
+        params = parse_params(rest)
+        return None if params is None else ['this'] + params
+    m = re.match(r'^(\w+?)__F(\w*)$', sym)
+    if m:
+        return parse_params(m.group(2))
+    return None
+
+
 class Run:
-    def __init__(self, name, retail_segs, alt_secs, entry, fn_range, entries, seed, spec):
+    def __init__(self, name, retail_segs, alt_secs, entry, fn_range, entries, seed, spec, objsize=0x4000):
         self.name = name
         self.entries = entries                # addr -> callee name (every known function start)
         self.entry = entry
@@ -126,6 +206,8 @@ class Run:
         self.fault = None
         uc = Uc(UC_ARCH_MIPS, UC_MODE_MIPS64 | UC_MODE_LITTLE_ENDIAN)
         self.uc = uc
+        self.qw = {}
+        self.high = [0] * 32
         for vaddr, data, memsz in retail_segs:
             lo = vaddr & ~0xFFF
             hi = (vaddr + memsz + 0xFFF) & ~0xFFF
@@ -133,7 +215,7 @@ class Run:
                 uc.mem_map(lo, hi - lo)
             except UcError:
                 pass
-            uc.mem_write(vaddr, patch_code(data) if vaddr < 0x400000 else data)
+            uc.mem_write(vaddr, patch_code(data, vaddr, self.qw) if vaddr < 0x400000 else data)
         for addr, data in alt_secs:
             lo = addr & ~0xFFF
             hi = (addr + len(data) + 0xFFF) & ~0xFFF
@@ -141,7 +223,7 @@ class Run:
                 uc.mem_map(lo, hi - lo)
             except UcError:
                 pass
-            uc.mem_write(addr, patch_code(data))
+            uc.mem_write(addr, patch_code(data, addr, self.qw))
         uc.mem_map(0, 0x10000)
         uc.mem_map(ARENA, ARENA_SIZE)
         uc.mem_map(STACK_TOP - STACK_SIZE, STACK_SIZE)
@@ -153,7 +235,12 @@ class Run:
         small = rs.randint(0, 9, n).astype(np.uint32)
         flt = rs.uniform(-100, 100, n).astype(np.float32).view(np.uint32)
         special = np.array([0xFFFFFFFF, 0x7FFF, 0x80000000], dtype=np.uint32)[rs.randint(0, 3, n)]
-        ptr = (ARENA + (rs.randint(0x1000, ARENA_SIZE - 0x1000, n) & ~3)).astype(np.uint32)
+        lo = 0x20000
+        hi = (lo + objsize + 0xFFF) & ~0xFFF
+        avail = (lo - 0x1000) + (ARENA_SIZE - 0x1000 - hi)
+        r = rs.randint(0, avail, n)
+        off = np.where(r < lo - 0x1000, r + 0x1000, r - (lo - 0x1000) + hi)
+        ptr = (ARENA + (off & ~3)).astype(np.uint32)
         words = np.where(kind < 0.40, small, np.where(kind < 0.55, flt, np.where(kind < 0.60, special, ptr))).astype(np.uint32)
         uc.mem_write(ARENA, words.tobytes())
         self.rnd = rnd
@@ -192,14 +279,35 @@ class Run:
             ni += 1
 
     def hook_code(self, uc, addr, size, ud):
+        q = self.qw.get(addr)
+        if q:
+            kind, rt, base, off = q
+            ea = (uc.reg_read(UC_MIPS_REG_0 + base) + off) & 0xFFFFFFFF
+            try:
+                if kind == 'sq':
+                    uc.mem_write(ea + 8, struct.pack('<Q', self.high[rt] & 0xFFFFFFFFFFFFFFFF))
+                    if not (STACK_TOP - STACK_SIZE <= ea < STACK_TOP):
+                        for k in range(8):
+                            self.writes[ea + 8 + k] = (self.high[rt] >> (8 * k)) & 0xFF
+                else:
+                    self.high[rt] = struct.unpack('<Q', bytes(uc.mem_read(ea + 8, 8)))[0] if rt else 0
+            except UcError:
+                pass
         if addr == self.entry and not self.started:
             self.started = True
             return
         if addr in self.entries and not (self.fn_range[0] <= addr < self.fn_range[1]):
-            a = [uc.reg_read(UC_MIPS_REG_4 + i) & 0xFFFFFFFF for i in range(4)]
-            f12 = uc.reg_read(UC_MIPS_REG_F12) & 0xFFFFFFFF
-            f13 = uc.reg_read(UC_MIPS_REG_F13) & 0xFFFFFFFF
-            self.calls.append((self.entries[addr], tuple(a), f12, f13))
+            name = self.entries[addr]
+            cs = spec_from_mangled(name)
+            if cs is None:
+                ni, nf = 1, 0
+            else:
+                ni = min(4, sum(1 for t in cs if t != 'f'))
+                nf = min(2, sum(1 for t in cs if t == 'f'))
+            a = tuple(uc.reg_read(UC_MIPS_REG_4 + i) & 0xFFFFFFFF for i in range(ni))
+            f12 = uc.reg_read(UC_MIPS_REG_F12) & 0xFFFFFFFF if nf >= 1 else 0
+            f13 = uc.reg_read(UC_MIPS_REG_F13) & 0xFFFFFFFF if nf >= 2 else 0
+            self.calls.append((name, a, f12, f13))
             n = len(self.calls)
             uc.reg_write(UC_MIPS_REG_2, ARENA + 0x100000 + 0x40 * (n % 64))
             uc.reg_write(UC_MIPS_REG_F0, 0)
@@ -241,38 +349,46 @@ class Run:
                 return False
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('tu')
-    ap.add_argument('func')
-    ap.add_argument('--args', default='this')
-    ap.add_argument('--ret', default='void', choices=['void', 'int', 'float'])
-    ap.add_argument('--runs', type=int, default=100)
-    ap.add_argument('--verbose', action='store_true')
-    ap.add_argument('--alt', default=None, help='negative control: run this function from src/ instead (should DIFFER)')
-    o = ap.parse_args()
-    spec = [t for t in o.args.split(',') if t]
-    sym, segs = retail_symbols()
-    if o.func not in sym:
-        sys.exit(f'{o.func} not in the retail symbol table')
-    with tempfile.TemporaryDirectory() as td:
-        alt_secs, asym, missing = build_alt(o.tu, Path(td))
-    altname = o.alt or o.func
-    if altname not in asym:
-        sys.exit(f'{altname} not compiled from src/ (still INCLUDE_ASM?)')
-    r_entry = sym[o.func]
+class Bench:
+    """Compiled alt build of one TU plus the retail image; test() runs one function."""
+
+    def __init__(self, tu):
+        self.tu = tu
+        self.sym, self.segs = retail_symbols()
+        with tempfile.TemporaryDirectory() as td:
+            self.alt_secs, self.asym, self.missing = build_alt(tu, Path(td))
+        self.sizes = {}
+        with open(RETAIL, 'rb') as f:
+            for s in ELFFile(f).get_section_by_name('.symtab').iter_symbols():
+                self.sizes[s.name] = s['st_size']
+        self.r_entries = {v: k for k, v in self.sym.items() if not k.startswith('.') and v < 0x400000}
+        self.a_entries = {v: k for k, (v, _) in self.asym.items()}
+
+    def test(self, func, spec, ret='void', runs=60, verbose=False, alt=None, objsize=0x4000):
+        """Returns (agree, differ, skipped)."""
+        if func not in self.sym:
+            raise SystemExit(f'{func} not in the retail symbol table')
+        altname = alt or func
+        if altname not in self.asym:
+            raise SystemExit(f'{altname} not compiled from src/ (still INCLUDE_ASM?)')
+        return run_test(self, func, altname, spec, ret, runs, verbose, objsize)
+
+
+def run_test(b, func, altname, spec, ret, runs, verbose, objsize=0x4000):
+    sym, segs, alt_secs, asym, missing = b.sym, b.segs, b.alt_secs, b.asym, b.missing
+    r_entry = sym[func]
     a_entry, a_size = asym[altname]
-    r_size = None
-    with open(RETAIL, 'rb') as f:
-        for s in ELFFile(f).get_section_by_name('.symtab').iter_symbols():
-            if s.name == o.func:
-                r_size = s['st_size']
-    r_entries = {v: k for k, v in sym.items() if not k.startswith('.') and v < 0x400000}
-    a_entries = {v: k for k, (v, _) in asym.items()}
+    r_size = b.sizes[func]
+    r_entries, a_entries = b.r_entries, b.a_entries
+
+    class O:
+        pass
+    o = O()
+    o.func, o.ret, o.runs, o.verbose = func, ret, runs, verbose
     ok = bad = skipped = 0
     for seed in range(o.runs):
-        ra = Run('retail', segs, [], r_entry, (r_entry, r_entry + r_size), r_entries, seed, spec)
-        rb = Run('alt', segs, alt_secs, a_entry, (a_entry, a_entry + a_size), {**a_entries}, seed, spec)
+        ra = Run('retail', segs, [], r_entry, (r_entry, r_entry + r_size), r_entries, seed, spec, objsize)
+        rb = Run('alt', segs, alt_secs, a_entry, (a_entry, a_entry + a_size), {**a_entries}, seed, spec, objsize)
         # both runs patch the retail code identically; the alt run must also intercept calls into retail code
         rb.entries = {**r_entries, **a_entries}
         fa = ra.execute()
@@ -288,19 +404,38 @@ def main():
         if o.ret == 'float' and (ra.uc.reg_read(UC_MIPS_REG_F0) & 0xFFFFFFFF) != (rb.uc.reg_read(UC_MIPS_REG_F0) & 0xFFFFFFFF):
             diffs.append(('f0', hex(ra.uc.reg_read(UC_MIPS_REG_F0) & 0xFFFFFFFF), hex(rb.uc.reg_read(UC_MIPS_REG_F0) & 0xFFFFFFFF)))
         if ra.calls != rb.calls:
-            diffs.append(('calls', ra.calls[:4], rb.calls[:4]))
+            k = next((i for i in range(min(len(ra.calls), len(rb.calls))) if ra.calls[i] != rb.calls[i]), min(len(ra.calls), len(rb.calls)))
+            diffs.append(('calls', f'first difference at call #{k} of {len(ra.calls)}/{len(rb.calls)}', ra.calls[k:k + 2], rb.calls[k:k + 2]))
         if ra.writes != rb.writes:
             keys = sorted(set(ra.writes) | set(rb.writes))
             d = [(hex(k), ra.writes.get(k), rb.writes.get(k)) for k in keys if ra.writes.get(k) != rb.writes.get(k)]
-            diffs.append(('writes', d[:6]))
+            diffs.append(("writes", d[:40]))
         if diffs:
             bad += 1
             if bad <= 3:
                 print(f'seed {seed}: MISMATCH {diffs}')
         else:
             ok += 1
-    print(f'{o.func}: {ok} agree, {bad} differ, {skipped} skipped of {o.runs} (unresolved symbols: {len(missing)})')
+    return ok, bad, skipped
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('tu')
+    ap.add_argument('func')
+    ap.add_argument('--args', default='this')
+    ap.add_argument('--ret', default='void', choices=['void', 'int', 'float'])
+    ap.add_argument('--runs', type=int, default=100)
+    ap.add_argument('--verbose', action='store_true')
+    ap.add_argument('--objsize', type=lambda x: int(x, 0), default=0x4000, help='size of the object `this` points at (keeps random pointers out of it)')
+    ap.add_argument('--alt', default=None, help='negative control: run this function from src/ instead (should DIFFER)')
+    o = ap.parse_args()
+    spec = [t for t in o.args.split(',') if t]
+    b = Bench(o.tu)
+    ok, bad, skipped = b.test(o.func, spec, o.ret, o.runs, o.verbose, o.alt, o.objsize)
+    print(f'{o.func}: {ok} agree, {bad} differ, {skipped} skipped of {o.runs} (unresolved symbols: {len(b.missing)})')
     sys.exit(1 if bad else 0)
 
 
-main()
+if __name__ == '__main__':
+    main()

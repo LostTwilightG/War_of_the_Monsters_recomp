@@ -31,4 +31,7 @@ public:
     void deleteTask(TaskConfig *t);
 };
 
+/* A second scheduler instance 0x20 bytes after `global`; TheGame::Update runs this one, Update2 runs `global`. */
+extern TaskManager gTaskManager0 __asm__("_11TaskManager$global0");
+
 #endif

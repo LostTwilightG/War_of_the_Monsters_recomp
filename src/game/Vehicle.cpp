@@ -17,7 +17,6 @@ public:
     int hatField;
     char pad38[8];
     QwData orient;
-    float f4C;
 
     void setCs(_cs *c);
     void setPos(_fvector &p);
@@ -33,7 +32,7 @@ void Vehicle::setCs(_cs *c)
     hatField = getHatField();
     cs = c;
     orient = *(QwData *)((char *)c + 0x40);
-    f4C = c->trans.z;
+    orient.fVec[3] = c->trans.z;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Vehicle", setCs__7VehicleP3_cs);
@@ -43,7 +42,7 @@ INCLUDE_ASM("asm/nonmatchings/game/Vehicle", setCs__7VehicleP3_cs);
 void Vehicle::setPos(_fvector &p)
 {
     *(QwData *)&cs->trans = *(QwData *)&p;
-    f4C = p.z;
+    orient.fVec[3] = p.z;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Vehicle", setPos__7VehicleR8_fvector);

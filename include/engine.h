@@ -33,7 +33,7 @@ float smoothEasyInTC(float cur, float target, float rate, float eps);
 
 /* ---- input ---- */
 int inputGetInput(int pad, int button);
-void inputUseActuator(int pad, bool enable);
+void inputUseActuator(int pad, int enable) __asm__("inputUseActuator__Fib"); /* retail passes the raw int, not a normalised bool */
 
 /* ---- timers ---- */
 int timerGetFieldsLastFrame(void);

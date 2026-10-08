@@ -134,9 +134,9 @@ INCLUDE_ASM("asm/nonmatchings/game/MonsterMeters", creditBaseOnly__12StaminaMete
 /* 13/48 words, untuned: duplicate of creditBaseOnly in retail */
 void StaminaMeter::credit(float amount)
 {
-    if (cur < max) {
+    if (cur < maxLevel) {
         if (!exhausted) {
-            float room = max - cur;
+            float room = maxLevel - cur;
 
             if (amount < room)
                 room = amount;

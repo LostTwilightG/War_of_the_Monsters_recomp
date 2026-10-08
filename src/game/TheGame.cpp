@@ -165,7 +165,7 @@ void TheGame::Update(void)
     destructibles->Update();
     Cameras::Update();
     PowerUps::instance.update();
-    TaskManager::global.update();
+    gTaskManager0.update();
     switch (m_levelId) {
     case 1:
         if (shell->m_mode == 1)
