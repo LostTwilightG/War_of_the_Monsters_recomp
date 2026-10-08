@@ -22,6 +22,12 @@ public:
     void updateInputs(void);
 };
 extern float cloaker;
+struct Q16 {
+    char b[16];
+};
+extern "C" float cosf(float);
+extern float UpMatrix[4][4];
+void *particleGetParticle(int h);
 class AnimBlend {
 public:
     void setPercent(float p);
@@ -494,7 +500,35 @@ Monster *Monster::getClosestMonsterWithLos(float maxDist)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterWithLos__7Monsterf);
 #endif
+#ifdef NON_MATCHING
+/* 14/69 words, untuned: loop setup order */
+Monster *Monster::getClosestMonsterToOrientation(float angle, float maxDist)
+{
+    Monster *best = 0;
+    float c = cosf(angle);
+    int j;
+    int n = game->m_numSlots;
+    Monster *m = &game->m_slots[0];
+
+    for (j = 0; j < n; j++, m++) {
+        if (m->m_playerNum != 0 && m != this && m != m_target) {
+            EnemyInfo::Info *e = EnemyInfo::info(m_monsterNum, j);
+            int ok = c < e->dot;
+
+            if (ok) {
+                if (e->dist < maxDist) {
+                    c = e->dot;
+                    maxDist = e->dist;
+                    best = m;
+                }
+            }
+        }
+    }
+    return best;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterToOrientation__7Monsterff);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterToOrientation__7Monsteriiff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterToPunch__7Monsterfff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterInFOV__7MonsterR8_fvectorfT1fRf);
@@ -708,8 +742,50 @@ void Monster::setCloakOff(void)
     m_cloakTime = 0;
     clearEnvMapping();
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", attachFxToHandle__FPiP8_fvectorUi);
+void attachFxToHandle(int *handle, _fvector *pos, unsigned id)
+{
+    void *p;
+
+    *handle = particleCreateFx(pos, (float (*)[4])UpMatrix, id, 1.0f, 0, 0, false, 0.0f);
+    p = particleGetParticle(*handle);
+    if (p)
+        *(int **)((char *)p + 0x2ED8) = handle;
+}
+#ifdef NON_MATCHING
+/* 13/57 words, untuned: lq scheduling around the y + 2 add */
+void Monster::updateWaterWake(float y, bool on)
+{
+    char *vt = *(char **)((char *)this + 0x10);
+    Q16 *pos = ((Q16 * (*)(void *))(*(void **)(vt + 0x14)))((char *)this + *(short *)(vt + 0x10));
+
+    long t0, t1;
+
+    __asm__ volatile("lq %0, %1" : "=r"(t0) : "m"(*(Q16 *)pos));
+    y += 2.0f;
+    __asm__ volatile("lq %1, %3
+	"
+                     "sq %0, %2
+	"
+                     "sq %1, %4"
+                     : "+r"(t0), "=&r"(t1), "=m"(*(Q16 *)((char *)this + 0x6C90))
+                     : "m"(*(Q16 *)((char *)this + 0x270)), "m"(*(Q16 *)((char *)this + 0x6CA0)));
+    *(float *)((char *)this + 0x6C9C) = y;
+    if (on) {
+        *(int *)((char *)this + 0x6CB8) = 0;
+        if (*(int *)((char *)this + 0x6C80) == -1)
+            attachFxToHandle((int *)((char *)this + 0x6C80), (_fvector *)((char *)this + 0x6C90), 0x92);
+        if (*(int *)((char *)this + 0x6C84) == -1)
+            attachFxToHandle((int *)((char *)this + 0x6C84), (_fvector *)((char *)this + 0x6C90), 0x14);
+    } else {
+        if (*(int *)((char *)this + 0x6C80) != -1)
+            particleKillFx(*(int *)((char *)this + 0x6C80));
+        if (*(int *)((char *)this + 0x6C84) != -1)
+            particleKillFx(*(int *)((char *)this + 0x6C84));
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateWaterWake__7Monsterfb);
+#endif
 struct MovieCleanup {
     char pad0[0x30];
     char *p;

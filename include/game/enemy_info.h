@@ -10,7 +10,8 @@ public:
         char pad0[0xC];
         float dist;       /* 0xC: distance */
         float dist2D;     /* 0x10: ground-plane distance */
-        char pad14[0xC];
+        float dot;        /* 0x14: facing, compared with cos(angle) */
+        char pad18[8];
         int los;          /* 0x20: clear line of sight */
         char pad24[0xC];
     };
