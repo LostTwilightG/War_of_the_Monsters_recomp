@@ -21,7 +21,7 @@ class Ai {
 public:
     void updateInputs(void);
 };
-extern float cloaker;
+extern float cloaker __asm__("cloaker.2691");
 struct Q16 {
     char b[16];
 };

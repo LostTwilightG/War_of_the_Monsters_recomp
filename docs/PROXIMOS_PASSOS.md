@@ -87,3 +87,10 @@ que o próprio TU define (alias para a cópia do retail). Serve para validar as 
 - Armazenar num campo de `struct` (ex.: `gameHud(i)->f0D0 = 0`) não invalida o `game` já carregado; armazenar via `*(int*)((char*)p + off)` invalida e o gcc recarrega. Por isso `Hud` ganhou campos reais.
 - `EnemyInfo::s_info[i][j']` (include/game/enemy_info.h): tabela par-a-par, `j' = j - 1` quando `i < j`. `vecLenSq` (vecmath.h) = `mula.s/madda.s/madd.s` do retail.
 - Em laços `for (j = 0; j < n; j++, m++)` guardar `n = game->m_numSlots` numa local (senão o gcc recarrega a cada volta).
+
+## Testar o C++ novo no PCSX2 (meio asm, meio C++)
+- O ROM do build normal é idêntico ao retail (equivalentes ficam como `INCLUDE_ASM`). Para rodar as equivalentes: `sh tools/wsl/build_nm.sh` (WSL) compila uma cópia em `~/wotm_nm` com `-DNON_MATCHING` e grava
+  `build/pcsx2_test/SCUS_971.97_halfcpp.elf` e `SCUS_971.97_control_matching.elf` (controle: build normal). Ambos com `p_paddr = p_vaddr` (o PCSX2 carrega por `p_paddr`).
+- Rodar: `pcsx2-qt.exe -elf build\pcsx2_test\SCUS_971.97_halfcpp.elf -- "ISO\War of the Monsters.iso"`. Primeiro testar o controle; se ele não sobe, o problema é o ELF/PCSX2, não o C++.
+- O build NM desloca quase todos os símbolos (de -80 a +312 bytes no texto). Sem teste ainda; riscos: endereço absoluto cru em dados, `gp`.
+- `Monster.cpp`: `cloaker` é o símbolo `cloaker.2691`; `CrushLevel.o(.sdata)` precisa entrar no ld do build NM (o script cuida disso).

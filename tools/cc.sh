@@ -9,6 +9,6 @@ cc=${WOTM_CC:-$root/tools/cc/ee-gcc2.95.2-SN-v2.73a/cc}
 py=${PYTHON:-python3}
 tmp=$out.gcc.s
 WINEDEBUG=-all wine "$cc/bin/ee-gcc.exe" -B"$cc/lib/gcc-lib/ee/2.95.2/" -S -O2 -G8 \
-    -I"$root/include" "$@" "$in" -o "$tmp"
+    -I"$root/include" $WOTM_EXTRA_CFLAGS "$@" "$in" -o "$tmp"
 $py "$root/tools/snfix.py" "$tmp" "$out.s"
 mips-linux-gnu-as -EL -march=r5900 -mabi=o64 -G8 -no-pad-sections -I"$root/include" -o "$out" "$out.s"
