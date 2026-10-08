@@ -37,6 +37,7 @@ public:
 
     FireBreath(Monster &m);
     void Init(void);
+    void Activate(float a, float b, float c, float d, float e, float f, float g);
     unsigned Update(void);
     void ApplyMint(void);
     int TestCollis(void);

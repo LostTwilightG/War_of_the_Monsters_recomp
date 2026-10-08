@@ -1377,7 +1377,7 @@ game/Monster,updateBoundingSphere__7Monster,0x15bb68,956,asm
 game/Monster,updateReticle__7Monster,0x15bf28,1004,asm
 game/Monster,setReticles__7Monsteri,0x15c318,376,asm
 game/Monster,setTrans__7MonsterR8_fvector,0x15c490,128,asm
-game/Monster,setRot__7Monsterfff,0x15c510,108,asm
+game/Monster,setRot__7Monsterfff,0x15c510,108,matched
 game/Monster,setMat__7MonsterRA3_A3_f,0x15c580,84,asm
 game/Monster,setEnvMapping__7Monster,0x15c5d8,44,matched
 game/Monster,clearEnvMapping__7Monster,0x15c608,40,matched
@@ -1389,7 +1389,7 @@ game/Monster,updateLock__7Monster19MonsterReticleState,0x15d328,2632,asm
 game/Monster,updateLookAt__7Monster,0x15dd70,1008,asm
 game/Monster,updateAirLegOverride__7Monster,0x15e160,500,asm
 game/Monster,updateAnimContacts__7Monsterb,0x15e358,1048,asm
-game/Monster,getStaminaGain__7Monster,0x15e770,76,asm
+game/Monster,getStaminaGain__7Monster,0x15e770,76,matched
 game/Monster,getTarget__7MonsterR8_fvectorb,0x15e7c0,184,asm
 game/Monster,throwPickup__7Monsterif,0x15e878,88,asm
 game/Monster,dropPickup__7Monster,0x15e8d0,180,asm
@@ -1425,7 +1425,7 @@ game/Monster,enterNewState__7MonsterP12MonsterState,0x1621c8,588,asm
 game/Monster,landingShake__7Monster,0x162418,8,matched
 game/Monster,getCollisionDamage__7Monsterf,0x162420,20,matched
 game/Monster,creditStamina__7Monsterfb,0x162438,312,asm
-game/Monster,creditHealth__7Monsterf,0x162570,112,asm
+game/Monster,creditHealth__7Monsterf,0x162570,112,matched
 game/Monster,breathFire__7Monster,0x1625e0,76,asm
 game/Monster,lightOnFire__7Monsterffi,0x162630,124,asm
 game/Monster,updateOnFire__7Monster,0x1626b0,260,matched
@@ -1494,7 +1494,7 @@ game/Monster,getEnemyInfo__7MonsterR7Monster,0x1635e8,28,matched
 game/Monster,getState__7Monster,0x163608,8,matched
 game/Monster,getStateId__7Monster,0x163610,12,matched
 game/Monster,getPrevStateId__7Monster,0x163620,12,matched
-game/Monster,getCameraData__7MonsteriQ26Camera9CameraPOV,0x163630,32,asm
+game/Monster,getCameraData__7MonsteriQ26Camera9CameraPOV,0x163630,32,matched
 game/Monster,getType__C7Monster,0x163650,8,matched
 game/Monster,getIndex__C7Monster,0x163658,8,matched
 game/Monster,getName__C7Monster,0x163660,8,matched

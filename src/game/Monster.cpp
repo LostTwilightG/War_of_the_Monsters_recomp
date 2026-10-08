@@ -287,7 +287,19 @@ float Monster::getStaminaGain(void)
     return m_puStaminaGainMod[type] * LevelPickups::s_info[type].staminaGain;
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getTarget__7MonsterR8_fvectorb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", throwPickup__7Monsterif);
+void Monster::throwPickup(int a, float b)
+{
+    _fvector dir;
+    DbInteractive *target = getTarget(dir, false);
+    int *d;
+
+    LevelPickups::throwPickup(*(PickupIter *)&m_pickup, dir, (DbInteractive *)this, target);
+    d = (int *)((char *)this + 0x100);
+
+    if (d[12] == 1)
+        d[12] = 0;
+    m_pickup = 0;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", dropPickup__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", launchDefaultProjectile__7Monsteri);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateDefaultProjectile__7Monster);
@@ -298,7 +310,11 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", takeAdditiveRecoil__7MonsterR8_fvec
 INCLUDE_ASM("asm/nonmatchings/game/Monster", knockBack__7MonsterR8_fvectorff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", blowUpMonster__7MonsterP7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateDeathSequence__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", registerComboHit__7MonsterP7Monster);
+void Monster::registerComboHit(Monster *m)
+{
+    if (m_playerNum == 1 && m_cameraFollows && !m->isBlocking())
+        gameHud(m_cameraView)->registerComboHit();
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonster__7Monsterf);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonster2D__7Monsterf);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonster__7Monsteriif);
@@ -316,8 +332,30 @@ void Monster::handleAction(ActAiNavigation *a)
 {
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", attachPickupImpaler__7MonsterGQ2t10LinkedList1ZP6Pickup8IteratorP8_fvector);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", detachPickupImpaler__7Monsterb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", dropPickupImpaler__7Monster);
+void Monster::detachPickupImpaler(bool b)
+{
+    if (m_impaler) {
+        if (b)
+            LevelPickups::killPickup(*(PickupIter *)&m_impaler, 1);
+        m_impaler = 0;
+    }
+    if (m_reverseImpaler) {
+        if (b)
+            LevelPickups::killPickup(*(PickupIter *)&m_reverseImpaler, 1);
+        m_reverseImpaler = 0;
+    }
+}
+void Monster::dropPickupImpaler(void)
+{
+    if (m_impaler) {
+        LevelPickups::dropPickup(*(PickupIter *)&m_impaler);
+        m_impaler = 0;
+    }
+    if (m_reverseImpaler) {
+        LevelPickups::dropPickup(*(PickupIter *)&m_reverseImpaler);
+        m_reverseImpaler = 0;
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", handleLocator__7MonsterUiRA3_A3_fP8_fvector);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", enterNewState__7MonsterP12MonsterState);
 void Monster::landingShake(void)
@@ -334,7 +372,15 @@ void Monster::creditHealth(float amount)
     if (m_cameraFollows && m_playerNum == 1)
         gameHud(m_cameraView)->registerHealthCredit((int)amount);
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", breathFire__7Monster);
+void Monster::breathFire(void)
+{
+    FireBreath *fb = (FireBreath *)((char *)this + 0x68C0);
+
+    if (!fb->state)
+        fb->Activate(*(float *)((char *)this + 0xF990), *(float *)((char *)this + 0xF994), *(float *)((char *)this + 0xF998),
+                     *(float *)((char *)this + 0xF99C), *(float *)((char *)this + 0xF9A4), *(float *)((char *)this + 0xF9A0),
+                     *(float *)((char *)this + 0xF9A8));
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", lightOnFire__7Monsterffi);
 void Monster::updateOnFire(void)
 {

@@ -17,6 +17,7 @@ class AiPath;
 class PlayerDat;
 class _fvector;
 class ActAiNavigation;
+class DbInteractive;
 enum MonsterAnim { MonsterAnim_dummy };
 enum ePickupType { PICKUP_TYPE_0 };
 
@@ -67,6 +68,12 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    void breathFire(void);
+    void dropPickupImpaler(void);
+    void throwPickup(int a, float b);
+    void detachPickupImpaler(bool b);
+    void registerComboHit(Monster *m);
+    DbInteractive *getTarget(_fvector &v, bool b);
     void *getCameraData(int view, Camera::CameraPOV pov);
     float getStaminaGain(void);
     void creditHealth(float amount);
