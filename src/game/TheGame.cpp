@@ -400,7 +400,35 @@ float TheGame::GetCameraMaxHeight(_fvector *pos)
 {
     return 10000.0f;
 }
+#ifdef NON_MATCHING
+void hdIgnore(_cs *cs);
+void hdClearIgnore(void);
+
+/* Collision pass of a frame: every active monster resolves its cs-to-cs collisions, then all monsters' cs are put on the hit-detection ignore list
+   (so a monster never hits itself or the others' bodies) while every active monster tests its attack against the world; the list is cleared at the end. */
+void TheGame::gameResolveCollisions(void)
+{
+    int i;
+    Monster *m;
+
+    m = m_slots;
+    for (i = 0; i < m_numSlots; i++, m++) {
+        if (((m_playerMask & 1) && m->m_playerNum == 1) || ((m_playerMask & 2) && m->m_playerNum == 2))
+            m->collisResolveCsToCsCollisions();
+    }
+    m = m_slots;
+    for (i = 0; i < m_numSlots; i++, m++)
+        hdIgnore(m->m_cs);
+    m = m_slots;
+    for (i = m_numSlots; i != 0; i--, m++) {
+        if (((m_playerMask & 1) && m->m_playerNum == 1) || ((m_playerMask & 2) && m->m_playerNum == 2))
+            m->collisTestForCollisions();
+    }
+    hdClearIgnore();
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameResolveCollisions__7TheGame);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameResolveLifeAndDeath__7TheGame);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameCheckForCloseCombat__7TheGame);
 void TheGame::SetGravity(float g)
@@ -414,9 +442,155 @@ void TheGame::SetOkToUnify(void)
     for (i = 0; i < m_numSlots; i++)
         m_slots[i].m_camUnify = 1;
 }
+#ifdef NON_MATCHING
+#include "game/start_points.h"
+int hdCsCollect2D(_fvector *pos, float radius, unsigned a, unsigned b, _cs **out, int c);
+float hdHatTest(_fvector *pos, _fvector *normal, float a, bool b, float c);
+extern int craterSwitched;
+
+/* Places a freshly (re)started monster on one of the level's start points. Which list is used (StartPoints types 0..3) depends on the game mode, whether the
+   monster is a player (m_playerNum 1) and whether it is its first life (m_numInits 0): type 3 is the first-spawn list, tried for a point with
+   nothing within 120 units (up to the list size), falling back to type 2 when that list is empty. The point's heading is in degrees; points flagged
+   at +0x14 are dropped to the ground with hdHatTest. On the three-mile level after the crater switched the monster goes to a fixed spot. */
+void TheGame::gameGetStartPoint(Monster *m)
+{
+    _fvector pos;
+    _fvector normal;
+    _cs *hits[4];
+    int list, tries;
+    StartPoints::Point *pt;
+
+    if (m_levelId == 6 && craterSwitched != 0) {
+        pos.x = 535.0f;
+        pos.y = 568.0f;
+        pos.z = 75.0f;
+        pos.w = 0.0f;
+        m->setTrans(pos);
+        m->setRot(-2.3736477f, 0.0f, 0.0f);
+        hdReparentCsGrid(m->m_cs);
+        return;
+    }
+    switch (m_gameMode) {
+    case 1:
+        if (m->m_playerNum != 1)
+            list = m->m_numInits != 0 ? 3 : 2;
+        else
+            list = m->m_numInits == 0 ? 0 : 3;
+        break;
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+        list = 3;
+        if (m->m_numInits <= 0) {
+            if (m->m_playerNum == 1) {
+                list = 1;
+            } else {
+                list = 2;
+                if (shell->m_numPlayers == 1)
+                    list = m == m_monsters[4] ? 1 : 2;
+            }
+        }
+        break;
+    case 7:
+    case 10:
+        list = 1;
+        break;
+    default:
+        list = 2;
+        break;
+    }
+    pt = 0;
+    if (list == 3 && StartPoints::m_instance.getNumPoints(3) == 0)
+        list = 2;
+    for (tries = 0; tries < StartPoints::m_instance.getNumPoints(list); tries++) {
+        int idx;
+
+        if (list == 3 && tries == 0)
+            idx = mathfRand(0, StartPoints::m_instance.getNumPoints(3) - 1);
+        else
+            idx = StartPoints::m_instance.getNextPoint(list);
+        pt = StartPoints::m_instance.getPoint(list, idx);
+        if (hdCsCollect2D(&pt->pos, 120.0f, 0x20, 0x400, hits, 1) == 0)
+            break;
+    }
+    if (pt != 0) {
+        pos = pt->pos;
+        if (pt->f14 != 0)
+            pos.z -= hdHatTest(&pos, &normal, 5.0f, false, 4096.0f);
+        m->setTrans(pos);
+        m->setRot(pt->f10 * 0.017453292f, 0.0f, 0.0f);
+    } else {
+        pos.x = 0.0f;
+        pos.y = 0.0f;
+        pos.z = 500.0f;
+        pos.w = 0.0f;
+        m->setTrans(pos);
+        m->setRot(0.0f, 0.0f, 0.0f);
+    }
+    hdReparentCsGrid(m->m_cs);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", gameGetStartPoint__7TheGameP7Monster);
+#endif
+#ifdef NON_MATCHING
+/* The living slot whose cs is nearest to `pos` and closer than maxDist; distSq receives its squared distance (maxDist squared when none). */
+Monster *TheGame::getClosestMonster(_fvector &pos, float maxDist, float &distSq)
+{
+    Monster *best = 0;
+    float limit = maxDist * maxDist;
+    int i;
+    Monster *m = m_slots;
+
+    for (i = m_numSlots; i != 0; i--, m++) {
+        if (m->m_playerNum != 0) {
+            float dx = m->m_cs->trans.x - pos.x;
+            float dy = m->m_cs->trans.y - pos.y;
+            float dz = m->m_cs->trans.z - pos.z;
+            float d = dx * dx + dy * dy + dz * dz;
+
+            if (d < limit) {
+                limit = d;
+                best = m;
+            }
+        }
+    }
+    distSq = limit;
+    return best;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", getClosestMonster__7TheGameR8_fvectorfRf);
+#endif
+#ifdef NON_MATCHING
+/* Same for the player monsters (m_monsters), skipping cloaked ones. */
+Monster *TheGame::getClosestPlayer(_fvector &pos, float maxDist, float &distSq)
+{
+    Monster *best = 0;
+    float limit = maxDist * maxDist;
+    int i;
+
+    for (i = 0; i < m_numMonsters; i++) {
+        Monster *m = m_monsters[i];
+
+        if (m->m_playerNum != 0 && m->m_cloaked == 0) {
+            float dx = m->m_cs->trans.x - pos.x;
+            float dy = m->m_cs->trans.y - pos.y;
+            float dz = m->m_cs->trans.z - pos.z;
+            float d = dx * dx + dy * dy + dz * dz;
+
+            if (d < limit) {
+                limit = d;
+                best = m;
+            }
+        }
+    }
+    distSq = limit;
+    return best;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", getClosestPlayer__7TheGameR8_fvectorfRf);
+#endif
 int TheGame::GetNumAIsAlive(void)
 {
     int i;

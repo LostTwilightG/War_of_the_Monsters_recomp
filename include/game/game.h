@@ -97,6 +97,7 @@ public:
     float getStaminaGain(void);
     void creditHealth(float amount);
     void setRot(float a, float b, float c);
+    void setTrans(_fvector &p);
     void *getLocatorTrans(int i);
     void *getLocatorMat(int i);
     void *getAnim(MonsterAnim a);
@@ -271,6 +272,8 @@ public:
     void initBeforeDbLoad(void);
     void initDynamics(void);
     void collisInitPoints(void);
+    void collisResolveCsToCsCollisions(void);
+    void collisTestForCollisions(void);
     void addAttachment(_hierhead *h);
 
     char pad0[0x4 - 0x0];
@@ -505,6 +508,9 @@ public:
     void SetGravity(float g);
     void SetOkToUnify(void);
     int GetNumAIsAlive(void);
+    void gameGetStartPoint(Monster *m);
+    Monster *getClosestMonster(_fvector &pos, float maxDist, float &distSq);
+    Monster *getClosestPlayer(_fvector &pos, float maxDist, float &distSq);
     float GetCameraMaxHeight(_fvector *pos);
     void gameInitCamera(int view, int slot);
     Monster *GetMonsterFromName(int type, int dup);
