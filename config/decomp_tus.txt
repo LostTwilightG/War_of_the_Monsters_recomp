@@ -96,3 +96,6 @@ game/Hud
 game/Weapon
 game/Monster
 game/Pickup
+game/Shell
+common/dbs
+common/file
