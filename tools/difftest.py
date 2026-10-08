@@ -39,6 +39,8 @@ STACK_SIZE = 0x40000
 ALT_TEXT = 0x08000000
 ALT_DATA = 0x08400000
 RET_ADDR = 0x00001000
+INIT = ''   # --init: python snippet run after the random fill (W(addr, word), W16, W8, THIS, ARENA, STUB), to build structured state
+STUB = ARENA + 0x1F0000   # a `jr ra; nop` anywhere
 
 
 def retail_symbols():
@@ -255,6 +257,13 @@ class Run:
         words = np.where(kind < 0.40, small, np.where(kind < 0.55, flt, np.where(kind < 0.60, special, ptr))).astype(np.uint32)
         uc.mem_write(ARENA, words.tobytes())
         self.rnd = rnd
+        if INIT:
+            uc.mem_write(STUB, struct.pack('<II', 0x03E00008, 0))
+            env = {'THIS': ARENA + 0x20000, 'ARENA': ARENA, 'STUB': STUB, 'uc': uc,
+                   'W': lambda a, v: uc.mem_write(a, struct.pack('<I', v & 0xFFFFFFFF)),
+                   'W16': lambda a, v: uc.mem_write(a, struct.pack('<H', v & 0xFFFF)),
+                   'W8': lambda a, v: uc.mem_write(a, struct.pack('<B', v & 0xFF))}
+            exec(INIT, env)
         for ra_, aa_, sz_ in self.alias:       # variables the TU defines itself start from the retail values
             uc.mem_write(aa_, bytes(uc.mem_read(ra_, sz_)))
         for r in range(32):
@@ -484,7 +493,10 @@ def main():
     ap.add_argument('--verbose', action='store_true')
     ap.add_argument('--objsize', type=lambda x: int(x, 0), default=0x4000, help='size of the object `this` points at (keeps random pointers out of it)')
     ap.add_argument('--alt', default=None, help='negative control: run this function from src/ instead (should DIFFER)')
+    ap.add_argument('--init', default='', help='python snippet building structured state, e.g. "W(THIS+0x34, ARENA+0x40000)"')
     o = ap.parse_args()
+    global INIT
+    INIT = o.init
     spec = [t for t in o.args.split(',') if t]
     b = Bench(o.tu)
     ok, bad, skipped = b.test(o.func, spec, o.ret, o.runs, o.verbose, o.alt, o.objsize)

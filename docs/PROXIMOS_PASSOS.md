@@ -98,3 +98,14 @@ que o pr√≥prio TU define (alias para a c√≥pia do retail). Serve para validar as 
   (`. = <endereÁo - base da seÁ„o>`; `.cod_bss` fixo em seu endereÁo) e as peÁas que cresceram (13, quase todas `.text`) v„o para `.nm_extra`, depois do bss.
 - `CrushLevel` È compilado com `-G0` no build NM (as strings do cÛdigo novo cairiam em `.sdata`, onde n„o h· espaÁo). `Monster.cpp`: `cloaker` È o sÌmbolo `cloaker.2691`.
 - Resultado atÈ agora: o halfcpp passa do boot e chega ‡ FMV de abertura sem erro de VIF. Falta testar menu/fase.
+
+### Bisse√ß√£o do ELF com C++ novo (estado em 2026-10-08, ~02:00)
+- Layout corrigido (gen_nm_ld.py); o halfcpp completo chega √† fase mas trava/crasha. Resultados com variantes (build_nm.sh):
+  `v3_game` (TheGame, MonsterMeters, StartPoints, AiGrapple, AiBrain, island, DodgeBall, CrushLevel) funciona; `v1_monster` e `a_update` (s√≥ `Monster::update`) travam no loading da fase
+  (`Unrecognized op` no log, executando dados) -> **`Monster::update` tem bug**; `b_cinema`, `c_rest`, `v4_misc` ainda n√£o testados pelo usu√°rio.
+- Erro diferente no menu: `v2_common` e `bsA` (hier hieri vo smooth ShiftJIS ColGrid zip TaskManager) d√£o `ReportErrorAsync: R5900 Exception: Jump to unaligned address (PC: 0x00000001)` ainda na abertura;
+  `bsB` (PointMass ... AnimQueue) n√£o. J√° compiladas, uma por arquivo: `build/pcsx2_test/SCUS_971.97_t_{hier,hieri,vo,smooth,ShiftJIS,ColGrid,zip,TaskManager}.elf` (falta rod√°-las; pode ser autom√°tico:
+  `pcsx2-qt.exe -batch -nogui -logfile <log> -elf <elf> -- <iso>`, parar quando o log tiver `ReportErrorAsync` ou ap√≥s ~45 s).
+- difftest ganhou `--init '<python>'` (W/W16/W8/THIS/ARENA/STUB) para montar estado estruturado; `Monster::update` precisa de `m_state` -> objeto com vtable (`W(THIS+0x34,S); W(S+0x10,VT); W16(VT+0x18,0); W(VT+0x1C,STUB)`),
+  mas ainda cai em escritas fora do mapa (retail e alt), falta ajustar mais ponteiros.
+- O log do PCSX2 do usu√°rio fica em `~/Documents/PCSX2/logs/emulog.txt`; erros em di√°logo tamb√©m aparecem l√° como `ReportErrorAsync`.
