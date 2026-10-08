@@ -108,6 +108,7 @@ public:
 class Hud {
 public:
     void initAfter(int i);
+    void addMessage(int id, int arg);
 };
 class resetcom {
 public:
@@ -136,6 +137,7 @@ public:
     void gameReestablishViews(void);
     void SetPlayerMonster(int pIdx, int type, int dup, int view, int skin);
     void SetAIMonster(int aiIdx, int type, int dup, int skin);
+    int GetNumAIsAlive(void);
 };
 class CsPool {
 public:
@@ -554,12 +556,6 @@ void Shell::EvaluateGameStatus(int r)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateGameStatus__5Shelli);
 #endif
-INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateOnePlayerStoryStatus__5Shelli);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateOnePlayerChallengeStatus__5Shelli);
-void Shell::EvaluateTwoPlayerCoopStatus(int r)
-{
-}
-INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateMultiPlayerBattleStatusNoAI__5Shelli);
 #ifdef NON_MATCHING
 class Monster {
 public:
@@ -576,6 +572,186 @@ extern int gUseUnifiedView;
 #define SLOT(i) ((Monster *)((char *)game + 0xB80 + (i) * 0x11190))
 #define HEALTH(m) (*(float *)((char *)(m) + 0x44C))
 
+class TokenManager {
+public:
+    int grandTotal(void);
+};
+extern int craterSwitched;
+extern int numDeadHeads;
+
+#define SHI(o) (*(int *)((char *)this + (o)))
+
+/* Story mode, after rtMain returned `r`: 0 = level cleared, 1 = the player died, 3 = quit, 4 = campaign finished.
+   A death with no AI left alive counts as a clear (on level 6 only once more than 2 dead heads are down after the crater switched).
+   A clear pays a per-level bonus (0xC8, 0x190, 0x258, 0x190, 0x190, 0x5DC, 0x190, 0x190, 0x190, 0x1F4 for levels 1..10) times the
+   difficulty (10/15/20 from the match mode), then loads the next level; the last level (11) and r == 4 end the campaign with 0xBB8 * difficulty. */
+void Shell::EvaluateOnePlayerStoryStatus(int r)
+{
+    int diff = 0;
+    int finale = 0;
+
+    SHI(0x2B34) = 0;
+    SHI(0x2B38) = 0;
+    SHI(0x2B3C) = 0;
+    switch (GM(0x1203CC)) {
+    case 0:
+        diff = 10;
+        break;
+    case 1:
+        diff = 15;
+        break;
+    case 2:
+        diff = 20;
+        break;
+    }
+    if (r == 1) {
+        if (((TheGame *)game)->GetNumAIsAlive() == 0) {
+            r = 0;
+            if (GM(0x1203D0) == 6 && craterSwitched != 0)
+                r = numDeadHeads > 2 ? 0 : 1;
+        }
+        if (r == 1) {
+            if (--SHI(0x2BBC) > 0) {
+                SLOT(GM(0x1203E8))->playerInit();
+                if (gUseUnifiedView != 0)
+                    Cameras::LeaveUnifiedView(0xC);
+                m_inSession = 1;
+                if (SHI(0x2BBC) == 1)
+                    ((Hud *)game)->addMessage(0x26, 0);
+                else if (SHI(0x2BBC) == 2)
+                    ((Hud *)game)->addMessage(0x25, 0);
+            } else {
+                displayDialog(1);
+                if (m_restart == 1) {
+                    DisplayLoadBackground(false);
+                    m_restart = 0;
+                }
+            }
+            return;
+        }
+    }
+    if (r == 0) {
+        static const int bonus[10] = { 0xC8, 0x190, 0x258, 0x190, 0x190, 0x5DC, 0x190, 0x190, 0x190, 0x1F4 };
+        int lvl = m_levelNum;
+
+        if (lvl == 11) {
+            finale = 1;
+        } else {
+            int i, n, score;
+
+            if (lvl >= 1 && lvl <= 10)
+                SHI(0x2B34) = diff * bonus[lvl - 1];
+            m_levelNum = ++lvl;
+            n = SHI(0x29E0 + lvl * 4);
+            m_numAIs = n;
+            for (i = 0; i < n; i++) {
+                m_monsterSel[4 + i] = levelMonsters[m_levelNum][i];
+                m_costume[2 + i] = levelMonsterModels[m_levelNum][i];
+            }
+            score = ((TokenManager *)((char *)game + 0x11C370))->grandTotal() + SHI(0x2B34);
+            SHI(0x2B28) = score;
+            SHI(0x2B24) += score;
+            displayDialog(2);
+            DisplayLoadBackground(false);
+            return;
+        }
+    } else if (r == 4) {
+        finale = 1;
+    }
+    if (finale) {
+        m_inSession = 0;
+        SHI(0x2B34) = diff * 0xBB8;
+        SHI(0x2B28) = ((TokenManager *)((char *)game + 0x11C370))->grandTotal() + SHI(0x2B34);
+        if (SHI(0x2C18) == 0)
+            SHI(0x2B28) = SHI(0x2B28) + SHI(0x2C14);
+        SHI(0x2B24) += SHI(0x2B28);
+        displayDialog(3);
+        GenesisMovie();
+    } else if (r == 3) {
+        m_inMenus = 0;
+        m_inSession = 0;
+    }
+}
+#else
+INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateOnePlayerStoryStatus__5Shelli);
+#endif
+#ifdef NON_MATCHING
+/* Brings the slot back: slot 0 is the player, the others AIs. */
+static void reinitSlot(int idx)
+{
+    if (idx == 0)
+        SLOT(0)->playerInit();
+    else
+        SLOT(idx)->aiInit();
+}
+
+/* Challenge mode: shell+0x2A44 is the kill target (0 = none, the round just restarts). `deadIdx` is the last dead slot found, `killer` the monster
+   number of a living monster that killed one; reaching the target (or, for target 1, any win) ends the match with the winners dialog (5). */
+void Shell::EvaluateOnePlayerChallengeStatus(int r)
+{
+    int killer = -1;
+    int deadIdx = 0;
+    int target;
+    int i;
+
+    if (r == 3) {
+        m_inMenus = 0;
+        m_inSession = 0;
+        return;
+    }
+    target = SHI(0x2A44);
+    for (i = 0; i < GM(0x1203D4); i++) {
+        char *slot = (char *)SLOT(i);
+        char *by;
+
+        if (slot[0xE8] != 0) {
+            deadIdx = i;
+            by = *(char **)(slot + 0x846C);
+            if (by != 0 && by[0xE8] == 0) {
+                killer = *(int *)(by + 0x28);
+                break;
+            }
+        }
+    }
+    if (target == 0) {
+        reinitSlot(deadIdx);
+        shell->m_inSession = 1;
+        shell->m_inMenus = 0;
+    } else if (target == 1) {
+        if (killer == -1) {
+            reinitSlot(deadIdx);
+            m_inMenus = 0;
+            m_inSession = 1;
+        } else if (*(int *)((char *)SLOT(killer) + 0x3C) > 0) {
+            GM(0x12043C) = killer;
+            GM(0x120440) = deadIdx;
+            displayDialog(5);
+        } else {
+            reinitSlot(deadIdx);
+            m_inMenus = 0;
+            m_inSession = 1;
+        }
+    } else if (killer == -1) {
+        reinitSlot(deadIdx);
+        m_inMenus = 0;
+        m_inSession = 1;
+    } else if (*(int *)((char *)SLOT(killer) + 0x3C) >= target) {
+        GM(0x12043C) = killer;
+        displayDialog(5);
+    } else {
+        reinitSlot(deadIdx);
+    }
+    if (gUseUnifiedView != 0 && deadIdx == 0)
+        Cameras::LeaveUnifiedView(0x1E);
+}
+#else
+INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateOnePlayerChallengeStatus__5Shelli);
+#endif
+void Shell::EvaluateTwoPlayerCoopStatus(int r)
+{
+}
+INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateMultiPlayerBattleStatusNoAI__5Shelli);
+#ifdef NON_MATCHING
 /* Brings every slot with no health left back: slots 0 and 1 are players, the rest AIs. */
 static void respawnDead(void)
 {

@@ -53,6 +53,7 @@ public:
     void EvaluateDodgeBallStatus(int r);
     void EvaluateOnlineBattleStatus(int r);
     void DisplayLoadBackground(bool b);
+    void GenesisMovie(void);
     void InitialMemCardScreen(void);
     void LoadLevelDB(void);
     void LoadMonstersDB(void);
