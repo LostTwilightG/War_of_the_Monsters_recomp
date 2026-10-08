@@ -9,7 +9,8 @@ public:
     void update(Ai &ai);
 };
 
-class AiBrain : public AiActionGroup {
+/* no base class: an empty base takes a byte in gcc 2.95 and pushed f_AAC to 0xAB0 (retail: 0xAAC) */
+class AiBrain {
 public:
     char pad[0xAAC];
     float f_AAC;
@@ -26,7 +27,7 @@ INCLUDE_ASM("asm/nonmatchings/game/AiBrain", init__7AiBrainR2Ai);
 /* 19/20 words, untuned */
 void AiBrain::reset(Ai &ai)
 {
-    AiActionGroup::reset();
+    ((AiActionGroup *)this)->reset();
     if (game->m_levelId == 7)
         f_AAC = 500.0f;
 }
@@ -35,5 +36,5 @@ INCLUDE_ASM("asm/nonmatchings/game/AiBrain", reset__7AiBrainR2Ai);
 #endif
 void AiBrain::update(Ai &ai)
 {
-    AiActionGroup::update(ai);
+    ((AiActionGroup *)this)->update(ai);
 }

@@ -137,12 +137,10 @@ void AiGrappleAttack::updateAction(Ai &ai)
         return;
     timer = ai.getButtonMashDelay();
     if (game->m_matchMode >= 0 && game->m_matchMode < 2) {
-        if (mathfRand(0, 5) == 0) {
-            ai.pad[0xE] = 0xFF;
-            ai.toss();
-        } else {
+        if (mathfRand(0, 5) == 0)
+            ai.heavyPunch();
+        else
             ai.lightPunch();
-        }
     } else {
         int r = mathfRand(1, 100);
 

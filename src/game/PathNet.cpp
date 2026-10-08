@@ -14,10 +14,11 @@ public:
     _fvector pos;
     unsigned char type;
     unsigned char numPaths;
-    PathLink paths[9];
+    PathLink paths[7]; /* retail nodes are 0x30 bytes: links start at 0x12, 4 bytes each */
 
     void removePath(unsigned short id);
 };
+typedef char PathNodeSizeCheck[sizeof(PathNode) == 0x30 ? 1 : -1];
 
 class PathNet {
 public:
