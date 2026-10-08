@@ -8,6 +8,7 @@
 class GamePad {
 public:
     void clearInputs(void);
+    void loadPadInputs(int i);
 };
 class HealthMeter {
 public:
@@ -50,14 +51,20 @@ float getWaterLevel(void)
 {
     return WaterLevel;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", isUnderwater__Ff);
+bool isUnderwater(float y)
+{
+    return y < WaterLevel;
+}
 void Monster::recomputeDynamics(void)
 {
     m_climbSpeed = m_climbSpeedBase * 0.024444444f * 60.0f;
     m_climbStrafeSpeed = m_climbStrafeBase * 0.024444444f * 60.0f;
     m_fd74 = m_fd70 * 0.024444444f * 60.0f;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", playerUpdateInputs__7Monster);
+void Monster::playerUpdateInputs(void)
+{
+    ((GamePad *)((char *)this + 0x5024))->loadPadInputs(*(int *)m_playerInfo);
+}
 #ifdef NON_MATCHING
 /* 10/341 words, untuned: written from the m2c draft; the retail clamps with min.s */
 void Monster::update(void)
@@ -369,7 +376,20 @@ void Monster::setShadowOnOff(bool on)
         *(int *)(m_shadowCs + 0x18) = 0;
     }
 }
+#ifdef NON_MATCHING
+/* 4/10 words, untuned: retail fills the branch-likely delay slot */
+void Monster::setSecondaryShadowBlocker(_cs *c)
+{
+    if (m_shadowCs) {
+        if (m_shadowOff)
+            m_shadowSaved = (int)c;
+        else
+            *(_cs **)(m_shadowCs + 0x18) = c;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setSecondaryShadowBlocker__7MonsterP3_cs);
+#endif
 #ifdef NON_MATCHING
 /* 1/17 words, untuned */
 void Monster::drainSpecial(void)
@@ -425,8 +445,15 @@ void *Monster::getPrevMat(void)
 {
     return (char *)this + 0x50;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getLocatorTrans__7Monsteri);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getLocatorMat__7Monsteri);
+void *Monster::getLocatorTrans(int i)
+{
+    return (char *)this + i * 16 - 0x4260;
+}
+void *Monster::getLocatorMat(int i)
+{
+    char *b = (char *)this + 0x3180;
+    return b + (i * 64 - 0x20080);
+}
 void *Monster::getPinTrans(void)
 {
     return (char *)this + 0x3E30;
@@ -435,7 +462,10 @@ void *Monster::getLookAtTrans(void)
 {
     return (char *)this + 0x3E80;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getAnim__7Monster11MonsterAnim);
+void *Monster::getAnim(MonsterAnim a)
+{
+    return (char *)this + ((int)a * 16 + 0x1CF0);
+}
 void *Monster::getDynamics(void)
 {
     return (char *)this + 0x100;
@@ -1002,7 +1032,11 @@ void Monster::setAttacksEnabled(bool v)
 {
     m_attacksEnabled = v;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setAttackDisableDuration__7Monsteri);
+void Monster::setAttackDisableDuration(int n)
+{
+    m_attacksEnabled = 0;
+    TaskManager::global.add(restoreAttacksEnabled, this, n);
+}
 void Monster::setAimHeadingEnabled(bool v)
 {
     m_aimHeadingEnabled = v;
@@ -1061,14 +1095,23 @@ void Monster::okToUnify(bool v)
 {
     m_camUnify = v;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", updateClosestPath__7MonsterPv);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", restoreVulnerability__7MonsterPv);
+unsigned Monster::updateClosestPath(void *p)
+{
+    return ((Monster *)p)->updateClosestPath();
+}
+unsigned Monster::restoreVulnerability(void *p)
+{
+    return ((Monster *)p)->restoreVulnerability();
+}
 int Monster::restoreVulnerability(void)
 {
     m_unk49 = 1;
     return 0;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", restoreAttacksEnabled__7MonsterPv);
+unsigned Monster::restoreAttacksEnabled(void *p)
+{
+    return ((Monster *)p)->restoreAttacksEnabled();
+}
 int Monster::restoreAttacksEnabled(void)
 {
     m_attacksEnabled = 1;

@@ -17,6 +17,7 @@ class AiPath;
 class PlayerDat;
 class _fvector;
 class ActAiNavigation;
+enum MonsterAnim { MonsterAnim_dummy };
 enum ePickupType { PICKUP_TYPE_0 };
 
 class Monster {
@@ -61,6 +62,13 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    void *getLocatorTrans(int i);
+    void *getLocatorMat(int i);
+    void *getAnim(MonsterAnim a);
+    unsigned updateClosestPath(void);
+    static unsigned updateClosestPath(void *p);
+    void setAttackDisableDuration(int n);
+    void setSecondaryShadowBlocker(_cs *c);
     void enableStaminaRegen(bool b);
     void endSpecialPowerUpGlow(void);
     float getStamina(void);
