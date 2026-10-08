@@ -462,7 +462,68 @@ int fileCdRead(long sectors, long lsn, char *buf)
     sceCdSync(0);
     return ret;
 }
+#ifdef NON_MATCHING
+/* equivalent, not tuned: retail keeps found on the stack and walks the path with two pointers; register allocation differs throughout */
+int fileCdSearchFile(sceCdlFILE *f, char *path)
+{
+    _cdFileSystem *dir = &cdFileSystemToc;
+    char dirName[16];
+    char fileBuf[16];
+    char *file = fileBuf;
+    int found = 0;
+    char *p, *q;
+    int i, j, c, up;
+
+    for (i = 0; path[i] != 0; i++) {
+        c = path[i];
+        up = c - 0x20;
+        if (!((_ctype_ + 1)[c] & 2))
+            up = c;
+        path[i] = up;
+    }
+    if (path[0] != '\\')
+        return 0;
+    p = path + 1;
+    q = dirName;
+    while (*p != '\\' && *p != 0)
+        *q++ = *p++;
+    *q = 0;
+    if (*p == '\\')
+        file = p + 1;
+    for (i = 0; i < dir->numEntries; i++) {
+        if (fileStringCompare(dir->entries[i]->name, dirName)) {
+            if (!(dir->entries[i]->type & 2)) {
+                f->lsn = dir->entries[i]->sector;
+                f->size = dir->entries[i]->size;
+                for (j = 0; j < 8; j++)
+                    f->date[j] = 0;
+                for (j = 0; j < 16; j++)
+                    f->name[j] = dir->entries[i]->name[j];
+                return 1;
+            }
+            dir = dir->entries[i];
+            found = 1;
+        }
+    }
+    if (found) {
+        for (i = 0; i < dir->numEntries; i++) {
+            if (fileStringCompare(dir->entries[i]->name, file)) {
+                f->lsn = dir->entries[i]->sector;
+                f->size = dir->entries[i]->size;
+                for (j = 0; j < 8; j++)
+                    f->date[j] = 0;
+                for (j = 0; j < 16; j++)
+                    f->name[j] = dir->entries[i]->name[j];
+                return 1;
+            }
+        }
+    }
+    printf("Could not find file %s, toc starts at %p\n", path, &cdFileSystemToc);
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/file", fileCdSearchFile__FP10sceCdlFILEPc);
+#endif
 _cdFileSystem *fileHierAddrOfSect(unsigned int sector)
 {
     int i;
