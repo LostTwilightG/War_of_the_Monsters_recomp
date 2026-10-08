@@ -36,6 +36,13 @@ extern CMovie myMovie;
 extern char MainMovie[];
 extern int continueDecoding;
 extern int currScreen;
+extern float targetAlpha;
+extern int betweenScreens;
+extern int on_bit[] __asm__("on_bit_006EEE78");
+extern "C" int printf(const char *, ...);
+int inputGetInput(int mask, int pad);
+float screenGetFontAlpha(void);
+void screenSetButtonAlpha(void);
 
 int monsterIdToMonsterEnum(int id)
 {
@@ -158,7 +165,40 @@ INCLUDE_ASM("asm/nonmatchings/game/screen", jtbl_006EEE30);
 INCLUDE_ASM("asm/nonmatchings/game/screen", on_bit_006EEE78);
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenLevelSelect__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenLoadSave__Fv);
+#ifdef NON_MATCHING
+/* Moves the knob of slider `which` (0 or 1) along its bar; `v` is clamped to 0..1. */
+void setSlider(int which, float v)
+{
+    if (v < 0.0f)
+        v = 0.0f;
+    if (v > 1.0f)
+        v = 1.0f;
+    switch (which) {
+    case 0: {
+        float *k = *(float **)((char *)shell + 0x604);
+
+        k[4] = v * -1.565f;
+        k[5] = v * 1.564f;
+        k[6] = v * -0.003f;
+        break;
+    }
+    case 1: {
+        float *k = *(float **)((char *)shell + 0x608);
+
+        k[4] = v * -1.553f;
+        k[5] = v * 1.555f;
+        k[6] = v * -0.012f;
+        break;
+    }
+    default:
+        printf("Trying to set a slider on a bar that doesn't exist!!
+");
+        break;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", setSlider__Fif);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenOptions__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenFreeForAllOptions1P__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenFreeForAllOptions2P__Fv);
@@ -171,11 +211,55 @@ INCLUDE_ASM("asm/nonmatchings/game/screen", screenUnlocker__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenCharSelect4P__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenWaitForStart__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/screen", changeScreen__Fiiiib);
+#ifdef NON_MATCHING
+/* Polls the pads allowed by `padMask` (on_bit[pad]) and returns (pad << 16) | action, 0 when nothing is pressed or a screen change is running.
+   The 16 pad masks are tried in the order of `map`, each giving its action code 1..0x10. */
+int screenGetInput(int padMask)
+{
+    static const struct {
+        int mask;
+        int action;
+    } map[16] = {
+        { 0x10, 1 }, { 0x40, 2 }, { 0x80, 3 }, { 0x20, 4 },
+        { 0x2000, 8 }, { 0x8000, 7 }, { 0x4000, 6 }, { 0x1000, 5 },
+        { 0x400, 9 }, { 0x800, 0xC }, { 0x100, 0xA }, { 0x200, 0xD },
+        { 2, 0xB }, { 4, 0xE }, { 8, 0x10 }, { 1, 0xF },
+    };
+    int pad, i;
+
+    if (betweenScreens == 0) {
+        for (pad = 0; pad < 4; pad++) {
+            if (!(on_bit[pad] & padMask))
+                continue;
+            for (i = 0; i < 16; i++)
+                if (inputGetInput(map[i].mask, pad))
+                    return (pad << 16) | map[i].action;
+        }
+    }
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenGetInput__Fi);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenPrepareDefault__Fii);
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenWriteInstructions__Fif);
+#ifdef NON_MATCHING
+float screenGetFontAlpha(void)
+{
+    return targetAlpha;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenGetFontAlpha__Fv);
+#endif
+#ifdef NON_MATCHING
+void setButtonAlpha(float a)
+{
+    targetAlpha = a;
+    screenSetButtonAlpha();
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", setButtonAlpha__Ff);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenSetButtonAlpha__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/screen", showButtons__Fi);
 INCLUDE_ASM("asm/nonmatchings/game/screen", killButtons__Fv);
