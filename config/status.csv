@@ -2264,7 +2264,7 @@ game/screen,_GLOBAL_$I$NamecardDistance,0x1a6698,32,asm
 game/Shell,main,0x1a66b8,1344,equivalent
 game/Shell,SelectAI__5Shell,0x1a6bf8,8,asm
 game/Shell,RandomlySelectAI__5Shell,0x1a6c00,348,asm
-game/Shell,InitPlayers__5Shell,0x1a6d60,2468,asm
+game/Shell,InitPlayers__5Shell,0x1a6d60,2468,equivalent
 game/Shell,InitBeforeUiDbLoad__5Shell,0x1a7708,96,asm
 game/Shell,InitBeforeUserintDbLoad__5Shell,0x1a7768,116,asm
 game/Shell,__5Shell,0x1a77e0,264,asm

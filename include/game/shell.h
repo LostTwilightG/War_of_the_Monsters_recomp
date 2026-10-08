@@ -33,6 +33,7 @@ public:
     void FinishLoadBar(void);
     void FadeScreen(int a, bool b, unsigned char c, unsigned char d, unsigned char e, unsigned char f, unsigned char g, unsigned char h);
     void InitPlayers(void);
+    void InitPlayerLives(void);
     void EvaluateGameStatus(int r);
     void InitialMemCardScreen(void);
     void LoadLevelDB(void);

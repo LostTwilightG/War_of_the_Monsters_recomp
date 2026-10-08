@@ -131,6 +131,8 @@ public:
     void UnpauseLevel(void);
     void UpdatePadTweaks(void);
     void gameReestablishViews(void);
+    void SetPlayerMonster(int pIdx, int type, int dup, int view, int skin);
+    void SetAIMonster(int aiIdx, int type, int dup, int skin);
 };
 class CsPool {
 public:
@@ -283,7 +285,180 @@ INCLUDE_ASM("asm/nonmatchings/game/Shell", main);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", SelectAI__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", D_006EF180);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", RandomlySelectAI__5Shell);
+#ifdef NON_MATCHING
+struct SeenType {
+    int type;
+    int count;
+};
+
+class Destructibles {
+public:
+    void rebuildCanyon2Pillars(void);
+    void rebuildCapitolPillars(void);
+};
+class HealthMeter {
+public:
+    void creditFull(void);
+};
+struct _cs;
+void hierSetCsDrawMe(_cs *cs, unsigned char v);
+extern int canyon2LevelProgression;
+extern int craterSwitched;
+extern int numDeadHeads;
+extern char plantBoss[];
+extern char *assBoss;
+extern float assBossTier1Health;
+extern float assBossTier2Health;
+extern char finalBoss[];
+extern char D_006F81A0[]; /* "AI %d\n" */
+
+/* Instances the AI monsters of the level. `seen` is the table of monster types already placed (players first): every further monster
+   of the same type gets the next duplicate number, which selects the model copy (see TheGame::GetMonsterFromName). */
+static void spawnAIs(Shell *sh, SeenType *seen, int *nSeen, bool log)
+{
+    int j;
+    int sel;
+
+    for (j = 0; j < *(int *)((char *)sh + 0x2BB8); j++) {
+        int *monsterSel = (int *)((char *)sh + 0x2948);
+        int k;
+        int found = 0;
+        int at = 0;
+        int dup;
+
+        sel = monsterSel[j];
+        for (k = 0; k < *nSeen; k++) {
+            if (seen[k].type == sel) {
+                at = k;
+                found = 1;
+            }
+        }
+        if (found) {
+            dup = ++seen[at].count;
+        } else {
+            dup = 0;
+            seen[*nSeen].type = sel;
+            (*nSeen)++;
+        }
+        game->SetAIMonster(j, sel, dup, *(int *)((char *)sh + 0x2BE8 + j * 4));
+        if (log)
+            printf("set ai monster %d %d\n", sel, dup);
+    }
+}
+
+void Shell::InitPlayers(void)
+{
+    SeenType seen[16];
+    int n = 0;
+    int i;
+    int k;
+
+    printf("num play: %d num AI: %d\n", m_numPlayers, m_numAIs);
+    for (i = 0; i < m_numPlayers; i++)
+        printf("PLAYER %d\n", m_monsterSel[i]);
+    for (i = 0; i < m_numAIs; i++)
+        printf(D_006F81A0, m_monsterSel[4 + i]);
+    for (i = 0; i < 16; i++)
+        seen[i].count = 0;
+    *(int *)((char *)game + 0x1203D8) = m_numPlayers;
+    for (i = 0; i < m_numPlayers; i++) {
+        int sel = m_monsterSel[i];
+        int found = 0;
+        int at = 0;
+        int dup;
+
+        for (k = 0; k < n; k++) {
+            if (seen[k].type == sel) {
+                at = k;
+                found = 1;
+            }
+        }
+        if (found) {
+            dup = ++seen[at].count;
+        } else {
+            dup = 0;
+            seen[n].type = sel;
+            n++;
+        }
+        game->SetPlayerMonster(i, sel, dup, i, m_costume[i != 0]);
+        printf("set player monster %d %d\n", sel, dup);
+        *(int *)((char *)(*(char **)((char *)game + 0x120380 + i * 4)) + 0x3C) = 0;
+    }
+    if (m_levelNum == 3 && m_mode == 1) {
+        InitPlayerLives();
+        if (canyon2LevelProgression == 0) {
+            *(int *)((char *)game + 0x1203E0) = m_numAIs;
+            spawnAIs(this, seen, &n, false);
+        } else if (canyon2LevelProgression == 3) {
+            if (assBoss != 0) {
+                *(float *)(assBoss + 0x44C) = *(float *)(assBoss + 0x448);
+                ((Destructibles *)destructibles)->rebuildCanyon2Pillars();
+            }
+        } else if (canyon2LevelProgression == 6) {
+            if (assBoss != 0) {
+                float max = *(float *)(assBoss + 0x448);
+                float tier;
+
+                if (assBossTier2Health < *(float *)(assBoss + 0x44C) / max)
+                    tier = assBossTier1Health - 0.01f;
+                else
+                    tier = assBossTier2Health - 0.01f;
+                *(float *)(assBoss + 0x44C) = max * tier;
+                ((Destructibles *)destructibles)->rebuildCanyon2Pillars();
+            }
+        }
+    } else if (m_levelNum == 6 && m_mode == 1) {
+        InitPlayerLives();
+        if (craterSwitched != 0) {
+            char *p;
+
+            numDeadHeads = 0;
+            for (p = plantBoss; p < plantBoss + 0x6F0; p += 0x250) {
+                if (*(float *)(p + 0x3C) <= 0.0f)
+                    *(int *)(p + 0x38) = 0xE;
+                *(int *)(p + 0x34) = 1;
+                *(float *)(p + 0x3C) = 20.0f;
+            }
+        } else {
+            *(int *)((char *)game + 0x1203E0) = m_numAIs;
+            spawnAIs(this, seen, &n, false);
+        }
+    } else if (m_levelNum == 11 && m_mode == 1) {
+        InitPlayerLives();
+        if (*(int *)(finalBoss + 0x1C) == 0) {
+            ((Destructibles *)destructibles)->rebuildCapitolPillars();
+            *(float *)(finalBoss + 0x14) = (float)*(int *)((char *)game + 0x1203CC) * 75.0f + 100.0f;
+            *(int *)((char *)game + 0x1203E0) = m_numAIs;
+            spawnAIs(this, seen, &n, false);
+        } else if (*(int *)(finalBoss + 0x1C) == 1) {
+            ((HealthMeter *)(*(char **)(finalBoss + 0x74) + 0x448))->creditFull();
+        } else if (*(int *)(finalBoss + 0x1C) == 2) {
+            ((HealthMeter *)(*(char **)(finalBoss + 0x78) + 0x448))->creditFull();
+        }
+    } else {
+        *(int *)((char *)game + 0x1203E0) = m_numAIs;
+        spawnAIs(this, seen, &n, true);
+        if (m_mode == 4 || m_mode == 6) {
+            for (i = 0; i < m_numAIs; i++) {
+                if (m_mode == 4 || m_mode == 6) {
+                    char *m = *(char **)((char *)game + 0x120390 + i * 4);
+
+                    if (i != 0) {
+                        *(int *)(m + 0x18) = 0;
+                        hierSetCsDrawMe(*(_cs **)(m + 0xC), 0);
+                    } else {
+                        *(int *)(m + 0x18) = 2;
+                        hierSetCsDrawMe(*(_cs **)(m + 0xC), 1);
+                    }
+                }
+            }
+            *(int *)((char *)this + 0x2A70) = 0;
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", InitPlayers__5Shell);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Shell", InitBeforeUiDbLoad__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", InitBeforeUserintDbLoad__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", __5Shell);
