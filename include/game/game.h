@@ -68,6 +68,12 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    bool isIdle(unsigned t);
+    int inCameraFov(_fvector &a, _fvector &b);
+    void setMat(float (&m)[4][4]);
+    Monster *getClosestTargetable(unsigned short a, bool b, float x, float y);
+    Monster *getClosestTargetable(unsigned short a, bool b, float x, float y, float z);
+    void blowUpMonster(Monster *killer);
     bool isHoldingLarge(void);
     void cleanUpForMovie(void);
     void lightOnFire(float count, float damage, int source);

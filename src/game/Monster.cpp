@@ -20,6 +20,14 @@ public:
     void updateInputs(void);
 };
 extern float cloaker;
+class StateDeath {
+public:
+    int transitionOK(void);
+    void setKiller(Monster *m);
+};
+void mathfCopyMatrixNotAligned(float (*dst)[4], float (*src)[4]);
+void mathfRPHFromMatrix(float (*m)[4], _fvector *out);
+int viewInFOV(int view, _fvector *a, _fvector *b);
 class AiPath;
 class AiPathNet {
 public:
@@ -267,7 +275,12 @@ void Monster::setRot(float a, float b, float c)
                      "sq $11, 0x80(%1)"
                      : : "r"(src), "r"(this) : "$8", "$9", "$10", "$11", "memory");
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setMat__7MonsterRA3_A3_f);
+void Monster::setMat(float (&m)[4][4])
+{
+    mathfCopyMatrixNotAligned((float (*)[4])((char *)m_cs + 0x20), (float (*)[4])m);
+    mathfCopyMatrixNotAligned((float (*)[4])((char *)this + 0x50), (float (*)[4])m);
+    mathfRPHFromMatrix((float (*)[4])m, (_fvector *)((char *)m_cs + 0x60));
+}
 void Monster::setEnvMapping(void)
 {
     m_cs->cloakMe = 1;
@@ -281,7 +294,20 @@ void Monster::clearEnvMapping(void)
     m_flags |= 2;
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateShadow__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", calcGlowIntensity__Fiii);
+signed char calcGlowIntensity(int a, int b, int c)
+{
+    if (c * 3 < b * 4) {
+        int t = c - b;
+        int u = t * 127;
+
+        return a * u / c;
+    }
+    {
+        int u = b * 42;
+
+        return a * u / c;
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updatePowerUpGlow__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateBoostAndRage__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateLock__7Monster19MonsterReticleState);
@@ -319,8 +345,26 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", takeHit__7MonsterP8_fvectorfi);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", takeDamage__7MonsterfbP7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", takeAdditiveRecoil__7MonsterR8_fvectorf);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", knockBack__7MonsterR8_fvectorff);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", blowUpMonster__7MonsterP7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", updateDeathSequence__7Monster);
+void Monster::blowUpMonster(Monster *killer)
+{
+    if (m_dead)
+        return;
+    ((StateDeath *)((char *)this + 0x8450))->setKiller(killer);
+    updateDeathSequence();
+    if (m_cameraFollows) {
+        gameHud(m_cameraView)->f0D0 = 0;
+        animationStart(gameHud(m_cameraView)->h1D0, true);
+    }
+}
+void Monster::updateDeathSequence(void)
+{
+    if (*m_state != 0x21) {
+        StateDeath *death = (StateDeath *)((char *)this + 0x8450);
+
+        if (death->transitionOK())
+            enterNewState((MonsterState *)death);
+    }
+}
 void Monster::registerComboHit(Monster *m)
 {
     if (m_playerNum == 1 && m_cameraFollows && !m->isBlocking())
@@ -334,7 +378,10 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterToOrientation__7Mo
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterToOrientation__7Monsteriiff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterToPunch__7Monsterfff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterInFOV__7MonsterR8_fvectorfT1fRf);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestTargetable__7MonsterUsbff);
+Monster *Monster::getClosestTargetable(unsigned short a, bool b, float x, float y)
+{
+    return getClosestTargetable(a, b, x, x, y);
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestTargetable__7MonsterUsbfff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getLookAtTarget__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getDestructibleFromReticle__7Monsterf);
@@ -462,8 +509,27 @@ bool Monster::isBlocking(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isBlocking__7Monster);
 #endif
+#ifdef NON_MATCHING
+/* 24/25 words, untuned: last compare branches the other way */
+bool Monster::isIdle(unsigned t)
+{
+    if (*m_state == 0x1E && t < ((unsigned *)m_state)[2])
+        return true;
+    if (*m_state == 0x1F && ((int *)m_state)[0x1F] == 0 && t >= ((unsigned *)m_state)[2])
+        return true;
+    return false;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isIdle__7MonsterUi);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", inCameraFov__7MonsterR8_fvectorT1);
+#endif
+int Monster::inCameraFov(_fvector &a, _fvector &b)
+{
+    int view = 0;
+
+    if (!gUseUnifiedView)
+        view = m_cameraView;
+    return viewInFOV(view, &a, &b);
+}
 bool Monster::hasPinTarget(void)
 {
     char *pin = (char *)m_pinTarget;
