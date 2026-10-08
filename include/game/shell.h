@@ -9,11 +9,16 @@ class Shell {
 public:
     char pad0[0x2938];
     int m_monsterSel[8];  /* 0x2938: per slot (players first, then AIs): (monster << 5) | variant; monster indexes MonsterLongNames */
-    char pad2958[0x2BB0 - 0x2958];
+    char pad2958[0x2BA8 - 0x2958];
+    int m_restart;        /* 0x2BA8: 1 = the level is being restarted (ResetLevel, not UnpauseLevel) and needs the loading background */
+    char pad2BAC[0x2BB0 - 0x2BAC];
     int m_levelNum;       /* 0x2BB0: index into GameLevelNames (0 = the level named on the command line) */
     int m_numPlayers;     /* 0x2BB4 */
     int m_numAIs;         /* 0x2BB8 */
-    char pad2BBC[0x2BE0 - 0x2BBC];
+    char pad2BBC[0x2BCC - 0x2BBC];
+    int m_inSession;      /* 0x2BCC: a play session is running (rtMain loop) */
+    int m_inMenus;        /* 0x2BD0: the boot -> menus -> session cycle keeps going */
+    char pad2BD4[0x2BE0 - 0x2BD4];
     int m_costume[8];     /* 0x2BE0: costume number of the first two players, then of the AIs */
     char pad2C00[0x2C10 - 0x2C00];
     int m_mode; /* 0x2C10: 1 = normal play, 8 = bigshot, 9 = crush */

@@ -64,6 +64,8 @@ extern int gWhichMacroSection;
    textures, build the world, create the players, then run rtMain frame by frame until the session ends, restarting the level on request. */
 extern "C" void __main(void);
 int mathfRand(int lo, int hi);
+extern "C" int sceGsSyncPath(int mode, int timeout);
+void displayDialog(int which);
 class Destructibles;
 class TheGame;
 extern Destructibles *destructibles;
@@ -180,7 +182,7 @@ extern "C" int main(int argc, char **argv)
         uiInit();
         do {
             printf("Entering movie selection\n");
-            SH(0x2BD0) = 1;
+            shell->m_inMenus = 1;
             if (needIntro != 0 || needOutro != 0) {
                 shell->m_mode = 0x3F;
                 printf("Intro or Outro needed\n");
@@ -218,10 +220,10 @@ extern "C" int main(int argc, char **argv)
         } while (userintMain() != 0);
         ((ShellSound *)((char *)shell + 0x2918))->terminateShellSound();
         ((SoundManager *)((char *)shell + 0x2C30))->initSoundManager();
-        if (SH(0x2BD0) == 0)
+        if (shell->m_inMenus == 0)
             continue;
         do {
-            SH(0x2BCC) = 1;
+            shell->m_inSession = 1;
             ResolveCommandLineArguments(argc, argv);
             ((resetcom *)resetObj)->setFileName(whichLevel, UseCommandLineLevel);
             shell->InitRTState();
@@ -258,7 +260,7 @@ extern "C" int main(int argc, char **argv)
             ((StreamingSoundManager *)((char *)game + 0x1204C0))->initStreamingSoundManager();
             SH(0x2B60) = 0;
             SH(0x2B64) = 0;
-            if (SH(0x2BCC) != 0) {
+            if (shell->m_inSession != 0) {
                 bool first = true;
 
                 do {
@@ -268,16 +270,16 @@ extern "C" int main(int argc, char **argv)
                     r = rtMain(first);
                     first = false;
                     shell->EvaluateGameStatus(r);
-                    if (SH(0x2BCC) != 0) {
-                        if (SH(0x2BA8) != 0)
+                    if (shell->m_inSession != 0) {
+                        if (shell->m_restart != 0)
                             ((TheGame *)game)->ResetLevel();
                         else
                             ((TheGame *)game)->UnpauseLevel();
                     }
-                } while (SH(0x2BCC) != 0);
+                } while (shell->m_inSession != 0);
             }
             ((ShellSound *)((char *)shell + 0x2918))->resetShellSoundFlags();
-        } while (SH(0x2BD0) != 0);
+        } while (shell->m_inMenus != 0);
     }
 }
 #else
@@ -468,7 +470,6 @@ INCLUDE_ASM("asm/nonmatchings/game/Shell", InitRTState__5Shell);
 #ifdef NON_MATCHING
 extern int levelMonsters[][12];
 extern int levelMonsterModels[][4];
-void displayDialog(int which);
 extern "C" void snd_StopAllSounds(void);
 
 /* Decides what happens after rtMain returned `r` (2 = dialog dismissed, 5 = quit the session, otherwise the level ended) by asking the game mode's
@@ -480,8 +481,8 @@ void Shell::EvaluateGameStatus(int r)
         *(char *)(*(char **)((char *)game + 0x98) + 0xC) = 0;
         displayDialog(0);
     } else if (r == 5) {
-        SH(0x2BCC) = 0;
-        SH(0x2BD0) = 0;
+        m_inSession = 0;
+        m_inMenus = 0;
         *(int *)((char *)game + 0x1204C0 + 0x109C) = 0;
         snd_StopAllSounds();
         return;
@@ -490,8 +491,8 @@ void Shell::EvaluateGameStatus(int r)
         case 0: {
             int i, n;
 
-            SH(0x2BCC) = 0;
-            SH(0x2BD0) = 1;
+            m_inSession = 0;
+            m_inMenus = 1;
             m_levelNum = mathfRand(1, 0xB);
             m_monsterSel[0] = mathfRand(1, 0xC) << 5;
             if (m_monsterSel[0] == 0xC0 || m_monsterSel[0] == 0x180)
@@ -545,9 +546,9 @@ void Shell::EvaluateGameStatus(int r)
             break;
         }
     }
-    if (SH(0x2BA8) == 1) {
+    if (m_restart == 1) {
         DisplayLoadBackground(false);
-        SH(0x2BA8) = 0;
+        m_restart = 0;
     }
 }
 #else
@@ -555,14 +556,144 @@ INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateGameStatus__5Shelli);
 #endif
 INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateOnePlayerStoryStatus__5Shelli);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateOnePlayerChallengeStatus__5Shelli);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateTwoPlayerCoopStatus__5Shelli);
+void Shell::EvaluateTwoPlayerCoopStatus(int r)
+{
+}
 INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateMultiPlayerBattleStatusNoAI__5Shelli);
+#ifdef NON_MATCHING
+class Monster {
+public:
+    void playerInit(void);
+    void aiInit(void);
+};
+class Cameras {
+public:
+    static void LeaveUnifiedView(unsigned id);
+};
+extern int gUseUnifiedView;
+
+#define GM(o) (*(int *)((char *)game + (o)))
+#define SLOT(i) ((Monster *)((char *)game + 0xB80 + (i) * 0x11190))
+#define HEALTH(m) (*(float *)((char *)(m) + 0x44C))
+
+/* Brings every slot with no health left back: slots 0 and 1 are players, the rest AIs. */
+static void respawnDead(void)
+{
+    int i;
+
+    for (i = 0; i < GM(0x1203D4); i++) {
+        Monster *m = SLOT(i);
+
+        if (HEALTH(m) <= 0.0f) {
+            if (i < 2)
+                m->playerInit();
+            else
+                m->aiInit();
+        }
+    }
+}
+
+/* Free-for-all with AIs, called when a round ends. `r` 3 = quit. Otherwise find who is still alive and whether a living monster killed a dead one:
+   with a kill target in shell+0x2A44 the first monster to reach it wins (m_won[0], dialog 5), else everyone dead comes back and the round restarts. */
+void Shell::EvaluateMultiPlayerBattleStatusAI(int r)
+{
+    int killer = -1;
+    int alive = 0;
+    int i;
+
+    if (r == 3) {
+        m_inMenus = 0;
+        m_inSession = 0;
+        return;
+    }
+    for (i = 0; i < GM(0x1203D8); i++)
+        if (HEALTH(*(Monster **)((char *)game + 0x120380 + i * 4)) > 0.0f)
+            alive++;
+    for (i = 0; i < GM(0x1203D4); i++) {
+        char *slot = (char *)SLOT(i);
+        char *by;
+
+        if (slot[0xE8] != 0 && (by = *(char **)(slot + 0x846C)) != 0 && by[0xE8] == 0) {
+            killer = *(int *)(by + 0x28);
+            break;
+        }
+    }
+    if (alive != 0 || killer != -1) {
+        int target = *(int *)((char *)this + 0x2A44);
+
+        if (target == 0 || killer == -1) {
+            respawnDead();
+        } else if (*(int *)((char *)SLOT(killer) + 0x3C) >= target) {
+            GM(0x12043C) = killer;
+            displayDialog(5);
+            return;
+        } else {
+            respawnDead();
+        }
+    } else {
+        SLOT(0)->playerInit();
+        SLOT(1)->playerInit();
+        for (i = 0; i < GM(0x1203E0); i++) {
+            Monster *m = *(Monster **)((char *)game + 0x120390 + i * 4);
+
+            if (HEALTH(m) <= 0.0f)
+                m->aiInit();
+        }
+        if (gUseUnifiedView != 0)
+            Cameras::LeaveUnifiedView(0x12);
+    }
+    m_inMenus = 0;
+    m_inSession = 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateMultiPlayerBattleStatusAI__5Shelli);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateOnePlayerEnduranceStatus__5Shelli);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateBigShotStatus__5Shelli);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateCrushStatus__5Shelli);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateDodgeBallStatus__5Shelli);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateOnlineBattleStatus__5Shelli);
+#endif
+/* 1 = show the endurance dialog, 3 = the player quit; anything else is unexpected and also ends the session. */
+void Shell::EvaluateOnePlayerEnduranceStatus(int r)
+{
+    if (r == 1) {
+        sceGsSyncPath(0, 0);
+        displayDialog(9);
+        return;
+    }
+    if (r == 3) {
+        m_inSession = 0;
+        m_inMenus = 0;
+        *(int *)((char *)game + 0xBBC) = 0;
+        return;
+    }
+    printf("An endurance mode game ended for reasons other than player dying or quitting!! AAAhhh
+");
+    m_inSession = 0;
+    m_inMenus = 0;
+}
+void Shell::EvaluateBigShotStatus(int r)
+{
+    displayDialog(0xD);
+    if (m_restart == 1) {
+        DisplayLoadBackground(false);
+        m_restart = 0;
+    }
+}
+void Shell::EvaluateCrushStatus(int r)
+{
+    displayDialog(0xE);
+    if (m_restart == 1) {
+        DisplayLoadBackground(false);
+        m_restart = 0;
+    }
+}
+void Shell::EvaluateDodgeBallStatus(int r)
+{
+    displayDialog(0xF);
+    if (m_restart == 1) {
+        DisplayLoadBackground(false);
+        m_restart = 0;
+    }
+}
+void Shell::EvaluateOnlineBattleStatus(int r)
+{
+}
 INCLUDE_ASM("asm/nonmatchings/game/Shell", InitPlayerLives__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", BootInitUi__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", BootInitUserint__5Shell);
