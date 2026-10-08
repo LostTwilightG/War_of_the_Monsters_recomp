@@ -37,6 +37,17 @@ public:
     void InitPlayers(void);
     void InitPlayerLives(void);
     void EvaluateGameStatus(int r);
+    void EvaluateOnePlayerStoryStatus(int r);
+    void EvaluateOnePlayerChallengeStatus(int r);
+    void EvaluateTwoPlayerCoopStatus(int r);
+    void EvaluateMultiPlayerBattleStatusNoAI(int r);
+    void EvaluateMultiPlayerBattleStatusAI(int r);
+    void EvaluateOnePlayerEnduranceStatus(int r);
+    void EvaluateBigShotStatus(int r);
+    void EvaluateCrushStatus(int r);
+    void EvaluateDodgeBallStatus(int r);
+    void EvaluateOnlineBattleStatus(int r);
+    void DisplayLoadBackground(bool b);
     void InitialMemCardScreen(void);
     void LoadLevelDB(void);
     void LoadMonstersDB(void);

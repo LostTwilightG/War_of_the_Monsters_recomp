@@ -26,7 +26,7 @@ Veja [docs/ANALYSIS.md](docs/ANALYSIS.md) para o que já se sabe sobre o execut�
 
 | Área | Feitas | Total | % | Bytes |
 |---|---:|---:|---:|---|
-| `game` | 510 | 3181 | 16,0% | 47,7 KB de 909,0 KB (5,2%) |
+| `game` | 511 | 3181 | 16,1% | 48,4 KB de 909,0 KB (5,3%) |
 | `common` / engine | 197 | 1144 | 17,2% | 27,5 KB de 252,4 KB (10,9%) |
 
 "Feita" = função `matched` (byte a byte igual ao original) ou `equivalent` (C++ equivalente, ainda sem bater).

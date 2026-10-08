@@ -63,6 +63,7 @@ extern int gWhichMacroSection;
    boot -> (optional intro/outro movie) -> front-end menus (userintMain) -> a play session: load the level, the monsters and their
    textures, build the world, create the players, then run rtMain frame by frame until the session ends, restarting the level on request. */
 extern "C" void __main(void);
+int mathfRand(int lo, int hi);
 class Destructibles;
 class TheGame;
 extern Destructibles *destructibles;
@@ -464,7 +465,94 @@ INCLUDE_ASM("asm/nonmatchings/game/Shell", InitBeforeUserintDbLoad__5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", __5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", _$_5Shell);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", InitRTState__5Shell);
+#ifdef NON_MATCHING
+extern int levelMonsters[][12];
+extern int levelMonsterModels[][4];
+void displayDialog(int which);
+extern "C" void snd_StopAllSounds(void);
+
+/* Decides what happens after rtMain returned `r` (2 = dialog dismissed, 5 = quit the session, otherwise the level ended) by asking the game mode's
+   own evaluator. Modes: 0 demo (random level and monster), 1 story, 2 challenge, 3 free for all (with or without AIs), 4 endurance, 5 co-op,
+   6 elimination, 7 dodgeball, 8 bigshot, 9 crush, 11 online battle. */
+void Shell::EvaluateGameStatus(int r)
+{
+    if (r == 2) {
+        *(char *)(*(char **)((char *)game + 0x98) + 0xC) = 0;
+        displayDialog(0);
+    } else if (r == 5) {
+        SH(0x2BCC) = 0;
+        SH(0x2BD0) = 0;
+        *(int *)((char *)game + 0x1204C0 + 0x109C) = 0;
+        snd_StopAllSounds();
+        return;
+    } else {
+        switch (m_mode) {
+        case 0: {
+            int i, n;
+
+            SH(0x2BCC) = 0;
+            SH(0x2BD0) = 1;
+            m_levelNum = mathfRand(1, 0xB);
+            m_monsterSel[0] = mathfRand(1, 0xC) << 5;
+            if (m_monsterSel[0] == 0xC0 || m_monsterSel[0] == 0x180)
+                m_monsterSel[0] = 0x20;
+            ((TheGame *)game)->SetPlayerMonster(0, m_monsterSel[0], 0, 0, m_costume[0]);
+            n = *(int *)((char *)this + 0x29E0 + m_levelNum * 4);
+            m_numAIs = n;
+            for (i = 0; i < n; i++) {
+                m_monsterSel[4 + i] = levelMonsters[m_levelNum][i];
+                m_costume[2 + i] = levelMonsterModels[m_levelNum][i];
+            }
+            DisplayLoadBackground(false);
+            break;
+        }
+        case 1:
+            EvaluateOnePlayerStoryStatus(r);
+            break;
+        case 2:
+            EvaluateOnePlayerChallengeStatus(r);
+            break;
+        case 4:
+            EvaluateOnePlayerEnduranceStatus(r);
+            break;
+        case 5:
+            EvaluateTwoPlayerCoopStatus(r);
+            break;
+        case 7:
+            EvaluateDodgeBallStatus(r);
+            break;
+        case 3:
+            if (*(int *)((char *)game + 0x1203E0) != 0) {
+                EvaluateMultiPlayerBattleStatusAI(r);
+                break;
+            }
+            /* fall through */
+        case 6:
+            EvaluateMultiPlayerBattleStatusNoAI(r);
+            break;
+        case 8:
+            EvaluateBigShotStatus(r);
+            break;
+        case 9:
+            EvaluateCrushStatus(r);
+            break;
+        case 11:
+            EvaluateOnlineBattleStatus(r);
+            break;
+        default:
+            printf("ERROR - Shell::EvaluateGameStatus does not recognize %i as a Game Mode!!!!
+", m_mode);
+            break;
+        }
+    }
+    if (SH(0x2BA8) == 1) {
+        DisplayLoadBackground(false);
+        SH(0x2BA8) = 0;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateGameStatus__5Shelli);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateOnePlayerStoryStatus__5Shelli);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateOnePlayerChallengeStatus__5Shelli);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", EvaluateTwoPlayerCoopStatus__5Shelli);

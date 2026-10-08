@@ -2270,7 +2270,7 @@ game/Shell,InitBeforeUserintDbLoad__5Shell,0x1a7768,116,asm
 game/Shell,__5Shell,0x1a77e0,264,asm
 game/Shell,_$_5Shell,0x1a78e8,36,asm
 game/Shell,InitRTState__5Shell,0x1a7910,76,asm
-game/Shell,EvaluateGameStatus__5Shelli,0x1a7960,676,asm
+game/Shell,EvaluateGameStatus__5Shelli,0x1a7960,676,equivalent
 game/Shell,EvaluateOnePlayerStoryStatus__5Shelli,0x1a7c08,972,asm
 game/Shell,EvaluateOnePlayerChallengeStatus__5Shelli,0x1a7fd8,600,asm
 game/Shell,EvaluateTwoPlayerCoopStatus__5Shelli,0x1a8230,8,asm
