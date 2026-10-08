@@ -33,5 +33,6 @@ python3 tools/gen_nm_ld.py "$src" "$dst"
 mips-linux-gnu-ld -EL --no-check-sections -T SCUS_971.97.nm.ld -T undefined_syms_auto.txt -T undefined_funcs_auto.txt \
     -T linker_script_extra.ld -Map nm.map -o build/SCUS_971.97.nm.elf 2>&1 | grep -v RWX || true
 mkdir -p "$src/build/pcsx2_test"
-python3 "$src/tools/patch_paddr.py" "$dst/build/SCUS_971.97.nm.elf" "$src/build/pcsx2_test/SCUS_971.97_$name.elf"
+heap=0x$(mips-linux-gnu-nm build/SCUS_971.97.nm.elf | awk '$3 == "nm_EXTRA_END" { print $1 }')
+python3 "$src/tools/patch_paddr.py" "$dst/build/SCUS_971.97.nm.elf" "$src/build/pcsx2_test/SCUS_971.97_$name.elf" --heap "$heap"
 python3 "$src/tools/patch_paddr.py" "$src/build/SCUS_971.97.elf" "$src/build/pcsx2_test/SCUS_971.97_control_matching.elf"

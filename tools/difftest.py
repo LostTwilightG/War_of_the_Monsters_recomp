@@ -25,6 +25,7 @@ from pathlib import Path
 from elftools.elf.elffile import ELFFile
 from unicorn import (UC_ARCH_MIPS, UC_HOOK_CODE, UC_HOOK_MEM_READ_UNMAPPED, UC_HOOK_MEM_WRITE, UC_HOOK_MEM_WRITE_UNMAPPED,
                      UC_MODE_LITTLE_ENDIAN, UC_MODE_MIPS64, Uc, UcError)
+from unicorn import mips_const
 from unicorn.mips_const import (UC_MIPS_REG_0, UC_MIPS_REG_4, UC_MIPS_REG_5, UC_MIPS_REG_6, UC_MIPS_REG_7, UC_MIPS_REG_28,
                                 UC_MIPS_REG_29, UC_MIPS_REG_31, UC_MIPS_REG_2, UC_MIPS_REG_PC, UC_MIPS_REG_F0, UC_MIPS_REG_F12,
                                 UC_MIPS_REG_F13)
@@ -453,6 +454,11 @@ def run_test(b, func, altname, spec, ret, runs, verbose, objsize=0x4000):
             diffs.append(('v0', hex(ra.uc.reg_read(UC_MIPS_REG_2) & 0xFFFFFFFF), hex(rb.uc.reg_read(UC_MIPS_REG_2) & 0xFFFFFFFF)))
         if o.ret == 'float' and (ra.uc.reg_read(UC_MIPS_REG_F0) & 0xFFFFFFFF) != (rb.uc.reg_read(UC_MIPS_REG_F0) & 0xFFFFFFFF):
             diffs.append(('f0', hex(ra.uc.reg_read(UC_MIPS_REG_F0) & 0xFFFFFFFF), hex(rb.uc.reg_read(UC_MIPS_REG_F0) & 0xFFFFFFFF)))
+        # callee-saved state must survive the call: retail callers (asm) rely on it
+        csv = [getattr(mips_const, f'UC_MIPS_REG_{16 + i}') for i in range(8)] + [getattr(mips_const, 'UC_MIPS_REG_30')] + [UC_MIPS_REG_28, UC_MIPS_REG_29, UC_MIPS_REG_31] + [getattr(mips_const, f'UC_MIPS_REG_F{i}') for i in range(20, 32)]
+        for r in csv:
+            if ra.uc.reg_read(r) != rb.uc.reg_read(r):
+                diffs.append(('callee-saved', r, hex(ra.uc.reg_read(r)), hex(rb.uc.reg_read(r))))
         if ra.calls != rb.calls:
             k = next((i for i in range(min(len(ra.calls), len(rb.calls))) if ra.calls[i] != rb.calls[i]), min(len(ra.calls), len(rb.calls)))
             diffs.append(('calls', f'first difference at call #{k} of {len(ra.calls)}/{len(rb.calls)}', ra.calls[k:k + 2], rb.calls[k:k + 2]))
