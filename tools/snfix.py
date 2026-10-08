@@ -208,6 +208,11 @@ def pad_short_loops(lines):
                     for _ in range(SHORT_LOOP - length):
                         out.append('	nop')
                         count += 1
+                    if reorder:
+                        # GNU as would move one of the padding nops into the delay slot; the SN assembler does not
+                        out += ['	.set	noreorder', line, '	nop', '	.set	reorder']
+                        count += insn_count(op, args or '') + 1
+                        continue
             count += insn_count(op, args or '') + (1 if reorder and op in JUMPS else 0)
         out.append(line)
     return out
