@@ -89,8 +89,12 @@ que o prÃ³prio TU define (alias para a cÃ³pia do retail). Serve para validar as 
 - Em laÃ§os `for (j = 0; j < n; j++, m++)` guardar `n = game->m_numSlots` numa local (senÃ£o o gcc recarrega a cada volta).
 
 ## Testar o C++ novo no PCSX2 (meio asm, meio C++)
-- O ROM do build normal Ã© idÃªntico ao retail (equivalentes ficam como `INCLUDE_ASM`). Para rodar as equivalentes: `sh tools/wsl/build_nm.sh` (WSL) compila uma cÃ³pia em `~/wotm_nm` com `-DNON_MATCHING` e grava
-  `build/pcsx2_test/SCUS_971.97_halfcpp.elf` e `SCUS_971.97_control_matching.elf` (controle: build normal). Ambos com `p_paddr = p_vaddr` (o PCSX2 carrega por `p_paddr`).
-- Rodar: `pcsx2-qt.exe -elf build\pcsx2_test\SCUS_971.97_halfcpp.elf -- "ISO\War of the Monsters.iso"`. Primeiro testar o controle; se ele nÃ£o sobe, o problema Ã© o ELF/PCSX2, nÃ£o o C++.
-- O build NM desloca quase todos os sÃ­mbolos (de -80 a +312 bytes no texto). Sem teste ainda; riscos: endereÃ§o absoluto cru em dados, `gp`.
-- `Monster.cpp`: `cloaker` Ã© o sÃ­mbolo `cloaker.2691`; `CrushLevel.o(.sdata)` precisa entrar no ld do build NM (o script cuida disso).
+- O ROM do build normal é idêntico ao retail (equivalentes ficam como `INCLUDE_ASM`). Para rodar as equivalentes: `sh tools/wsl/build_nm.sh` (WSL) compila uma cópia em `~/wotm_nm`
+  com `-DNON_MATCHING` e grava `build/pcsx2_test/SCUS_971.97_halfcpp.elf` e `..._control_matching.elf` (controle). Ambos com `p_paddr = p_vaddr` (o PCSX2 carrega por `p_paddr`).
+- Rodar: `pcsx2-qt.exe -elf build\pcsx2_test\SCUS_971.97_halfcpp.elf -- "ISO\SCUS_971.97.War of the Monsters.iso"`. Dá para automatizar: `-batch -nogui -logfile <log>` e matar depois de ~30 s;
+  o log mostra `microVU1: Cached Prog`, `FMV started` etc. quando o jogo anda, e `Vif0: Unknown VifCmd` / `microVU0: Possible infinite compiling loop` quando os dados estão errados.
+- **Layout**: o linker script normal empilha as peças (`x.o(.sec)`) uma atrás da outra e usa `SUBALIGN(4)`, então qualquer função equivalente maior/menor desloca todos os dados que vêm depois
+  (248/252/280 bytes) e os buffers de DMA ficam desalinhados: foi o que quebrou o primeiro teste. `tools/gen_nm_ld.py` gera um script onde toda peça que não cresceu fica no endereço retail
+  (`. = <endereço - base da seção>`; `.cod_bss` fixo em seu endereço) e as peças que cresceram (13, quase todas `.text`) vão para `.nm_extra`, depois do bss.
+- `CrushLevel` é compilado com `-G0` no build NM (as strings do código novo cairiam em `.sdata`, onde não há espaço). `Monster.cpp`: `cloaker` é o símbolo `cloaker.2691`.
+- Resultado até agora: o halfcpp passa do boot e chega à FMV de abertura sem erro de VIF. Falta testar menu/fase.
