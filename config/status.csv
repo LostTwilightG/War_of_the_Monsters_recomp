@@ -615,7 +615,7 @@ game/CrushLevel,initAfterDbLoad__10CrushLevel,0x12dfb0,144,matched
 game/CrushLevel,updateNormal__10CrushLevel,0x12e040,728,equivalent
 game/CrushLevel,initSuddenDeath__10CrushLevel,0x12e318,132,matched
 game/CrushLevel,updateSuddenDeath__10CrushLevel,0x12e3a0,120,matched
-game/db,dbInitDb__FP9_dbheader10_vramAddrs,0x12e418,480,asm
+game/db,dbInitDb__FP9_dbheader10_vramAddrs,0x12e418,480,equivalent
 game/db,dbProcInteractive__FP9_hierheadP8_fvectorPA3_f,0x12e5f8,1088,asm
 game/db,dbGetCSForModel__FP9_hierhead,0x12ea38,72,matched
 game/db,dbGetHPCSForModel__FP9_hierhead,0x12ea80,72,matched
