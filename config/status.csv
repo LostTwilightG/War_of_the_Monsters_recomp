@@ -2294,7 +2294,7 @@ game/Shell,LoadUserintDB__5Shell,0x1a91b0,60,asm
 game/Shell,LoadUserintDB1__5Shell,0x1a91f0,60,asm
 game/Shell,LoadResTexture__5Shell,0x1a9230,1116,asm
 game/Shell,LoadTexture__5Shell,0x1a9690,1052,asm
-game/Shell,LoadLevelDB__5Shell,0x1a9ab0,320,asm
+game/Shell,LoadLevelDB__5Shell,0x1a9ab0,320,matched
 game/Shell,LoadMonstersDB__5Shell,0x1a9bf0,1180,asm
 game/Shell,AddEpNode__5ShelliP9_hierhead,0x1aa090,2236,asm
 game/Shell,formatFilename__5ShellPcPCcT2Q25Shell11_shFileType,0x1aa950,272,asm
@@ -2310,7 +2310,7 @@ game/Shell,MonsterExists__5Shelli,0x1aadc8,8,asm
 game/Shell,DisplayLoadBackground__5Shellb,0x1aadd0,796,asm
 game/Shell,MonsterIsLocked__5Shelli,0x1ab0f0,40,asm
 game/Shell,init__7TagList,0x1ab118,140,asm
-game/Shell,LoadLevelFiles__5Shell,0x1ab1a8,584,asm
+game/Shell,LoadLevelFiles__5Shell,0x1ab1a8,584,matched
 game/Shell,FinishLoadBar__5Shell,0x1ab3f0,108,asm
 game/Shell,ResetLevel__5Shell,0x1ab460,60,asm
 game/Shell,GenesisMovie__5Shell,0x1ab4a0,216,asm
