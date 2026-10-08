@@ -103,9 +103,11 @@ que o próprio TU define (alias para a cópia do retail). Serve para validar as 
 - Layout corrigido (gen_nm_ld.py); o halfcpp completo chega à fase mas trava/crasha. Resultados com variantes (build_nm.sh):
   `v3_game` (TheGame, MonsterMeters, StartPoints, AiGrapple, AiBrain, island, DodgeBall, CrushLevel) funciona; `v1_monster` e `a_update` (só `Monster::update`) travam no loading da fase
   (`Unrecognized op` no log, executando dados) -> **`Monster::update` tem bug**; `b_cinema`, `c_rest`, `v4_misc` ainda não testados pelo usuário.
-- Erro diferente no menu: `v2_common` e `bsA` (hier hieri vo smooth ShiftJIS ColGrid zip TaskManager) dão `ReportErrorAsync: R5900 Exception: Jump to unaligned address (PC: 0x00000001)` ainda na abertura;
-  `bsB` (PointMass ... AnimQueue) não. Já compiladas, uma por arquivo: `build/pcsx2_test/SCUS_971.97_t_{hier,hieri,vo,smooth,ShiftJIS,ColGrid,zip,TaskManager}.elf` (falta rodá-las; pode ser automático:
-  `pcsx2-qt.exe -batch -nogui -logfile <log> -elf <elf> -- <iso>`, parar quando o log tiver `ReportErrorAsync` ou após ~45 s).
+- **Atualização 2026-10-08 (manhã)**: o erro `Jump to unaligned address (PC: 1)` do menu (`v2_common`, `bsA`, `t_hieri`) NÃO reproduz mais: refeitos com o `gen_nm_ld.py` atual,
+  `t_hieri`, `h_flush`, `h_set`, `h_dma`, `t_zip`, `t_TaskManager`, `bsA` e o `halfcpp` completo passam da abertura/FMV sem `ReportErrorAsync` (45-60 s, 3x estável em `t_hieri`);
+  os ELFs antigos eram de antes das correções de layout. Falta só o crash no loading da fase = `Monster::update` (não dá para automatizar: precisa de input no menu).
+  Achado de build: `hierDmaHandler` chamava `hierFlushObjQ` sem protótipo quando só ela era `NON_MATCHING` (variante `h_dma` não linkava); protótipo adicionado em `hieri.cpp`.
+  Script de teste automático: abrir `pcsx2-qt.exe -batch -nogui -logfile <log> -elf <elf> -- <iso>`, esperar até `ReportErrorAsync` ou 45 s, `taskkill`.
 - difftest ganhou `--init '<python>'` (W/W16/W8/THIS/ARENA/STUB) para montar estado estruturado; `Monster::update` precisa de `m_state` -> objeto com vtable (`W(THIS+0x34,S); W(S+0x10,VT); W16(VT+0x18,0); W(VT+0x1C,STUB)`),
   mas ainda cai em escritas fora do mapa (retail e alt), falta ajustar mais ponteiros.
 - O log do PCSX2 do usuário fica em `~/Documents/PCSX2/logs/emulog.txt`; erros em diálogo também aparecem lá como `ReportErrorAsync`.
