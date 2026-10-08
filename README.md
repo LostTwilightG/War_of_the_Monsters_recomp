@@ -15,6 +15,14 @@ python3 -m venv ~/.venvs/wotm && ~/.venvs/wotm/bin/pip install "splat64[mips]" p
 2. `~/.venvs/wotm/bin/python configure.py --split` gera a ROM, os símbolos, roda o splat e escreve o `build.ninja`.
 3. `ninja` monta, linka e confere o SHA1 contra o executável original (`build/SCUS_971.97.rom: OK`).
 
+### Notas para um clone novo
+- `tools/cc.sh` roda o compilador (binário Win32) via `wine`, que precisa da arquitetura i386 habilitada **antes** da instalação:
+  ```sh
+  sudo dpkg --add-architecture i386 && sudo apt update && sudo apt install wine wine32:i386
+  ```
+- Em clone novo, `configure.py --split` pode não gerar os `.s` de dados (por exemplo as vtables, como `_vt$12PointToolKit.s`) e o `ninja` quebra por arquivo inexistente (visto com splat 0.41.1 e 0.50.0). Contorno: mover `src/` para fora do repo, rodar o `--split` e restaurar `src/` em seguida. Causa ainda não investigada.
+- `tools/difftest.py` precisa de `unicorn` e `pyelftools` no venv e roda no WSL.
+
 `tools/symdiff.py` lista símbolos fora do lugar e `tools/romdiff.py` mostra as palavras que diferem quando o checksum falha.
 
 Veja [docs/ANALYSIS.md](docs/ANALYSIS.md) para o que já se sabe sobre o executável.

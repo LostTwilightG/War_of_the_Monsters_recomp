@@ -26,6 +26,7 @@ from elftools.elf.elffile import ELFFile
 from unicorn import (UC_ARCH_MIPS, UC_HOOK_CODE, UC_HOOK_MEM_READ_UNMAPPED, UC_HOOK_MEM_WRITE, UC_HOOK_MEM_WRITE_UNMAPPED,
                      UC_MODE_LITTLE_ENDIAN, UC_MODE_MIPS64, Uc, UcError)
 from unicorn import mips_const
+from unicorn.mips_const import UC_CPU_MIPS64_5KF
 from unicorn.mips_const import (UC_MIPS_REG_0, UC_MIPS_REG_4, UC_MIPS_REG_5, UC_MIPS_REG_6, UC_MIPS_REG_7, UC_MIPS_REG_28,
                                 UC_MIPS_REG_29, UC_MIPS_REG_31, UC_MIPS_REG_2, UC_MIPS_REG_PC, UC_MIPS_REG_F0, UC_MIPS_REG_F12,
                                 UC_MIPS_REG_F13)
@@ -210,6 +211,7 @@ class Run:
         self.writes = {}
         self.fault = None
         uc = Uc(UC_ARCH_MIPS, UC_MODE_MIPS64 | UC_MODE_LITTLE_ENDIAN)
+        uc.ctl_set_cpu_model(UC_CPU_MIPS64_5KF)  # o modelo padrao (R4000) nao tem movz/movn: o teste acaba em pc=0
         self.uc = uc
         self.qw = {}
         self.high = [0] * 32
