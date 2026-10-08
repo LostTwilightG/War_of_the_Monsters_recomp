@@ -40,7 +40,8 @@ public:
 };
 unsigned timerGetFieldCount(void);
 
-float WaterLevel;
+extern float WaterLevel;
+__asm__("#SNFIX_SMALL WaterLevel");
 void setWaterLevel(float v)
 {
     WaterLevel = v;
