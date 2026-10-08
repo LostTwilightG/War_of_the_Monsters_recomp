@@ -41,6 +41,9 @@ extern char globalTimeString[];
 extern char D_00735740[];
 extern char D_006F3B68[]; /* "Couldn't find the file %s. TOC at %p\n" */
 extern char D_006F3B90[]; /* "\t\tError #%i\n" */
+extern int fileReadStatus __asm__("FileReadStatus.9"); /* static local of fileReada, starts at 1 */
+extern char D_00735730[];  /* name of the file fileReada has in flight */
+extern char D_006F8678[];  /* "" */
 extern char D_006F86A0[]; /* "host0:" */
 extern char D_006F86A8[]; /* "cdrom0:" */
 extern char D_006F86B0[]; /* "\\" */
@@ -58,6 +61,9 @@ char *strcat(char *dst, const char *src);
 int snd_StreamSafeCdSync(int);
 int snd_StreamSafeCdGetError(void);
 int snd_StreamSafeCdRead(int, int, void *, void *);
+int sceCdGetError(void);
+int strcmp(const char *a, const char *b);
+char *strcpy(char *dst, const char *src);
 unsigned int sceCdGetReadPos(void);
 int sceCdRead(unsigned int lsn, unsigned int sectors, void *buf, sceCdRMode *mode);
 int sceCdSync(int mode);
@@ -112,8 +118,82 @@ int fileReadf(char *name, void *buf)
 }
 INCLUDE_ASM("asm/nonmatchings/common/file", D_006F3B68);
 INCLUDE_ASM("asm/nonmatchings/common/file", D_006F3B90);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileReada__FPcPv);
+__asm__("#SNFIX_SMALL FileReadStatus.9");
+int fileReada(char *name, void *buf)
+{
+    sceCdlFILE f;
+
+    fileAdjustFileName(gFileName, name);
+    printf("Trying to read %s into address %p - Asynchronous CD read\n", gFileName, buf);
+    f.lsn = 0;
+    f.size = 0;
+    f.name[0] = 0;
+    f.date[0] = 0;
+    if (strcmp(D_00735730, gFileName) != 0) {
+        if (!fileCdSearchFile(&f, gFileName)) {
+            printf(D_006F3B68, gFileName, cdFileSystemToc);
+            return 0;
+        }
+        if (snd_StreamSafeCdRead(f.lsn, (f.size + 0x7FF) >> 11, buf, &cdReadMode)) {
+            fileReadStatus = 0;
+            strcpy(D_00735730, gFileName);
+        } else
+            printf("*-*=* FileRead Cmd Not Issued Properly to the IOP *=*-*\n");
+        return fileReadStatus;
+    }
+    if (snd_StreamSafeCdSync(1))
+        fileReadStatus = 0;
+    else if (!snd_StreamSafeCdGetError()) {
+        fileReadStatus = 1;
+        D_00735730[0] = D_006F8678[0];
+    } else
+        printf(D_006F3B90, snd_StreamSafeCdGetError());
+    return fileReadStatus;
+}
+#ifdef NON_MATCHING
+/* 99/105 words: same code, retail swaps the registers of lsn and size+0x7FF (s4/s5) */
+unsigned int fileReads(char *name, void *buf, unsigned int block)
+{
+    sceCdlFILE f;
+    unsigned int size, lsn, pos;
+    int done;
+
+    fileAdjustFileName(gFileName, name);
+    if (block == 0)
+        printf("fileReads 512k block #%i of %s into address %p\n", block, gFileName, buf);
+    f.lsn = 0;
+    f.size = 0;
+    f.name[0] = 0;
+    f.date[0] = 0;
+    if (!fileCdSearchFile(&f, gFileName)) {
+        printf("Couldn't find the file %s.\n", gFileName);
+        return 0;
+    }
+    size = 0x80000;
+    if ((block + 1) << 19 >= f.size)
+        size = f.size - (block << 19);
+    lsn = f.lsn + (block << 8);
+    sceCdSync(0);
+    do {
+        if (sceCdRead(lsn, (size + 0x7FF) >> 11, buf, &cdReadMode)) {
+            pos = sceCdGetReadPos();
+            while (sceCdSync(1)) {
+                if (sceCdGetReadPos() > pos + size / 10)
+                    pos = sceCdGetReadPos();
+            }
+            done = 1;
+            if (sceCdGetError()) {
+                done = 0;
+                printf(D_006F3B90, sceCdGetError());
+            }
+        } else
+            done = 0;
+    } while (!done);
+    return size;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/file", fileReads__FPcPvUi);
+#endif
 int fileWritef(char *name, void *buf, int size)
 {
     int fd;
