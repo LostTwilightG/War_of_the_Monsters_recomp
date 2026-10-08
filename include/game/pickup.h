@@ -3,6 +3,7 @@
 
 #include "hieri_types.h"
 #include "game/level_pickups.h"
+#include "game/pickup_sound.h"
 
 /* Base of the pickups (cars, military, subway, tanks ...). Virtual in retail (vptr at 0x10, set by the ctor; offset 0 holds a
    constant 5): derived pickups declare their own non-virtual overrides and keep vtable/ctor/__tf as asm. sizeof == 0x170. */
@@ -38,6 +39,9 @@ public:
     void setVisualState(int s);
     void hatCheck(void);
     void drop(void);
+    void regen(void);
+    void initAfterDbLoad(void);
+    bool update(void);
     bool regenUpdate(void);
     void initConfig(void);
     _fvector *getVel(void);

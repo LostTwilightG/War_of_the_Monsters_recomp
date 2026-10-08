@@ -6,17 +6,38 @@
 __asm__("#SNFIX_SMALL game");
 
 void hdReparentCsGrid(_cs *cs, _fvector *pos, float f);
+void mathfRotMatrixRPH(float (*m)[4], _fvector *rph);
 class Weapon {
 public:
     void GetVel(_fvector &v);
 };
 extern _fvector D_00731340;
+struct DbInteractive;
+class Interactives {
+public:
+    static int addInteractive(DbInteractive *p);
+};
 
 
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", __6Pickup);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", init__6PickupP9_hierheadR8_fvectorPA3_fb11ePickupType);
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", initAfterDbLoad__6Pickup);
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", update__6Pickup);
+void Pickup::initAfterDbLoad(void)
+{
+    int id = Interactives::addInteractive((DbInteractive *)this);
+    unsigned *head = (unsigned *)cs->epNode;
+
+    *head = (*head & 0xFFFC007F) | ((id & 0x7FF) << 7);
+    hdReparentCsGrid(cs, (_fvector *)((char *)cs + 0x10), 0.0f);
+}
+bool Pickup::update(void)
+{
+    ((PickupSound *)((char *)this + 0x100))->updatePickupSound();
+    unsigned long long b = bits & 0x40;
+
+    if (b)
+        hatCheck();
+    return health > 0.0f;
+}
 bool Pickup::regenUpdate(void)
 {
     if (--regenTimer <= 0) {
@@ -27,7 +48,23 @@ bool Pickup::regenUpdate(void)
     }
     return false;
 }
+#ifdef NON_MATCHING
+/* 21/25 words: register choice for the home pointer and the lq/sq asm */
+void Pickup::regen(void)
+{
+    register int t __asm__("$2");
+
+    regenTimer = 0xA8C;
+    cs->drawMe = 1;
+    health = maxHealth;
+    __asm__ volatile("lq %1, 0(%2)
+	sq %1, %0" : "=m"(cs->trans), "=r"(t) : "r"((char *)this + 0x20));
+    mathfRotMatrixRPH((float (*)[4])((char *)cs + 0x20), (_fvector *)((char *)this + 0x30));
+    hatCheck();
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", regen__6Pickup);
+#endif
 void Pickup::takeHit(_fvector *pos, float dmg, int x)
 {
     health -= dmg;
