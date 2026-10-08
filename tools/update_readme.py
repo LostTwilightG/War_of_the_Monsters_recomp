@@ -99,7 +99,7 @@ def make_svg(n):
     total = g['total'] + c['total'] + lb['total']
     ignored = lb['total'] + g['hw'] + c['hw']
     pending = total - g['done'] - c['done'] - ignored
-    segs = [('#2f81f7', g['done']), ('#2da44e', c['done']), ('#c9d1d9', pending), ('#8b949e', ignored)]
+    segs = [('#ff1413', g['done']), ('#ff8e00', c['done']), ('#c9d1d9', pending), ('#8b949e', ignored)]
     W, X0, BW, BY, BH = 720, 20, 680, 54, 28
     out = []
     x = float(X0)

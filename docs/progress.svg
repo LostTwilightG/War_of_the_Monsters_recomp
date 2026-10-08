@@ -6,8 +6,8 @@
   <rect x="20" y="54" width="680" height="28" rx="4" fill="#c9d1d9"/>
   <clipPath id="r"><rect x="20" y="54" width="680" height="28" rx="4"/></clipPath>
   <g clip-path="url(#r)">
-  <rect x="20.00" y="54" width="59.77" height="28" fill="#2f81f7"/>
-  <rect x="79.77" y="54" width="24.90" height="28" fill="#2da44e"/>
+  <rect x="20.00" y="54" width="59.77" height="28" fill="#ff1413"/>
+  <rect x="79.77" y="54" width="24.90" height="28" fill="#ff8e00"/>
   <rect x="104.67" y="54" width="442.17" height="28" fill="#c9d1d9"/>
   <rect x="546.84" y="54" width="153.16" height="28" fill="#8b949e"/>
   </g>
