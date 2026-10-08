@@ -521,6 +521,10 @@ public:
     void SetAIMonster(int aiIdx, int type, int dup, int skin);
     void fadeOutAndIn(int n);
     void fadeOut(int n);
+    void updateFadeOutAndIn(void);
+    void updateFadeOut(void);
+    static void updateFadeOutAndIn(void *p);
+    static void updateFadeOut(void *p);
     void UpdatePadTweaks(void);
     static void traversalCallback(_cs *cs, unsigned a, unsigned b, float (&m)[4][4], _fvector *eo);
     static void genericEventHandler(unsigned event);

@@ -885,6 +885,12 @@ INCLUDE_ASM("asm/nonmatchings/game/TheGame", AddCrushMessage__7TheGamei);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", __static_initialization_and_destruction_0_00139F00);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", func_00139F78);
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", func_00139F98);
-INCLUDE_ASM("asm/nonmatchings/game/TheGame", updateFadeOutAndIn__7TheGamePv);
-INCLUDE_ASM("asm/nonmatchings/game/TheGame", updateFadeOut__7TheGamePv);
+void TheGame::updateFadeOutAndIn(void *p)
+{
+    ((TheGame *)p)->updateFadeOutAndIn();
+}
+void TheGame::updateFadeOut(void *p)
+{
+    ((TheGame *)p)->updateFadeOut();
+}
 INCLUDE_ASM("asm/nonmatchings/game/TheGame", _GLOBAL_$I$resetObj);

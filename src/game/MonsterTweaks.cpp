@@ -1,11 +1,23 @@
 #include "common.h"
 
-INCLUDE_ASM("asm/nonmatchings/game/MonsterTweaks", init__13MonsterTweaks);
-INCLUDE_ASM("asm/nonmatchings/game/MonsterTweaks", setActiveMonster__13MonsterTweaksP7Monsterb);
+class resetcom {
+public:
+    void init(void);
+};
+extern char monsterTweaksReset[] __asm__("D_00725240");
+class Monster;
 class MonsterTweaks {
 public:
+    static void init(void);
+    static void setActiveMonster(Monster *m, bool b);
     void resetTweaks(void);
 };
+
+void MonsterTweaks::init(void)
+{
+    ((resetcom *)monsterTweaksReset)->init();
+}
+INCLUDE_ASM("asm/nonmatchings/game/MonsterTweaks", setActiveMonster__13MonsterTweaksP7Monsterb);
 void MonsterTweaks::resetTweaks(void)
 {
 }
