@@ -68,6 +68,9 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    bool isHoldingLarge(void);
+    void cleanUpForMovie(void);
+    void lightOnFire(float count, float damage, int source);
     void breathFire(void);
     void dropPickupImpaler(void);
     void throwPickup(int a, float b);

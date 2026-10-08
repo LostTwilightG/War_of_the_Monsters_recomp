@@ -20,6 +20,17 @@ public:
     void updateInputs(void);
 };
 extern float cloaker;
+class AiPath;
+class AiPathNet {
+public:
+    static AiPathNet monster;
+    int isIn(_fvector &pos, AiPath &path);
+    AiPath *getClosestPath(_fvector &pos, unsigned char n);
+};
+class Interactives {
+public:
+    static int *getInteractive(int i);
+};
 void mathfRotMatrixRPH(float (*m)[4], _fvector *v);
 class MonsterDynamics {
 public:
@@ -381,7 +392,21 @@ void Monster::breathFire(void)
                      *(float *)((char *)this + 0xF99C), *(float *)((char *)this + 0xF9A4), *(float *)((char *)this + 0xF9A0),
                      *(float *)((char *)this + 0xF9A8));
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", lightOnFire__7Monsterffi);
+void Monster::lightOnFire(float count, float damage, int source)
+{
+    if (m_typeBits == 0x120 && *(int *)((char *)this + 0x68C0))
+        return;
+    m_onFireCount = count;
+    m_onFireDamage = damage;
+    if (source) {
+        if (*Interactives::getInteractive(source) == 1)
+            m_fireSource = (Monster *)Interactives::getInteractive(source);
+        else
+            m_fireSource = 0;
+    } else {
+        m_fireSource = 0;
+    }
+}
 void Monster::updateOnFire(void)
 {
     if (m_onFireCount > 0.0f) {
@@ -409,7 +434,21 @@ bool Monster::isHolding(void)
 {
     return m_pickup != 0 || m_target != 0;
 }
+#ifdef NON_MATCHING
+/* 6/15 words, untuned: bit extract and branch shape */
+bool Monster::isHoldingLarge(void)
+{
+    bool r = false;
+
+    if (m_pickup && ((int)(*(long *)(*(char **)m_pickup + 0x50) >> 1) & 1))
+        r = true;
+    else if (m_target)
+        r = true;
+    return r;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", isHoldingLarge__7Monster);
+#endif
 #ifdef NON_MATCHING
 /* 5/17 words, untuned */
 bool Monster::isBlocking(void)
@@ -431,7 +470,12 @@ bool Monster::hasPinTarget(void)
 
     return pin && (*(unsigned short *)(pin + 4) & 2);
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", updateClosestPath__7Monster);
+unsigned Monster::updateClosestPath(void)
+{
+    if (!AiPathNet::monster.isIn(*(_fvector *)((char *)m_cs + 0x10), *m_closestPath))
+        m_closestPath = AiPathNet::monster.getClosestPath(*(_fvector *)((char *)m_cs + 0x10), 0xFF);
+    return 0x1E;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", okToDrawReticle__7Monster);
 void Monster::setCloakOn(void)
 {
@@ -450,7 +494,29 @@ void Monster::setCloakOff(void)
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", attachFxToHandle__FPiP8_fvectorUi);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateWaterWake__7Monsterfb);
+struct MovieCleanup {
+    char pad0[0x30];
+    char *p;
+};
+#ifdef NON_MATCHING
+/* 11/29 words, untuned: delay slot of the ApplyMint call */
+void Monster::cleanUpForMovie(void)
+{
+    setCloakOff();
+    if (*(int *)((char *)this + 0x68C0))
+        ((FireBreath *)((char *)this + 0x68C0))->ApplyMint();
+    if (m_x6874)
+        *(char *)(m_x6874 + 0xC) = 0;
+    if (((MovieCleanup *)((char *)this + 0x10714))->p)
+        *(char *)(((MovieCleanup *)((char *)this + 0x10714))->p + 0xC) = 0;
+    if (*(char **)((char *)this + 0x6BF8))
+        *(char *)(*(char **)((char *)this + 0x6BF8) + 0xC) = 0;
+    if (*(char **)((char *)this + 0x6BFC))
+        *(char *)(*(char **)((char *)this + 0x6BFC) + 0xC) = 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", cleanUpForMovie__7Monster);
+#endif
 void Monster::setShadowOnOff(bool on)
 {
     if (m_shadowCs != 0) {
