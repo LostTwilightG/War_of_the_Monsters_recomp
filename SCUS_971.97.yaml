@@ -132,7 +132,7 @@ segments:
       - [0x05B3E0, cpp, game/Monster]  # c++, 261 funcs, name: manual
       - [0x063CF8, asm, game/MonsterAnimBlend]  # c++, 18 funcs, name: manual
       - [0x064778, asm, game/MonsterDynamics]  # c++, 21 funcs, name: guess
-      - [0x065AC0, asm, game/MonsterInit]  # c++, 8 funcs, name: manual
+      - [0x065AC0, cpp, game/MonsterInit]  # c++, 8 funcs, name: manual
       - [0x0676C8, asm, game/MonsterMc]  # c++, 144 funcs, name: manual
       - [0x06D208, cpp, game/MonsterMeters]  # c++, 15 funcs, name: manual
       - [0x06D7C0, cpp, game/MonsterTriggers]  # c++, 11 funcs, name: manual

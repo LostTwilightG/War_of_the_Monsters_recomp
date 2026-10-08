@@ -267,6 +267,10 @@ public:
     void setStickyReticleCS(_cs * v);
     void playerInit(void);
     void aiInit(void);
+    void init(void);
+    void initBeforeDbLoad(void);
+    void initDynamics(void);
+    void collisInitPoints(void);
     void addAttachment(_hierhead *h);
 
     char pad0[0x4 - 0x0];

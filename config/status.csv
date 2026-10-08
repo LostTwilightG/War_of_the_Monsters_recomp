@@ -1664,11 +1664,11 @@ game/MonsterDynamics,getContactVel__15MonsterDynamicsR8_fvectorR9_hdResult,0x165
 game/MonsterDynamics,computeAuxiliaries__15MonsterDynamics,0x165970,244,asm
 game/MonsterDynamics,getSpeedModifier__15MonsterDynamics,0x165a68,60,asm
 game/MonsterDynamics,getConfig__15MonsterDynamics,0x165aa8,20,asm
-game/MonsterInit,initBeforeDbLoad__7Monster,0x165ac0,284,asm
+game/MonsterInit,initBeforeDbLoad__7Monster,0x165ac0,284,equivalent
 game/MonsterInit,init__7Monster,0x165be0,816,asm
-game/MonsterInit,playerInit__7Monster,0x165f10,292,asm
-game/MonsterInit,aiInit__7Monster,0x166038,220,asm
-game/MonsterInit,initAfterDbLoad__7Monster,0x166118,320,asm
+game/MonsterInit,playerInit__7Monster,0x165f10,292,equivalent
+game/MonsterInit,aiInit__7Monster,0x166038,220,equivalent
+game/MonsterInit,initAfterDbLoad__7Monster,0x166118,320,equivalent
 game/MonsterInit,initDynamics__7Monster,0x166258,4444,asm
 game/MonsterInit,initCameraData__7Monster,0x1673b8,748,asm
 game/MonsterInit,update__10BoneSpringPv,0x1676a8,28,asm

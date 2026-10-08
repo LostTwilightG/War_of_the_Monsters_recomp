@@ -99,3 +99,4 @@ game/Pickup
 game/Shell
 common/dbs
 common/file
+game/MonsterInit
