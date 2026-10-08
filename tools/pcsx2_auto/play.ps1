@@ -1,4 +1,4 @@
-param([string]$elf, [int]$watch = 40, [string]$dump = '')
+param([string]$elf, [int]$watch = 40, [string]$dump = '', [switch]$pause)
 $S = $PSScriptRoot
 $log = "C:\Users\TwistZero\WoTM\build\pcsx2_test\log_play_$elf.txt"
 Stop-Process -Name pcsx2-qt -Force -ErrorAction SilentlyContinue; Start-Sleep 2
@@ -19,6 +19,12 @@ for ($i = 0; $i -lt $watch; $i++) {
   if (-not (Get-Process pcsx2-qt -ErrorAction SilentlyContinue)) { $bad = 'emulator exited'; break }
   $m = Select-String -Path $log -Pattern 'Unrecognized op|ReportErrorAsync|Trap exception' | Select-Object -First 1
   if ($m) { $bad = $m.Line; break }
+}
+if ($pause -and -not $bad) {   # START mid-game: the pause dialog (rtPauseRT -> rtReturnToShell) must come up and the log stay clean
+  Key 'ENTER' 4
+  & "$S\emu.ps1" snap "$S\play_${elf}_pause.png" | Out-Null
+  $m = Select-String -Path $log -Pattern 'Unrecognized op|ReportErrorAsync|Trap exception' | Select-Object -First 1
+  if ($m) { $bad = $m.Line }
 }
 if ($dump -and -not $bad) { python "$S\ramdump.py" "C:\Users\TwistZero\WoTM\build\pcsx2_test\SCUS_971.97_$elf.elf" $dump }
 & "$S\emu.ps1" snap "$S\play_$elf.png"

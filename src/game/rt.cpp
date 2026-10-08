@@ -14,6 +14,7 @@ void inputStopActuator(int pad, unsigned char which);
 class TheGame;
 extern TheGame *game;
 int rtTimeToReturnToShell(void);
+void rtReturnToShell(int code, int delay);
 
 INCLUDE_ASM("asm/nonmatchings/game/rt", startFrame__10RtLoopViewv);
 INCLUDE_ASM("asm/nonmatchings/game/rt", start__10RtLoopViewi);
@@ -285,7 +286,67 @@ int rtMain(bool first)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/rt", rtMain__Fb);
 #endif
+#ifdef NON_MATCHING
+void fontSetSize(int a, int b);
+void fontSetColor(int a, int r, int g, int b, int c);
+void fontSpritePrintCenteredXY(int a, int x, int y, char *text);
+int inputGetInput(int mask, int pad);
+int inputIsCtlAvailable(int pad);
+extern int gPlayerThatPaused;
+
+/* Pause handling, called every frame once the game is past its first 30 frames: START (mask 8) on any living player's pad, or an unplugged
+   controller, asks the shell to leave the loop with code 2 (the dialog). The delay handed over is the GS field bit (CSR bit 13). In bigshot
+   only the player whose turn it is (bigShotInstance+0x94) can pause. While a movie plays the unplugged warning is drawn instead. */
+void rtPauseRT(unsigned frame)
+{
+    int pressed = 0;
+    int unplugged = 0;
+    int i;
+
+    if (GM(0x1203C8) == 8 && *(int *)(bigShotInstance + 0xE8) == 0) {
+        int turn = *(int *)(bigShotInstance + 0x94);
+
+        if (*(char *)(*(char **)((char *)game + 0x120380 + turn * 4) + 0xE8) == 0 && inputGetInput(8, turn) != 0) {
+            gPlayerThatPaused = turn;
+            pressed = 1;
+        }
+        for (i = 0; i < 2; i++) {
+            if (inputIsCtlAvailable(i) == 0) {
+                gPlayerThatPaused = i;
+                unplugged = 1;
+            }
+        }
+    } else {
+        for (i = 0; i < GM(0x1203D8); i++) {
+            if (*(char *)(*(char **)((char *)game + 0x120380 + i * 4) + 0xE8) == 0 && inputGetInput(8, i) != 0) {
+                gPlayerThatPaused = i;
+                pressed = 1;
+            }
+            if (inputIsCtlAvailable(i) == 0) {
+                gPlayerThatPaused = i;
+                unplugged = 1;
+            }
+        }
+    }
+    if (pressed != 0 && *(int *)(shellObj + 0x2BA4) == 0 && moviePlaying == 0 && GM(0x120458) == 0 && GM(0x120454) == 0) {
+        *(int *)(shellObj + 0x2BA4) = 1;
+        rtReturnToShell(2, (int)((*(volatile unsigned long long *)0x12001000 >> 13) & 1));
+    }
+    if (unplugged != 0) {
+        if (moviePlaying == 0) {
+            rtReturnToShell(2, (int)((*(volatile unsigned long long *)0x12001000 >> 13) & 1));
+            return;
+        }
+        if ((frame & 0x7F) < 0x60) {
+            fontSetSize(0, 0x12);
+            fontSetColor(0, 0xFF, 0x3C, 0x3C, 0);
+            fontSpritePrintCenteredXY(0, 0x140, 0xC8, "CONTROLLER UNPLUGGED");
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/rt", rtPauseRT__FUi);
+#endif
 void rtReturnToShell(int code, int delay)
 {
     if (gRtReturn.active == 0) {

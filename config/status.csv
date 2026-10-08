@@ -2136,7 +2136,7 @@ game/rt,startFrame__10RtLoopViewv,0x188300,8,asm
 game/rt,start__10RtLoopViewi,0x188308,8,asm
 game/rt,end__10RtLoopViewUii,0x188310,8,asm
 game/rt,rtMain__Fb,0x188318,2120,equivalent
-game/rt,rtPauseRT__FUi,0x188b60,632,asm
+game/rt,rtPauseRT__FUi,0x188b60,632,equivalent
 game/rt,rtReturnToShell__Fii,0x188dd8,40,matched
 game/rt,rtTimeToReturnToShell__Fv,0x188e00,160,matched
 game/rt,rtFadeScreen__FiUi,0x188ea0,312,asm
