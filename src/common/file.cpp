@@ -35,7 +35,19 @@ struct sceCdlFILE {
     unsigned int flag;
 };
 
-extern char cdFileSystemToc[];
+/* Node of the CD directory tree built by fileMakeDirTree (root at cdFileSystemToc, 0x7000 bytes). A directory node
+   is followed by room for 40 child pointers per sector of its ISO9660 directory record. */
+struct _cdFileSystem {
+    unsigned int sector;      /* 0x00 first sector (LSN) */
+    unsigned short sectors;   /* 0x04 size in sectors */
+    unsigned char type;       /* 0x06 2 = directory */
+    unsigned char numEntries; /* 0x07 */
+    int size;                 /* 0x08 size in bytes */
+    char name[16];            /* 0x0C */
+    _cdFileSystem *entries[1]; /* 0x1C numEntries children */
+};
+extern _cdFileSystem cdFileSystemToc;
+extern int cdHasBeenInitialized;
 extern char gFileName[];
 extern char globalTimeString[];
 extern char D_00735740[];
@@ -44,6 +56,10 @@ extern char D_006F3B90[]; /* "\t\tError #%i\n" */
 extern int fileReadStatus __asm__("FileReadStatus.9"); /* static local of fileReada, starts at 1 */
 extern char D_00735730[];  /* name of the file fileReada has in flight */
 extern char D_006F8678[];  /* "" */
+extern char D_006F8680[]; /* "Root\n" */
+extern char D_006F8688[]; /* "  " */
+extern char D_006F8690[]; /* " + %s" */
+extern char D_006F8698[]; /* "  -%16s" */
 extern char D_006F86A0[]; /* "host0:" */
 extern char D_006F86A8[]; /* "cdrom0:" */
 extern char D_006F86B0[]; /* "\\" */
@@ -62,6 +78,13 @@ int snd_StreamSafeCdSync(int);
 int snd_StreamSafeCdGetError(void);
 int snd_StreamSafeCdRead(int, int, void *, void *);
 int sceCdGetError(void);
+int sceSifInitRpc(unsigned int mode);
+int sceSifRebootIop(const char *img);
+int sceSifSyncIop(void);
+int sceCdInit(int mode);
+int sceCdMmode(int media);
+int sceFsReset(void);
+int sceCdDiskReady(int mode);
 int strcmp(const char *a, const char *b);
 char *strcpy(char *dst, const char *src);
 unsigned int sceCdGetReadPos(void);
@@ -80,8 +103,28 @@ void setMaxResAddr(int i, unsigned short v);
 int fileStringCompare(char *a, char *b);
 void fileAdjustFileName(char *dst, char *src);
 int fileCdSearchFile(sceCdlFILE *f, char *path);
+void fileMakeDirTree(void);
 
-INCLUDE_ASM("asm/nonmatchings/common/file", fileInitializeCd__Fv);
+__asm__("#SNFIX_SMALL cdHasBeenInitialized");
+void fileInitializeCd(void)
+{
+    sceSifInitRpc(0);
+    sceCdInit(0);
+    while (!sceSifRebootIop("cdrom0:\\IOPRP24.IMG;1"))
+        ;
+    while (!sceSifSyncIop())
+        ;
+    sceSifInitRpc(0);
+    sceCdInit(0);
+    sceCdMmode(2);
+    sceFsReset();
+    while (sceCdDiskReady(0) != 2)
+        ;
+    fileMakeDirTree();
+    cdHasBeenInitialized = 1;
+    while (sceCdDiskReady(0) != 2)
+        ;
+}
 int fileReadf(char *name, void *buf)
 {
     sceCdlFILE f;
@@ -95,7 +138,7 @@ int fileReadf(char *name, void *buf)
     f.name[0] = 0;
     f.date[0] = 0;
     if (!fileCdSearchFile(&f, gFileName)) {
-        printf(D_006F3B68, gFileName, cdFileSystemToc);
+        printf(D_006F3B68, gFileName, &cdFileSystemToc);
         return 0;
     }
     snd_StreamSafeCdSync(0);
@@ -131,7 +174,7 @@ int fileReada(char *name, void *buf)
     f.date[0] = 0;
     if (strcmp(D_00735730, gFileName) != 0) {
         if (!fileCdSearchFile(&f, gFileName)) {
-            printf(D_006F3B68, gFileName, cdFileSystemToc);
+            printf(D_006F3B68, gFileName, &cdFileSystemToc);
             return 0;
         }
         if (snd_StreamSafeCdRead(f.lsn, (f.size + 0x7FF) >> 11, buf, &cdReadMode)) {
@@ -420,8 +463,36 @@ int fileCdRead(long sectors, long lsn, char *buf)
     return ret;
 }
 INCLUDE_ASM("asm/nonmatchings/common/file", fileCdSearchFile__FP10sceCdlFILEPc);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileHierAddrOfSect__FUi);
-INCLUDE_ASM("asm/nonmatchings/common/file", filePrintCdFiles__FP13_cdFileSystemi);
+_cdFileSystem *fileHierAddrOfSect(unsigned int sector)
+{
+    int i;
+
+    for (i = 0; i < cdFileSystemToc.numEntries; i++)
+        if (cdFileSystemToc.entries[i]->sector == sector)
+            return cdFileSystemToc.entries[i];
+    return 0;
+}
+void filePrintCdFiles(_cdFileSystem *fs, int depth)
+{
+    int i, k;
+
+    if (!fs)
+        fs = &cdFileSystemToc;
+    if (!depth)
+        printf(D_006F8680);
+    for (i = 0; i < fs->numEntries; i++) {
+        for (k = 0; k < depth; k++)
+            printf(D_006F8688);
+        if (fs->entries[i]->type == 2) {
+            printf(D_006F8690, fs->entries[i]->name);
+            printf("<<DIR>>\n");
+            filePrintCdFiles(fs->entries[i], depth + 1);
+        } else {
+            printf(D_006F8698, fs->entries[i]->name);
+            printf("\tSEC=%6i\tSIZ=%9i\n", fs->entries[i]->sector, fs->entries[i]->sectors << 11);
+        }
+    }
+}
 int fileStringCompare(char *a, char *b)
 {
     int i;
