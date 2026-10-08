@@ -1370,7 +1370,7 @@ game/Monster,isUnderwater__Ff,0x15b3f0,32,matched
 game/Monster,recomputeDynamics__7Monster,0x15b410,80,matched
 game/Monster,playerUpdateInputs__7Monster,0x15b460,36,matched
 game/Monster,update__7Monster,0x15b488,1216,equivalent
-game/Monster,startCinema__7Monster,0x15b948,200,asm
+game/Monster,startCinema__7Monster,0x15b948,200,matched
 game/Monster,updateCinema__7Monster,0x15ba10,308,equivalent
 game/Monster,endCinema__7Monster,0x15bb48,28,matched
 game/Monster,updateBoundingSphere__7Monster,0x15bb68,956,asm
@@ -1424,7 +1424,7 @@ game/Monster,handleLocator__7MonsterUiRA3_A3_fP8_fvector,0x161ef8,716,asm
 game/Monster,enterNewState__7MonsterP12MonsterState,0x1621c8,588,asm
 game/Monster,landingShake__7Monster,0x162418,8,matched
 game/Monster,getCollisionDamage__7Monsterf,0x162420,20,matched
-game/Monster,creditStamina__7Monsterfb,0x162438,312,asm
+game/Monster,creditStamina__7Monsterfb,0x162438,312,equivalent
 game/Monster,creditHealth__7Monsterf,0x162570,112,matched
 game/Monster,breathFire__7Monster,0x1625e0,76,matched
 game/Monster,lightOnFire__7Monsterffi,0x162630,124,matched
