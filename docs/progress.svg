@@ -11,8 +11,8 @@
   <rect x="104.16" y="54" width="442.68" height="28" fill="#c9d1d9"/>
   <rect x="546.84" y="54" width="153.16" height="28" fill="#8b949e"/>
   </g>
-  <rect x="20" y="99" width="12" height="12" rx="2" fill="#2f81f7"/><text x="40" y="110" font-size="13" fill="#24292f">game: 472/3181 (14,8%)</text>
-  <rect x="370" y="99" width="12" height="12" rx="2" fill="#2da44e"/><text x="390" y="110" font-size="13" fill="#24292f">common / engine: 194/1144 (17,0%)</text>
+  <rect x="20" y="99" width="12" height="12" rx="2" fill="#ff1413"/><text x="40" y="110" font-size="13" fill="#24292f">game: 472/3181 (14,8%)</text>
+  <rect x="370" y="99" width="12" height="12" rx="2" fill="#ff8e00"/><text x="390" y="110" font-size="13" fill="#24292f">common / engine: 194/1144 (17,0%)</text>
   <rect x="20" y="123" width="12" height="12" rx="2" fill="#c9d1d9"/><text x="40" y="134" font-size="13" fill="#24292f">pendente (asm): 3503</text>
   <rect x="370" y="123" width="12" height="12" rx="2" fill="#8b949e"/><text x="390" y="134" font-size="13" fill="#24292f">ignorado: 1212 (libs 1056 + hw 156)</text>
   </g>

@@ -115,8 +115,8 @@ def make_svg(n):
     bar = '\n  '.join(out)
     done = g['done'] + c['done']
     rows = [
-        ('#2f81f7', f'game: {g["done"]}/{g["total"]} ({fmt_pct(pct(g["done"], g["total"]))}%)'),
-        ('#2da44e', f'common / engine: {c["done"]}/{c["total"]} ({fmt_pct(pct(c["done"], c["total"]))}%)'),
+        ('#ff1413', f'game: {g["done"]}/{g["total"]} ({fmt_pct(pct(g["done"], g["total"]))}%)'),
+        ('#ff8e00', f'common / engine: {c["done"]}/{c["total"]} ({fmt_pct(pct(c["done"], c["total"]))}%)'),
         ('#c9d1d9', f'pendente (asm): {pending}'),
         ('#8b949e', f'ignorado: {ignored} (libs {lb["total"]} + hw {g["hw"] + c["hw"]})'),
     ]
