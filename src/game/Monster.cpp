@@ -13,12 +13,14 @@ public:
 class HealthMeter {
 public:
     void creditFull(void);
+    void credit(float amount);
 };
 class Ai {
 public:
     void updateInputs(void);
 };
 extern float cloaker;
+void mathfRotMatrixRPH(float (*m)[4], _fvector *v);
 class MonsterDynamics {
 public:
     void updateMove(bool b);
@@ -224,7 +226,36 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", updateBoundingSphere__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateReticle__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setReticles__7Monsteri);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setTrans__7MonsterR8_fvector);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setRot__7Monsterfff);
+void Monster::setRot(float a, float b, float c)
+{
+    char *src;
+    float *rot;
+
+    char *cs = (char *)m_cs;
+
+    *(float *)(cs + 0x60) = b;
+    rot = (float *)(cs + 0x60);
+    rot[1] = c;
+    rot[2] = a;
+    mathfRotMatrixRPH((float (*)[4])((char *)m_cs + 0x20), (_fvector *)((char *)m_cs + 0x60));
+    src = (char *)m_cs + 0x20;
+    __asm__ volatile("lq $8, 0x0(%0)
+	"
+                     "lq $9, 0x10(%0)
+	"
+                     "lq $10, 0x20(%0)
+	"
+                     "lq $11, 0x30(%0)
+	"
+                     "sq $8, 0x50(%1)
+	"
+                     "sq $9, 0x60(%1)
+	"
+                     "sq $10, 0x70(%1)
+	"
+                     "sq $11, 0x80(%1)"
+                     : : "r"(src), "r"(this) : "$8", "$9", "$10", "$11", "memory");
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setMat__7MonsterRA3_A3_f);
 void Monster::setEnvMapping(void)
 {
@@ -246,7 +277,15 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", updateLock__7Monster19MonsterReticl
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateLookAt__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateAirLegOverride__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateAnimContacts__7Monsterb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getStaminaGain__7Monster);
+float Monster::getStaminaGain(void)
+{
+    int type;
+
+    if (!m_pickup)
+        return 0.0f;
+    type = *(int *)(*(char **)m_pickup + 0xA0);
+    return m_puStaminaGainMod[type] * LevelPickups::s_info[type].staminaGain;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getTarget__7MonsterR8_fvectorb);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", throwPickup__7Monsterif);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", dropPickup__7Monster);
@@ -289,7 +328,12 @@ float Monster::getCollisionDamage(float m)
     return m_collisionBase + m * m_collisionScale;
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", creditStamina__7Monsterfb);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", creditHealth__7Monsterf);
+void Monster::creditHealth(float amount)
+{
+    ((HealthMeter *)((char *)this + 0x448))->credit(amount);
+    if (m_cameraFollows && m_playerNum == 1)
+        gameHud(m_cameraView)->registerHealthCredit((int)amount);
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", breathFire__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", lightOnFire__7Monsterffi);
 void Monster::updateOnFire(void)
@@ -595,7 +639,10 @@ int Monster::getPrevStateId(void)
 {
     return *m_prevState;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", getCameraData__7MonsteriQ26Camera9CameraPOV);
+void *Monster::getCameraData(int view, Camera::CameraPOV pov)
+{
+    return (char *)this + (view * 0x640 + 0x6CF0) + (int)pov * 0xA0;
+}
 int Monster::getType(void) const
 {
     return m_playerNum;

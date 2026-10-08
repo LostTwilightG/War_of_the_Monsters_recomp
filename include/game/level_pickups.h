@@ -5,6 +5,13 @@
 class Monster;
 class LevelPickups {
 public:
+    struct Info {
+        char pad0[0x30];
+        float staminaGain;   /* 0x30 */
+        char pad34[0x20];
+    };
+    static Info s_info[];
+
     static void update(void);
     static void computeHighlight(Monster &m);
     static void initAfterDbLoad(void);

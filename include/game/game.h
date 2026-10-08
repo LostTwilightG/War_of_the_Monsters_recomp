@@ -20,6 +20,11 @@ class ActAiNavigation;
 enum MonsterAnim { MonsterAnim_dummy };
 enum ePickupType { PICKUP_TYPE_0 };
 
+class Camera {
+public:
+    enum CameraPOV { POV_0, POV_1, POV_2, POV_3 };
+};
+
 class Monster {
 public:
     void enterNewState(MonsterState *state);
@@ -62,6 +67,10 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    void *getCameraData(int view, Camera::CameraPOV pov);
+    float getStaminaGain(void);
+    void creditHealth(float amount);
+    void setRot(float a, float b, float c);
     void *getLocatorTrans(int i);
     void *getLocatorMat(int i);
     void *getAnim(MonsterAnim a);
@@ -349,7 +358,7 @@ public:
     float m_dpPitchBreak;   /* 0x69C4 */
     float m_puPunchDamageMod[28];   /* 0x69C8 */
     float m_puLaunchDamageMod[28];   /* 0x6A38 */
-    char pad6AA8[0x6B18 - 0x6AA8];
+    float m_puStaminaGainMod[28];   /* 0x6AA8 */
     float m_puDurationMod[28];   /* 0x6B18 */
     float m_puSpeedMod[28];   /* 0x6B88 */
     _cs * m_reticleCS;   /* 0x6BF8 */
@@ -491,10 +500,6 @@ static inline Monster *gameSlotBase(int idx)
 extern int gHudEnable;
 extern int gUseUnifiedView;
 
-class Camera {
-public:
-    enum CameraPOV { POV_0, POV_1, POV_2, POV_3 };
-};
 
 class Cameras {
 public:

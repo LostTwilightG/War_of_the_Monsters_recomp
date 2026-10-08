@@ -40,7 +40,7 @@ EXISTING = {
     0x6CC4: ('float', 'm_beingShockedCount', 4), 0x6CC8: ('float', 'm_beingShockedDamage', 4), 0x6CD4: ('int', 'm_cameraFollows', 4),
     0x6CD8: ('int', 'm_cameraView', 4),
     0x69C8: ('float', 'm_puPunchDamageMod[28]', 0x70), 0x6A38: ('float', 'm_puLaunchDamageMod[28]', 0x70),
-    0x6B18: ('float', 'm_puDurationMod[28]', 0x70), 0x6B88: ('float', 'm_puSpeedMod[28]', 0x70),
+    0x6AA8: ('float', 'm_puStaminaGainMod[28]', 0x70), 0x6B18: ('float', 'm_puDurationMod[28]', 0x70), 0x6B88: ('float', 'm_puSpeedMod[28]', 0x70),
 }
 
 LOADS = {'lw': ('int', 4), 'lwc1': ('float', 4), 'lbu': ('unsigned char', 1), 'lb': ('signed char', 1),

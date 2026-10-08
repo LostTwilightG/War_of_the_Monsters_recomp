@@ -9,6 +9,7 @@ public:
     void initForReplay(void);
     void addMessage(int a, int b);
     void addTextBoxMessage(int id);
+    void registerHealthCredit(int amount);
 };
 
 typedef char _size_Hud[sizeof(Hud) == 0x2E0 ? 1 : -1];
