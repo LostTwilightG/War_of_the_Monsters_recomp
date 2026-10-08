@@ -27,11 +27,38 @@ struct sceCdCLOCK {
     unsigned char stat, second, minute, hour, pad, day, month, year;
 };
 
+struct sceCdlFILE {
+    unsigned int lsn;
+    unsigned int size;
+    char name[16];
+    unsigned char date[8];
+    unsigned int flag;
+};
+
+extern char cdFileSystemToc[];
 extern char gFileName[];
 extern char globalTimeString[];
 extern char D_00735740[];
+extern char D_006F3B68[]; /* "Couldn't find the file %s. TOC at %p\n" */
+extern char D_006F3B90[]; /* "\t\tError #%i\n" */
+extern char D_006F86A0[]; /* "host0:" */
+extern char D_006F86A8[]; /* "cdrom0:" */
+extern char D_006F86B0[]; /* "\\" */
+extern char D_006F86B8[]; /* ";1" */
 
+/* "\\" plus its terminator, copied as one 2-byte block like retail */
+struct CharPair {
+    char c[2];
+};
 extern "C" {
+extern const char _ctype_[];
+int strncmp(const char *a, const char *b, unsigned int n);
+char *strncat(char *dst, const char *src, unsigned int n);
+char *strcat(char *dst, const char *src);
+int snd_StreamSafeCdSync(int);
+int snd_StreamSafeCdGetError(void);
+int snd_StreamSafeCdRead(int, int, void *, void *);
+unsigned int sceCdGetReadPos(void);
 int sceCdRead(unsigned int lsn, unsigned int sectors, void *buf, sceCdRMode *mode);
 int sceCdSync(int mode);
 int sceCdReadClock(sceCdCLOCK *clock);
@@ -46,9 +73,43 @@ void setMaxTexAddr(int i, unsigned short v);
 void setMaxResAddr(int i, unsigned short v);
 int fileStringCompare(char *a, char *b);
 void fileAdjustFileName(char *dst, char *src);
+int fileCdSearchFile(sceCdlFILE *f, char *path);
 
 INCLUDE_ASM("asm/nonmatchings/common/file", fileInitializeCd__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileReadf__FPcPv);
+int fileReadf(char *name, void *buf)
+{
+    sceCdlFILE f;
+    unsigned int pos;
+    int done;
+
+    fileAdjustFileName(gFileName, name);
+    printf("Reading %s into address %p\n", gFileName, buf);
+    f.lsn = 0;
+    f.size = 0;
+    f.name[0] = 0;
+    f.date[0] = 0;
+    if (!fileCdSearchFile(&f, gFileName)) {
+        printf(D_006F3B68, gFileName, cdFileSystemToc);
+        return 0;
+    }
+    snd_StreamSafeCdSync(0);
+    do {
+        if (snd_StreamSafeCdRead(f.lsn, (f.size + 0x7FF) >> 11, buf, &cdReadMode)) {
+            pos = sceCdGetReadPos();
+            while (snd_StreamSafeCdSync(0)) {
+                if (sceCdGetReadPos() > pos + f.size / 10)
+                    pos = sceCdGetReadPos();
+            }
+            done = 1;
+            if (snd_StreamSafeCdGetError()) {
+                done = 0;
+                printf(D_006F3B90, snd_StreamSafeCdGetError());
+            }
+        } else
+            done = 0;
+    } while (!done);
+    return f.size;
+}
 INCLUDE_ASM("asm/nonmatchings/common/file", D_006F3B68);
 INCLUDE_ASM("asm/nonmatchings/common/file", D_006F3B90);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileReada__FPcPv);
@@ -337,4 +398,42 @@ __asm__(".section .rodata
 	.word 0
 	.word 0
 	.text");
-INCLUDE_ASM("asm/nonmatchings/common/file", fileAdjustFileName__FPcT0);
+void fileAdjustFileName(char *dst, char *src)
+{
+    char tmp[16];
+    int ci;
+
+    if (strncmp(src, D_006F86A0, 6) == 0)
+        src += 6;
+    else if (strncmp(src, D_006F86A8, 7) == 0)
+        src += 7;
+    else if (*src == '/' || *src == '\\')
+        src++;
+    *(CharPair *)dst = *(CharPair *)D_006F86B0;
+    while (*src) {
+        switch (*src) {
+        case ';':
+            src++;
+            break;
+        case '/':
+        case '\\':
+            strncat(dst, D_006F86B0, 1);
+            break;
+        case '~':
+            src++;
+            break;
+        default:
+            ci = *src;
+            {
+                int up = ci - 0x20;
+                if (!((_ctype_ + 1)[ci] & 2))
+                    up = ci;
+                tmp[0] = up;
+            }
+            strncat(dst, tmp, 1);
+            break;
+        }
+        src++;
+    }
+    strcat(dst, D_006F86B8);
+}
