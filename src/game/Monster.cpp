@@ -747,7 +747,7 @@ bool Monster::isIdle(unsigned t)
 {
     if (*m_state == 0x1E && t < ((unsigned *)m_state)[2])
         return true;
-    if (*m_state == 0x1F && ((int *)m_state)[0x1F] == 0 && t >= ((unsigned *)m_state)[2])
+    if (*m_state == 0x1F && ((int *)m_state)[0x1F] == 0 && t < ((unsigned *)m_state)[2])   /* the retail branch delay slot sets the result to 1 when t < [2] */
         return true;
     return false;
 }
