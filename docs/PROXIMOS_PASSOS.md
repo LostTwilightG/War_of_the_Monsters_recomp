@@ -31,6 +31,7 @@
 - `wsl/gate.sh` (build + SHA1, sai com erro se falhar), `wsl/scoreall.sh` (pontuação por função com NON_MATCHING), `wsl/convert_tus.sh`, `wsl/check.sh`,
   `ccmatch.py`, `nm_wrap.py`, `new_tu.py`, `place_data.py`, `progress.py` (escreve `config/status.csv`), `callgraph.py`, `m2c.sh`, `wsl/variants.py`, `wsl/permute.py`.
 - Scripts `.sh` devem ser criados por heredoc no bash; gravar com Python no Windows deixa CRLF e o `sh` do WSL quebra (`sed -i 's/\r$//'` conserta).
+- README automático: `tools/update_readme.py` (só stdlib, lê `config/status.csv`) reescreve o bloco entre `<!-- PROGRESS:START -->` e `<!-- PROGRESS:END -->` do `README.md` e o `docs/progress.svg`. Hook versionado `.githooks/pre-commit` roda isso e dá `git add`; ativar uma vez por clone com `git config core.hooksPath .githooks`. O hook não roda `progress.py` (leva ~12 s via WSL e precisa de `disc/`): rodar `python3 tools/progress.py` antes de commitar, ou `WOTM_REFRESH=1 git commit ...` para o hook atualizar o `status.csv`. Nunca bloqueia o commit.
 - Mod `/wotm` (HUD) carrega com `startup_command.bat` (no `.gitignore`), que inicia o Claude com `--plugin-dir ~/.claude/my-plugins/wotm-hud`.
 
 ## Headers compartilhados (include/)
