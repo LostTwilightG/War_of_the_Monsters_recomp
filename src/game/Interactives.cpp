@@ -11,7 +11,7 @@ public:
     static int s_numInteractives;
 
     static void init(void);
-    static void addInteractive(DbInteractive *p);
+    static int addInteractive(DbInteractive *p); /* returns the slot: callers store it as the object's hat id */
     static void setInteractive(int i, DbInteractive *p);
     static DbInteractive *getInteractive(int i);
 };
@@ -31,9 +31,12 @@ INCLUDE_ASM("asm/nonmatchings/game/Interactives", init__12Interactives);
 #endif
 #ifdef NON_MATCHING
 /* 5/11 words, untuned: order of count update and store */
-void Interactives::addInteractive(DbInteractive *p)
+int Interactives::addInteractive(DbInteractive *p)
 {
-    s_dbInteractive[s_numInteractives++] = p;
+    int i = s_numInteractives++;
+
+    s_dbInteractive[i] = p;
+    return i;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", addInteractive__12InteractivesP13DbInteractive);
