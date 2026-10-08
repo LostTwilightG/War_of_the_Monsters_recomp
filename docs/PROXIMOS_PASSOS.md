@@ -108,6 +108,9 @@ que o próprio TU define (alias para a cópia do retail). Serve para validar as 
   os ELFs antigos eram de antes das correções de layout. Falta só o crash no loading da fase = `Monster::update` (não dá para automatizar: precisa de input no menu).
   Achado de build: `hierDmaHandler` chamava `hierFlushObjQ` sem protótipo quando só ela era `NON_MATCHING` (variante `h_dma` não linkava); protótipo adicionado em `hieri.cpp`.
   Script de teste automático: abrir `pcsx2-qt.exe -batch -nogui -logfile <log> -elf <elf> -- <iso>`, esperar até `ReportErrorAsync` ou 45 s, `taskkill`.
+- **`Monster::update` revisado contra o asm (2026-10-08)**: dois erros achados e corrigidos: (1) `m_x6874+0xC` era gravado como `int` (apaga +0xD..0xF), o retail faz `sb`;
+  (2) `PadEntry::f5C` é lido com `lb` (agora `signed char`). Resto confere: ordem e alvo das 46 chamadas, ramos, limites `min.s`. `a_update` refeito com isso;
+  **a testar pelo usuário**: `SCUS_971.97_a_update.elf` (entrar numa fase), depois `halfcpp`, `b_cinema`, `c_rest`, `v4_misc`. Não dá para automatizar o menu sem mexer nos bindings (gamepad SDL).
 - difftest ganhou `--init '<python>'` (W/W16/W8/THIS/ARENA/STUB) para montar estado estruturado; `Monster::update` precisa de `m_state` -> objeto com vtable (`W(THIS+0x34,S); W(S+0x10,VT); W16(VT+0x18,0); W(VT+0x1C,STUB)`),
   mas ainda cai em escritas fora do mapa (retail e alt), falta ajustar mais ponteiros.
 - O log do PCSX2 do usuário fica em `~/Documents/PCSX2/logs/emulog.txt`; erros em diálogo também aparecem lá como `ReportErrorAsync`.
