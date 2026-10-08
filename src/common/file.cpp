@@ -23,14 +23,29 @@ struct sceCdRMode {
 };
 extern sceCdRMode cdReadMode;
 
+struct sceCdCLOCK {
+    unsigned char stat, second, minute, hour, pad, day, month, year;
+};
+
+extern char gFileName[];
+extern char globalTimeString[];
+extern char D_00735740[];
+
 extern "C" {
 int sceCdRead(unsigned int lsn, unsigned int sectors, void *buf, sceCdRMode *mode);
 int sceCdSync(int mode);
+int sceCdReadClock(sceCdCLOCK *clock);
+int sceOpen(const char *name, int flags, ...);
+int sceWrite(int fd, const void *buf, int size);
+int sceClose(int fd);
+int printf(const char *fmt, ...);
+int sprintf(char *buf, const char *fmt, ...);
 }
 void setMaxTexId(int i, unsigned short v);
 void setMaxTexAddr(int i, unsigned short v);
 void setMaxResAddr(int i, unsigned short v);
 int fileStringCompare(char *a, char *b);
+void fileAdjustFileName(char *dst, char *src);
 
 INCLUDE_ASM("asm/nonmatchings/common/file", fileInitializeCd__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileReadf__FPcPv);
@@ -38,7 +53,18 @@ INCLUDE_ASM("asm/nonmatchings/common/file", D_006F3B68);
 INCLUDE_ASM("asm/nonmatchings/common/file", D_006F3B90);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileReada__FPcPv);
 INCLUDE_ASM("asm/nonmatchings/common/file", fileReads__FPcPvUi);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileWritef__FPcPvi);
+int fileWritef(char *name, void *buf, int size)
+{
+    int fd;
+
+    fileAdjustFileName(gFileName, name);
+    fd = sceOpen(gFileName, 0x602);
+    if (fd < 0)
+        return -2;
+    sceWrite(fd, buf, size);
+    sceClose(fd);
+    return 0;
+}
 int getTexFilesLoaded(void)
 {
     return fileStatus.texLoaded;
@@ -267,6 +293,48 @@ int fileStringCompare(char *a, char *b)
     }
     return 0;
 }
+#ifdef NON_MATCHING
+/* 38/74 words: same logic; retail keeps two pointers for path[i] (test and copy), gcc merges them here */
+char *fileTrimPath(char *path)
+{
+    int i, j;
+
+    for (i = 0; i < 9; i++)
+        D_00735740[i] = 0;
+    i = 1;
+    while (path[i] != '\\')
+        i++;
+    if (path[i] == '\\' || path[i] == '/' || path[i] == ':')
+        i++;
+    j = 0;
+    while (path[i] != '.') {
+        if (path[i] == '\\') {
+            j = 0;
+            i++;
+        }
+        D_00735740[j++] = path[i++];
+    }
+    D_00735740[j] = 0;
+    printf("fileTrimPath passed in \"%s\", returning \"%s\"\n", path, D_00735740);
+    return D_00735740;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/file", fileTrimPath__FPc);
-INCLUDE_ASM("asm/nonmatchings/common/file", fileGetTimeString__Fv);
+#endif
+char *fileGetTimeString(void)
+{
+    sceCdCLOCK clock;
+
+    if (sceCdReadClock(&clock))
+        sprintf(globalTimeString, "%02x:%02x:%02x", clock.hour, clock.minute, clock.second);
+    else
+        sprintf(globalTimeString, "Error Reading Time");
+    return globalTimeString;
+}
+/* retail rodata keeps three empty strings after "Error Reading Time" */
+__asm__(".section .rodata
+	.word 0
+	.word 0
+	.word 0
+	.text");
 INCLUDE_ASM("asm/nonmatchings/common/file", fileAdjustFileName__FPcT0);
