@@ -18,7 +18,18 @@ extern int inputCtlPadState[INPUT_MAX_PADS] __asm__("D_00779E60");
 extern int inputPadType[INPUT_MAX_PADS] __asm__("D_00779EA0");
 extern int D_00779EC0[INPUT_MAX_PADS];
 extern int D_00779EE0[INPUT_MAX_PADS];
-extern int D_00779F00[INPUT_MAX_PADS];
+extern int inputAnyLatched[INPUT_MAX_PADS] __asm__("D_00779F00"); /* inputGetAnyInput fired; cleared by inputSetInputMode(0) */
+extern int inputPadPort[INPUT_MAX_PADS] __asm__("D_00779E20");
+extern int inputPadSlot[INPUT_MAX_PADS] __asm__("D_00779E40");
+extern unsigned char inputActData[INPUT_MAX_PADS][6] __asm__("D_0077A130"); /* scePadSetActDirect data: [0] small motor, [1] big */
+
+extern "C" {
+void *memset(void *dst, int c, unsigned int n);
+int scePadSetActDirect(int port, int slot, const unsigned char *data);
+}
+int inputGetPadButtons(int pad);
+int inputGetPadAnalog(int pad);
+int inputFixAnalogValue(int axis, int pad);
 extern int inputConfigButtons[INPUT_MAX_PADS][INPUT_CONFIG_BUTTONS] __asm__("D_00779F20");
 extern int inputButtonsMapped[INPUT_MAX_PADS] __asm__("D_0077A040");
 extern int inputPlayerPad[INPUT_MAX_PADS] __asm__("D_0077A060");
@@ -26,11 +37,28 @@ extern int inputActuatorOn[INPUT_MAX_PADS] __asm__("D_0077A0C0");
 extern int inputCtlAvailable[INPUT_MAX_PADS] __asm__("D_0077A0E0");
 
 INCLUDE_ASM("asm/nonmatchings/common/input", inputInit__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/input", inputClearInputs__Fi);
+void inputClearInputs(int pad)
+{
+    InputPadData *d = &inputPadData[pad];
+    unsigned char status = d->status;
+    unsigned char type = d->type;
+
+    memset(d, 0, sizeof(InputPadData));
+    d->status = status;
+    d->type = type;
+}
 INCLUDE_ASM("asm/nonmatchings/common/input", inputUpdate__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/input", inputUpdateState__Fii);
 INCLUDE_ASM("asm/nonmatchings/common/input", inputSetActuator__FiP12ActuatorData);
-INCLUDE_ASM("asm/nonmatchings/common/input", inputStopActuator__FiUc);
+void inputStopActuator(int pad, unsigned char motor)
+{
+    if (motor == 2) {
+        inputActData[pad][0] = 0;
+        inputActData[pad][1] = 0;
+    } else
+        inputActData[pad][motor] = 0;
+    scePadSetActDirect(inputPadPort[pad], inputPadSlot[pad], inputActData[pad]);
+}
 int inputUsingActuator(int pad)
 {
     return inputActuatorOn[pad];
@@ -39,7 +67,16 @@ void inputUseActuator(int pad, bool use)
 {
     inputActuatorOn[pad] = use;
 }
-INCLUDE_ASM("asm/nonmatchings/common/input", inputAnyKey__Fi);
+int inputAnyKey(int pad)
+{
+    int any = 0;
+
+    if (inputCtlAvailable[pad]) {
+        if (inputGetPadButtons(pad) || inputGetPadAnalog(pad))
+            any = 1;
+    }
+    return any;
+}
 int inputIsCtlAvailable(int pad)
 {
     return inputCtlAvailable[pad];
@@ -60,7 +97,27 @@ int inputGetCtlPadState(int pad)
 {
     return inputCtlPadState[pad];
 }
-INCLUDE_ASM("asm/nonmatchings/common/input", inputGetPadAnalog__Fi);
+int inputGetPadAnalog(int pad)
+{
+    union {
+        int all;
+        struct {
+            unsigned int a : 8;
+            unsigned int b : 8;
+            unsigned int c : 8;
+            unsigned int d : 8;
+        } f;
+    } axes;
+
+    axes.all = 0;
+    if (inputCtlAvailable[pad]) {
+        axes.f.a = inputFixAnalogValue(2, pad);
+        axes.f.b = inputFixAnalogValue(3, pad);
+        axes.f.c = inputFixAnalogValue(0, pad);
+        axes.f.d = inputFixAnalogValue(1, pad);
+    }
+    return axes.all;
+}
 void inputSetInputMode(int mode)
 {
     int i;
@@ -70,7 +127,7 @@ void inputSetInputMode(int mode)
         for (i = 0; i < INPUT_MAX_PADS; i++) {
             D_00779EE0[i] = 0;
             D_00779EC0[i] = 300;
-            D_00779F00[i] = 0;
+            inputAnyLatched[i] = 0;
         }
     }
 }
@@ -102,10 +159,49 @@ int inputGetCButtonMap(int pad, int button)
 {
     return inputConfigButtons[pad][button];
 }
-INCLUDE_ASM("asm/nonmatchings/common/input", inputGetAnyInput__Fi);
+int inputGetAnyInput(int pad)
+{
+    if (inputAnyLatched[pad])
+        return 0;
+    if (!inputAnyKey(pad))
+        return 0;
+    inputAnyLatched[pad] = 1;
+    return 1;
+}
 INCLUDE_ASM("asm/nonmatchings/common/input", inputGetInput__Fii);
 INCLUDE_ASM("asm/nonmatchings/common/input", inputGetAnalogButton__Fii);
-INCLUDE_ASM("asm/nonmatchings/common/input", inputGetCtlPadAnalogAxis__Fii);
+int inputGetCtlPadAnalogAxis(int axis, int pad)
+{
+    int v = 0;
+
+    if (inputCtlAvailable[pad]) {
+        switch (axis) {
+        case 0:
+            v = inputPadData[pad].analog[0];
+            break;
+        case 1:
+            v = inputPadData[pad].analog[1];
+            break;
+        case 2:
+            v = inputPadData[pad].analog[2];
+            break;
+        case 3:
+            v = inputPadData[pad].analog[3];
+            break;
+        }
+    }
+    return v;
+}
 INCLUDE_ASM("asm/nonmatchings/common/input", inputGetShellAnalogInput__Fii);
 INCLUDE_ASM("asm/nonmatchings/common/input", inputFixAnalogValue__Fii);
-INCLUDE_ASM("asm/nonmatchings/common/input", inputScaleAnalogButton__Fiii);
+int inputScaleAnalogButton(int value, int min, int max)
+{
+    int v = min + (int)((float)value / 255.0f * ((float)max - (float)min));
+    int mag = v < 0 ? -v : v;
+
+    if (mag < 10)
+        v = 0;
+    else if (max < mag)
+        v = max;
+    return v;
+}
