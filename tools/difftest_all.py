@@ -22,11 +22,11 @@ def nm_functions(path):
     out = []
     for m in re.finditer(r'#ifdef NON_MATCHING\n(?:/\*.*?\*/\n)?(.*?)#else\nINCLUDE_ASM\("[^"]+", (\S+)\);\n#endif', text, re.S):
         body, mangled = m.group(1), m.group(2)
-        sig = re.search(r'^([\w \*&:<>]+?)\s+[\w:]*?(\w+)\(([^)]*)\)', body, re.M)
+        sig = re.search(r'^([^\n(#/]*?)[\w:~]+\(', body, re.M)
         ret = 'void'
         if sig:
-            r = sig.group(1).strip().replace('static ', '')
-            ret = 'void' if r == 'void' else ('float' if r == 'float' else 'int')
+            r = sig.group(1).replace('static ', '').replace('const', '').strip()
+            ret = 'void' if r in ('', 'void') else ('float' if r == 'float' else 'int')
         out.append((mangled, ret))
     return out
 

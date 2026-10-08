@@ -68,6 +68,10 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    Monster *getClosestMonster(float maxDist);
+    Monster *getClosestMonster2D(float maxDist);
+    Monster *getClosestMonsterWithLos(float maxDist);
+    Monster *getClosestMonster(int locA, int locB, float radius);
     bool isIdle(unsigned t);
     int inCameraFov(_fvector &a, _fvector &b);
     void setMat(float (&m)[4][4]);

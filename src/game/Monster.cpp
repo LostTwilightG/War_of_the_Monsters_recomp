@@ -4,6 +4,8 @@
 #include "game/power_ups.h"
 #include "task_manager.h"
 #include "game/level_pickups.h"
+#include "game/enemy_info.h"
+#include "vecmath.h"
 
 class GamePad {
 public:
@@ -44,10 +46,6 @@ class MonsterDynamics {
 public:
     void updateMove(bool b);
     void updateTurn(bool b);
-};
-class EnemyInfo {
-public:
-    static void *getInfo(Monster &a, Monster &b);
 };
 extern int moviePlaying;
 extern int movieAborted;
@@ -370,10 +368,111 @@ void Monster::registerComboHit(Monster *m)
     if (m_playerNum == 1 && m_cameraFollows && !m->isBlocking())
         gameHud(m_cameraView)->registerComboHit();
 }
+#ifdef NON_MATCHING
+/* 31/47 words, untuned: loop pointer hoisting */
+Monster *Monster::getClosestMonster(float maxDist)
+{
+    Monster *best = 0;
+    int j;
+    int n = game->m_numSlots;
+    Monster *m = &game->m_slots[0];
+
+    for (j = 0; j < n; j++, m++) {
+        if (m->m_playerNum != 0 && m != this && m != m_target) {
+            EnemyInfo::Info *e = EnemyInfo::info(m_monsterNum, j);
+
+            if (e->dist < maxDist) {
+                maxDist = e->dist;
+                best = m;
+            }
+        }
+    }
+    return best;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonster__7Monsterf);
+#endif
+#ifdef NON_MATCHING
+/* 31/47 words, untuned: loop pointer hoisting */
+Monster *Monster::getClosestMonster2D(float maxDist)
+{
+    Monster *best = 0;
+    int j;
+    int n = game->m_numSlots;
+    Monster *m = &game->m_slots[0];
+
+    for (j = 0; j < n; j++, m++) {
+        if (m->m_playerNum != 0 && m != this && m != m_target) {
+            EnemyInfo::Info *e = EnemyInfo::info(m_monsterNum, j);
+
+            if (e->dist2D < maxDist) {
+                maxDist = e->dist2D;
+                best = m;
+            }
+        }
+    }
+    return best;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonster2D__7Monsterf);
+#endif
+#ifdef NON_MATCHING
+/* 15/48 words, untuned: loop setup order */
+Monster *Monster::getClosestMonster(int locA, int locB, float radius)
+{
+    _fvector *pa = (_fvector *)((char *)this + locA * 16 - 0x4260);
+    Monster *best = 0;
+    float bestSq = radius * radius;
+    int n = game->m_numSlots;
+    Monster *m = &game->m_slots[0];
+    _fvector *pb = (_fvector *)((char *)game + (locB * 16 - 0x36E0));
+    _fvector d;
+
+    if (n) {
+        do {
+            if (m->m_playerNum != 0 && m != this && m != m_target) {
+                float sq;
+
+                vecSub(&d, pa, pb);
+                sq = vecLenSq(&d);
+                if (sq < bestSq) {
+                    bestSq = sq;
+                    best = m;
+                }
+            }
+            pb = (_fvector *)((char *)pb + sizeof(Monster));
+            m++;
+        } while (--n);
+    }
+    return best;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonster__7Monsteriif);
+#endif
+#ifdef NON_MATCHING
+/* 34/50 words, untuned: loop pointer hoisting */
+Monster *Monster::getClosestMonsterWithLos(float maxDist)
+{
+    Monster *best = 0;
+    int j;
+    int n = game->m_numSlots;
+    Monster *m = &game->m_slots[0];
+
+    for (j = 0; j < n; j++, m++) {
+        if (m->m_playerNum != 0 && m != this && m != m_target) {
+            EnemyInfo::Info *e = EnemyInfo::info(m_monsterNum, j);
+
+            if (e->los && e->dist < maxDist) {
+                maxDist = e->dist;
+                best = m;
+            }
+        }
+    }
+    return best;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterWithLos__7Monsterf);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterToOrientation__7Monsterff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterToOrientation__7Monsteriiff);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", getClosestMonsterToPunch__7Monsterfff);

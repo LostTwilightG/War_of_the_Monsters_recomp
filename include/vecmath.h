@@ -22,6 +22,27 @@ static inline void vecSub(_fvector *dst, _fvector *a, _fvector *b)
                      "sqc2 $vf11, %0"
                      : "=m"(*dst) : "r"(a), "r"(b));
 }
+static inline float vecLenSq(_fvector *v)
+{
+    float *f = (float *)v;
+    register float x __asm__("$f2");
+    register float y __asm__("$f1");
+    register float z __asm__("$f0");
+
+    __asm__ volatile("lwc1 %0, %3
+	"
+                     "lwc1 %1, %4
+	"
+                     "lwc1 %2, %5
+	"
+                     "mula.s %0, %0
+	"
+                     "madda.s %1, %1
+	"
+                     "madd.s %2, %2, %2"
+                     : "=f"(x), "=f"(y), "=f"(z) : "m"(f[0]), "m"(f[1]), "m"(f[2]));
+    return z;
+}
 static inline void vecScale(_fvector *dst, _fvector *a, float s)
 {
     register int t __asm__("$2");
