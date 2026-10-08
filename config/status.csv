@@ -2230,9 +2230,9 @@ game/screen,screenLevelSelect__Fv,0x19b410,2284,asm
 game/screen,screenLoadSave__Fv,0x19bd00,200,asm
 game/screen,setSlider__Fif,0x19bdc8,268,equivalent
 game/screen,screenOptions__Fv,0x19bed8,3988,asm
-game/screen,screenFreeForAllOptions1P__Fv,0x19ce70,1052,asm
+game/screen,screenFreeForAllOptions1P__Fv,0x19ce70,1052,equivalent
 game/screen,screenFreeForAllOptions2P__Fv,0x19d290,756,equivalent
-game/screen,screenElimOptions2P__Fv,0x19d588,868,asm
+game/screen,screenElimOptions2P__Fv,0x19d588,868,equivalent
 game/screen,screenMGSelect__Fv,0x19d8f0,1020,equivalent
 game/screen,screenBestOf__Fv,0x19dcf0,2200,asm
 game/screen,screenMemoryCardInit__Fv,0x19e588,268,asm

@@ -48,6 +48,8 @@ void updateSelectSwitches(int a, int b, int c, int d);
 void updateSelectSwitches3P(int a, int b, int c, int d, int e, int f);
 void updateSelectSwitches4P(int a, int b, int c, int d, int e, int f, int g, int h);
 void initSelectSwitchesMG(void);
+void initSelectSwitches(void);
+void screenPrepareDefault(int a, int b);
 class ShellSound {
 public:
     void playShellSFXSound(int id);
@@ -58,6 +60,7 @@ int screenGetInput(int padMask);
 extern int screenFirstPass;
 extern char *charSelectStringOne;
 extern char promptString2960[] __asm__("promptString.2960");
+extern int numSelectables2948 __asm__("numSelectables.2948");
 extern int numSelectables2952 __asm__("numSelectables.2952");
 extern int numSelectables2959 __asm__("numSelectables.2959");
 
@@ -143,7 +146,9 @@ INCLUDE_ASM("asm/nonmatchings/game/screen", jtbl_006EE850);
 INCLUDE_ASM("asm/nonmatchings/game/screen", D_006EE878);
 INCLUDE_ASM("asm/nonmatchings/game/screen", D_006EE890);
 INCLUDE_ASM("asm/nonmatchings/game/screen", D_006EE8F8);
+#ifndef NON_MATCHING /* the C++ screenElimOptions2P needs no table */
 INCLUDE_ASM("asm/nonmatchings/game/screen", jtbl_006EE960);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/screen", D_006EE978);
 INCLUDE_ASM("asm/nonmatchings/game/screen", jtbl_006EE9D0);
 INCLUDE_ASM("asm/nonmatchings/game/screen", jtbl_006EE9F0);
@@ -217,7 +222,73 @@ void setSlider(int which, float v)
 INCLUDE_ASM("asm/nonmatchings/game/screen", setSlider__Fif);
 #endif
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenOptions__Fv);
+#ifdef NON_MATCHING
+/* One-player free-for-all options: how many AIs (1..3) fight the player. */
+void screenFreeForAllOptions1P(void)
+{
+    int input, sel, i;
+
+    if (screenFirstPass != 0) {
+        numSelectables2948 = 3;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x43C), currentSelection[currScreen]);
+        screenFirstPass = 0;
+        for (i = 2; i >= 0; i--)
+            *(int *)((char *)shell + 0x2948 + i * 4) = 0;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x1D0), 0);
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x1D4), 0);
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x1D8), 0);
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x1C4), 0);
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x1C8), 0);
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x1E0), 0);
+        updateSelectSwitches(0, 0, 1, 1);
+        updateSelectSwitches3P(0, 0, 0, 1, 1, 1);
+        updateSelectSwitches4P(0, 0, 0, 0, 1, 1, 1, 1);
+    }
+    hierSetSwitch(*(_hierswitch **)((char *)shell + 0x43C), currentSelection[currScreen]);
+    myMovie.Play(false, MainMovie);
+    input = screenGetInput(1) & 0xFFFF;
+    switch (input) {
+    case 3:
+        sel = currentSelection[currScreen];
+        currentSelection[currScreen] = sel >= 2 ? sel - 1 : numSelectables2948;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x43C), currentSelection[currScreen]);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(2);
+        return;
+    case 4:
+        sel = currentSelection[currScreen];
+        currentSelection[currScreen] = sel < numSelectables2948 ? sel + 1 : 1;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x43C), currentSelection[currScreen]);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(4);
+        return;
+    case 6:
+        sel = currentSelection[currScreen];
+        if (sel == 0) {
+            shell->m_numAIs = 0;
+            printf("Number of AI set to %i
+", 0);
+            changeScreen(0xC, 3, 1, 0, true);
+        } else if (sel >= 1 && sel <= 3) {
+            shell->m_numAIs = sel;
+            printf("Number of AI set to %i
+", sel);
+            changeScreen(0xC, 0xF, 1, 0, true);
+        } else {
+            printf("One Player Free for All Options Screen has screwed up item indexing! - We think we selected #%i
+", sel);
+        }
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(8);
+        return;
+    case 5:
+        shell->m_numAIs = 0;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x5D0), 0);
+        changeScreen(0xC, prevScreen, -1, 2, true);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(6);
+        break;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenFreeForAllOptions1P__Fv);
+#endif
 #ifdef NON_MATCHING
 /* Two-player free-for-all options: how many AIs join (0, 1 or 2). Input codes from screenGetInput: 3/4 move the cursor, 5 goes back, 6 confirms. */
 void screenFreeForAllOptions2P(void)
@@ -276,7 +347,64 @@ void screenFreeForAllOptions2P(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenFreeForAllOptions2P__Fv);
 #endif
+#ifdef NON_MATCHING
+/* Two-player elimination options: the cursor (0..4) picks the elimination setting, stored (+1) in the shell at 0x2B48 and copied to 0x2B44/0x2B40. */
+void screenElimOptions2P(void)
+{
+    int input, sel;
+
+    if (screenFirstPass != 0) {
+        int a = *(int *)((char *)shell + 0x2B9C);
+        int b = *(int *)((char *)shell + 0x2BA0);
+
+        if (a != 0 || b == 0) {
+            initSelectSwitches();
+            a = *(int *)((char *)shell + 0x2B9C);
+            if (!(a < currentSelection[6] && currentSelection[28] < *(int *)((char *)shell + 0x2BA0))) {
+                currentSelection[6] = a + 1;
+                currentSelection[28] = *(int *)((char *)shell + 0x2BA0) + 1;
+            }
+        }
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x1DC), currentSelection[6]);
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x1E0), currentSelection[28]);
+        screenPrepareDefault(0xB, currentSelection[currScreen]);
+        screenFirstPass = 0;
+    }
+    myMovie.Play(false, MainMovie);
+    input = screenGetInput(1) & 0xFFFF;
+    switch (input) {
+    case 3:
+        sel = currentSelection[currScreen];
+        currentSelection[currScreen] = sel > 0 ? sel - 1 : 4;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x414), currentSelection[currScreen]);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(2);
+        return;
+    case 4:
+        sel = currentSelection[currScreen];
+        currentSelection[currScreen] = sel < 4 ? sel + 1 : 0;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x414), currentSelection[currScreen]);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(4);
+        return;
+    case 6:
+        sel = currentSelection[currScreen];
+        if (sel >= 0 && sel <= 4) {
+            *(int *)((char *)shell + 0x2B48) = sel + 1;
+            changeScreen(0xB, 6, 1, 0, true);
+            initSelectSwitches();
+        }
+        *(int *)((char *)shell + 0x2B44) = *(int *)((char *)shell + 0x2B48);
+        *(int *)((char *)shell + 0x2B40) = *(int *)((char *)shell + 0x2B48);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(8);
+        return;
+    case 5:
+        changeScreen(0xB, prevScreen, -1, 2, true);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(6);
+        break;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenElimOptions2P__Fv);
+#endif
 #ifdef NON_MATCHING
 /* Minigame choice: slot 1..3 picks level 25/26/27 and game mode 7/8/9, each only once its unlock flag is set. Input codes as in screenFreeForAllOptions2P. */
 void screenMGSelect(void)
