@@ -268,7 +268,55 @@ void Monster::endCinema(void)
 }
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateBoundingSphere__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateReticle__7Monster);
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setReticles__7Monsteri);
+void Monster::setReticles(int view)
+{
+    int i;
+    int n = game->m_numMonsters;
+
+    for (i = 0; i < n; i++) {
+        Monster *m = game->m_monsters[i];
+
+        if (view == i) {
+            if (m->okToDrawReticle())
+                *((char *)m->m_reticleCS + 0xC) = 1;
+            {
+                char *d = *(char **)m->m_reticleCS;
+
+                if (d)
+                    d[8] = m->m_reticleState;
+            }
+            if (*(int *)((char *)m + 0x6C00)) {
+                char *s = (char *)m->m_stickyReticleCS;
+
+                if (s)
+                    s[0xC] = 1;
+            }
+        } else if (!gUseUnifiedView) {
+            int mode = game->m_gameMode;
+
+            if (mode != 9) {
+                if (mode != 8) {
+                    char *s;
+
+                    if (m->m_reticleState == 2) {
+                        char *d;
+
+                        if (m->okToDrawReticle())
+                            *((char *)m->m_reticleCS + 0xC) = 1;
+                        d = *(char **)m->m_reticleCS;
+                        if (d)
+                            d[8] = m->m_reticleState;
+                    } else {
+                        *((char *)m->m_reticleCS + 0xC) = 0;
+                    }
+                    s = (char *)m->m_stickyReticleCS;
+                    if (s)
+                        s[0xC] = 0;
+                }
+            }
+        }
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/game/Monster", setTrans__7MonsterR8_fvector);
 void Monster::setRot(float a, float b, float c)
 {

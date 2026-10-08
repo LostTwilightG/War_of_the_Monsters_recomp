@@ -68,6 +68,8 @@ public:
     void stopFireBreath(void);
     void setCloakOff(void);
     void clearEnvMapping(void);
+    static void setReticles(int view);
+    int okToDrawReticle(void);
     void updateWaterWake(float y, bool on);
     Monster *getClosestMonsterToOrientation(float angle, float maxDist);
     void creditStamina(float amount, bool baseOnly);

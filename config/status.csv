@@ -1407,7 +1407,7 @@ game/Monster,getClosestMonster__7Monsterf,0x1605a0,188,equivalent
 game/Monster,getClosestMonster2D__7Monsterf,0x160660,188,equivalent
 game/Monster,getClosestMonster__7Monsteriif,0x160720,192,equivalent
 game/Monster,getClosestMonsterWithLos__7Monsterf,0x1607e0,200,equivalent
-game/Monster,getClosestMonsterToOrientation__7Monsterff,0x1608a8,276,asm
+game/Monster,getClosestMonsterToOrientation__7Monsterff,0x1608a8,276,equivalent
 game/Monster,getClosestMonsterToOrientation__7Monsteriiff,0x1609c0,404,asm
 game/Monster,getClosestMonsterToPunch__7Monsterfff,0x160b58,976,asm
 game/Monster,getClosestMonsterInFOV__7MonsterR8_fvectorfT1fRf,0x160f28,600,asm
@@ -1442,8 +1442,8 @@ game/Monster,updateClosestPath__7Monster,0x162b98,104,matched
 game/Monster,okToDrawReticle__7Monster,0x162c00,204,asm
 game/Monster,setCloakOn__7Monster,0x162cd0,84,matched
 game/Monster,setCloakOff__7Monster,0x162d28,36,matched
-game/Monster,attachFxToHandle__FPiP8_fvectorUi,0x162d50,92,asm
-game/Monster,updateWaterWake__7Monsterfb,0x162db0,224,asm
+game/Monster,attachFxToHandle__FPiP8_fvectorUi,0x162d50,92,matched
+game/Monster,updateWaterWake__7Monsterfb,0x162db0,224,equivalent
 game/Monster,cleanUpForMovie__7Monster,0x162e90,116,equivalent
 game/Monster,setShadowOnOff__7Monsterb,0x162f08,80,matched
 game/Monster,setSecondaryShadowBlocker__7MonsterP3_cs,0x162f58,36,equivalent
