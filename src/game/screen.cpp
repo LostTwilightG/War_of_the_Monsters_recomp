@@ -43,6 +43,23 @@ extern "C" int printf(const char *, ...);
 int inputGetInput(int mask, int pad);
 float screenGetFontAlpha(void);
 void screenSetButtonAlpha(void);
+void changeScreen(int to, int from, int dir, int sfx, bool b);
+void updateSelectSwitches(int a, int b, int c, int d);
+void updateSelectSwitches3P(int a, int b, int c, int d, int e, int f);
+void updateSelectSwitches4P(int a, int b, int c, int d, int e, int f, int g, int h);
+void initSelectSwitchesMG(void);
+class ShellSound {
+public:
+    void playShellSFXSound(int id);
+};
+extern int prevScreen;
+int levelUnlocked(int level);
+int screenGetInput(int padMask);
+extern int screenFirstPass;
+extern char *charSelectStringOne;
+extern char promptString2960[] __asm__("promptString.2960");
+extern int numSelectables2952 __asm__("numSelectables.2952");
+extern int numSelectables2959 __asm__("numSelectables.2959");
 
 int monsterIdToMonsterEnum(int id)
 {
@@ -201,9 +218,134 @@ INCLUDE_ASM("asm/nonmatchings/game/screen", setSlider__Fif);
 #endif
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenOptions__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenFreeForAllOptions1P__Fv);
+#ifdef NON_MATCHING
+/* Two-player free-for-all options: how many AIs join (0, 1 or 2). Input codes from screenGetInput: 3/4 move the cursor, 5 goes back, 6 confirms. */
+void screenFreeForAllOptions2P(void)
+{
+    int *cur = &currentSelection[currScreen];
+    int input, sel;
+
+    if (screenFirstPass != 0) {
+        numSelectables2952 = 2;
+        updateSelectSwitches(0, 0, 1, 1);
+        updateSelectSwitches3P(0, 0, 0, 1, 1, 1);
+        updateSelectSwitches4P(0, 0, 0, 0, 1, 1, 1, 1);
+        screenFirstPass = 0;
+    }
+    hierSetSwitch(*(_hierswitch **)((char *)shell + 0x5CC), 0);
+    hierSetSwitch(*(_hierswitch **)((char *)shell + 0x464), currentSelection[currScreen]);
+    myMovie.Play(false, MainMovie);
+    input = screenGetInput(1) & 0xFFFF;
+    switch (input) {
+    case 3:
+        cur = &currentSelection[currScreen];
+        *cur = *cur > 0 ? *cur - 1 : numSelectables2952;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x464), currentSelection[currScreen]);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(2);
+        return;
+    case 4:
+        cur = &currentSelection[currScreen];
+        if (*cur < numSelectables2952)
+            *cur = *cur + 1;
+        else
+            *cur = 0;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x464), currentSelection[currScreen]);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(4);
+        return;
+    case 6:
+        sel = currentSelection[currScreen];
+        if (sel == 0) {
+            shell->m_numAIs = 0;
+            changeScreen(0xD, 0xF, 1, 0, true);
+        } else if (sel == 1 || sel == 2) {
+            shell->m_numAIs = sel;
+            changeScreen(0xD, 0xF, 1, 0, true);
+        } else {
+            printf("Two Player Free for All Options Screen has screwed up item indexing! - We think we selected #%i
+", sel);
+        }
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(8);
+        return;
+    case 5:
+        shell->m_numAIs = 0;
+        changeScreen(0xD, 5, -1, 2, true);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(6);
+        break;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenFreeForAllOptions2P__Fv);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenElimOptions2P__Fv);
+#ifdef NON_MATCHING
+/* Minigame choice: slot 1..3 picks level 25/26/27 and game mode 7/8/9, each only once its unlock flag is set. Input codes as in screenFreeForAllOptions2P. */
+void screenMGSelect(void)
+{
+    int input, sel;
+
+    if (screenFirstPass != 0) {
+        initSelectSwitchesMG();
+        currentSelection[7] = *(int *)((char *)shell + 0x2B9C) + 1;
+        currentSelection[29] = *(int *)((char *)shell + 0x2BA0);
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x1EC), currentSelection[7]);
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x1F0), currentSelection[29]);
+        charSelectStringOne = promptString2960 + 0x30;
+        screenFirstPass = 0;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x48C), currentSelection[currScreen]);
+    }
+    sel = currentSelection[currScreen];
+    if ((sel == 1 && levelUnlocked(25) == 1) || (sel == 2 && levelUnlocked(26) == 1) || (sel == 3 && levelUnlocked(27) == 1))
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x600), 0);
+    else
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x600), 1);
+    input = screenGetInput(1) & 0xFFFF;
+    switch (input) {
+    case 3:
+        sel = currentSelection[currScreen];
+        currentSelection[currScreen] = sel >= 2 ? sel - 1 : numSelectables2959;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x48C), currentSelection[currScreen]);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(2);
+        return;
+    case 4:
+        sel = currentSelection[currScreen];
+        currentSelection[currScreen] = sel < numSelectables2959 ? sel + 1 : 1;
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x48C), currentSelection[currScreen]);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(4);
+        return;
+    case 6: {
+        int level = 0, mode = 0;
+
+        sel = currentSelection[currScreen];
+        if (sel == 1 && *(int *)((char *)monsterSelectMode + 0x794) == 1) {
+            level = 25;
+            mode = 7;
+        } else if (sel == 2 && *(int *)((char *)monsterSelectMode + 0x7C0) == 1) {
+            level = 26;
+            mode = 8;
+        } else if (sel == 3 && *(int *)((char *)monsterSelectMode + 0x7EC) == 1) {
+            level = 27;
+            mode = 9;
+        }
+        if (level != 0) {
+            shell->m_levelNum = level;
+            *(int *)((char *)shell + 0x2B54) = mode;
+            shell->m_mode = mode;
+            hierSetSwitch(*(_hierswitch **)((char *)shell + 0x48C), 4);
+            changeScreen(0xE, 7, 1, 0, true);
+        }
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(3);
+        return;
+    }
+    case 5:
+        hierSetSwitch(*(_hierswitch **)((char *)shell + 0x5D0), 0);
+        changeScreen(0xE, prevScreen, -1, 8, true);
+        ((ShellSound *)((char *)shell + 0x2918))->playShellSFXSound(6);
+        break;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenMGSelect__Fv);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenBestOf__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenMemoryCardInit__Fv);
 INCLUDE_ASM("asm/nonmatchings/game/screen", screenTransition__Fb);
