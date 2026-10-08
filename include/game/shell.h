@@ -58,6 +58,7 @@ public:
     int Use30HzMode(void);
     int MonsterIsLocked(int i);
     void SelectAI(void);
+    void ResetLevel(void);
     void InitialMemCardScreen(void);
     void LoadLevelDB(void);
     void LoadMonstersDB(void);

@@ -2301,8 +2301,8 @@ game/Shell,formatFilename__5ShellPcPCcT2Q25Shell11_shFileType,0x1aa950,272,asm
 game/Shell,formatFilename1__5ShellPcPCciT2Q25Shell11_shFileType,0x1aaa60,152,asm
 game/Shell,formatFilename__5ShellPcPCcN22,0x1aaaf8,140,asm
 game/Shell,getVramAddr__5Shell,0x1aab88,92,asm
-game/Shell,Use30HzMode__5Shell,0x1aabe8,16,asm
-game/Shell,GetLevelName__5Shell,0x1aabf8,12,asm
+game/Shell,Use30HzMode__5Shell,0x1aabe8,16,matched
+game/Shell,GetLevelName__5Shell,0x1aabf8,12,matched
 game/Shell,SetMenuItemFlag__5Shelliii,0x1aac08,324,asm
 game/Shell,EnableMonsterSelection__5Shelli,0x1aad50,80,asm
 game/Shell,MonsterIsChosen__5Shelli,0x1aada0,40,matched
@@ -2311,8 +2311,8 @@ game/Shell,DisplayLoadBackground__5Shellb,0x1aadd0,796,asm
 game/Shell,MonsterIsLocked__5Shelli,0x1ab0f0,40,matched
 game/Shell,init__7TagList,0x1ab118,140,asm
 game/Shell,LoadLevelFiles__5Shell,0x1ab1a8,584,equivalent
-game/Shell,FinishLoadBar__5Shell,0x1ab3f0,108,asm
-game/Shell,ResetLevel__5Shell,0x1ab460,60,asm
+game/Shell,FinishLoadBar__5Shell,0x1ab3f0,108,matched
+game/Shell,ResetLevel__5Shell,0x1ab460,60,matched
 game/Shell,GenesisMovie__5Shell,0x1ab4a0,216,equivalent
 game/Shell,FadeScreen__5ShellibUcUcUcUcUcUc,0x1ab578,228,asm
 game/Shell,FadeScreen__5ShellibRUiT3UcUcUcUcUcUc,0x1ab660,1124,asm

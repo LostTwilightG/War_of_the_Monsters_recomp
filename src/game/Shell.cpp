@@ -26,6 +26,8 @@ void viewSetNumViews(int n);
 enum _viewports { VIEWPORT_7 = 7 };
 void viewCreate(_viewports vp, int i);
 extern int doTweaks;
+extern int gUseUnifiedView;
+extern int gOkToDrawProgressBar;
 extern int onBitMonsters[] __asm__("on_bit_006EF8E8");
 extern int NUM_LIVES[];
 #define GM(o) (*(int *)((char *)game + (o)))
@@ -635,7 +637,6 @@ public:
     void playerInit(void);
     void aiInit(void);
 };
-extern int gUseUnifiedView;
 
 #define SLOT(i) ((Monster *)((char *)game + 0xB80 + (i) * 0x11190))
 #define HEALTH(m) (*(float *)((char *)(m) + 0x44C))
@@ -1238,8 +1239,14 @@ INCLUDE_ASM("asm/nonmatchings/game/Shell", D_006EF598);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", formatFilename1__5ShellPcPCciT2Q25Shell11_shFileType);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", formatFilename__5ShellPcPCcN22);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", getVramAddr__5Shell);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", Use30HzMode__5Shell);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", GetLevelName__5Shell);
+int Shell::Use30HzMode(void)
+{
+    return m_numPlayers >= 3;
+}
+char *Shell::GetLevelName(void)
+{
+    return whichLevel;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Shell", SetMenuItemFlag__5Shelliii);
 INCLUDE_ASM("asm/nonmatchings/game/Shell", EnableMonsterSelection__5Shelli);
 
@@ -1308,8 +1315,24 @@ void Shell::LoadLevelFiles(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Shell", LoadLevelFiles__5Shell);
 #endif
-INCLUDE_ASM("asm/nonmatchings/game/Shell", FinishLoadBar__5Shell);
-INCLUDE_ASM("asm/nonmatchings/game/Shell", ResetLevel__5Shell);
+/* Ends the loading bar: next macro section, back to one view with viewport 0. */
+void Shell::FinishLoadBar(void)
+{
+    gWhichMacroSection++;
+    gWhichMicroSection = 0;
+    informProgressBar(0.0f);
+    printf(" =+= Finished     time = %s
+", fileGetTimeString());
+    gOkToDrawProgressBar = 0;
+    viewSetNumViews(1);
+    viewCreate((_viewports)0, 0);
+}
+void Shell::ResetLevel(void)
+{
+    ((TheGame *)game)->ResetLevel();
+    if (gUseUnifiedView != 0)
+        Cameras::LeaveUnifiedView(0xA);
+}
 #ifdef NON_MATCHING
 extern int genesisMov __asm__("mov.2987");
 
