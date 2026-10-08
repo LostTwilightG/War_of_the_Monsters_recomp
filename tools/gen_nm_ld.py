@@ -62,7 +62,12 @@ grown = {}
 for k in range(n):
     cs, ce = ctrl[f'__ps_{k}'], ctrl[f'__pe_{k}']
     ns, ne = new[f'__ps_{k}'], new[f'__pe_{k}']
-    if ne - ns > ce - cs + 3:   # up to 3 bytes is only the 4-byte input alignment landing differently
+    # up to 3 bytes is only the 4-byte input alignment landing differently, but only if retail leaves that much room before the next
+    # piece (a piece that ends exactly where the next one starts cannot grow by even one byte)
+    room = 0
+    if k + 1 < n:
+        room = max(0, min(3, ctrl[f'__ps_{k + 1}'] - ce))
+    if ne - ns > ce - cs + room:
         grown[k] = (ne - ns, ce - cs)
 
 out = []

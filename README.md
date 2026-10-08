@@ -27,7 +27,7 @@ Veja [docs/ANALYSIS.md](docs/ANALYSIS.md) para o que já se sabe sobre o execut�
 | Área | Feitas | Total | % | Bytes |
 |---|---:|---:|---:|---|
 | `game` | 471 | 3181 | 14,8% | 31,9 KB de 909,0 KB (3,5%) |
-| `common` / engine | 192 | 1144 | 16,8% | 23,1 KB de 252,4 KB (9,2%) |
+| `common` / engine | 194 | 1144 | 17,0% | 24,7 KB de 252,4 KB (9,8%) |
 
 "Feita" = função `matched` (byte a byte igual ao original) ou `equivalent` (C++ equivalente, ainda sem bater).
 Ignoradas: **1212** funções, sendo 1056 de bibliotecas/SDK (`libs`: gcc, newlib, sce, lib989snd, crt0) e 156 de código de hardware do PS2 (`hw`) que o port substitui.

@@ -3652,8 +3652,8 @@ common/CsPool,_GLOBAL_$I$_6CsPool$m_activeList,0x1f78a0,32,asm
 common/dbs,dbsPush__FPP9_hierheadP8_fvectorUiPA3_fP17_animCharInstance,0x1f78c0,124,asm
 common/dbs,dbsPop__FP9_dbsstackPP9_hierhead,0x1f7940,184,asm
 common/dbs,dbsTraverse__FPP9_hierheadPFP9_hierheadP8_fvectorPA3_f_vP8_fvector,0x1f79f8,2580,asm
-common/dbs,dbsRelocateViaPtrListFile__Fi10_vramAddrs,0x1f8410,824,asm
-common/dbs,dbsRelocateFileZero__F10_vramAddrsb,0x1f8748,784,asm
+common/dbs,dbsRelocateViaPtrListFile__Fi10_vramAddrs,0x1f8410,824,equivalent
+common/dbs,dbsRelocateFileZero__F10_vramAddrsb,0x1f8748,784,equivalent
 common/disp,dispCreate__FP8_Displayii,0x1f8a58,172,hw
 common/disp,dispSetTags__FP8_DisplayPUiPviiiiiii,0x1f8b08,544,hw
 common/disp,setDMAscTag__FPUiUiPvUiUiUiUi,0x1f8d28,84,hw
