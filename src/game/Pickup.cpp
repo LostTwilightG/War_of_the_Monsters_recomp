@@ -1,11 +1,32 @@
 #include "common.h"
 #include "game/pickup.h"
+#include "game/game.h"
+#include "vecmath.h"
+
+__asm__("#SNFIX_SMALL game");
+
+void hdReparentCsGrid(_cs *cs, _fvector *pos, float f);
+class Weapon {
+public:
+    void GetVel(_fvector &v);
+};
+extern _fvector D_00731340;
+
 
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", __6Pickup);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", init__6PickupP9_hierheadR8_fvectorPA3_fb11ePickupType);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", initAfterDbLoad__6Pickup);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", update__6Pickup);
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", regenUpdate__6Pickup);
+bool Pickup::regenUpdate(void)
+{
+    if (--regenTimer <= 0) {
+        unsigned long long b = bits & 1;
+
+        if (b)
+            return true;
+    }
+    return false;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", regen__6Pickup);
 void Pickup::takeHit(_fvector *pos, float dmg, int x)
 {
@@ -17,13 +38,40 @@ void Pickup::takeUseDamage(float dmg)
 }
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", isTargetClear__6PickupP13DbInteractive);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", grab__6Pickupi);
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", drop__6Pickup);
+void Pickup::drop(void)
+{
+    hatCheck();
+    heldState = 0;
+    setVisualState(0);
+    hdReparentCsGrid(cs, (_fvector *)((char *)cs + 0x10), 0.0f);
+}
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", kill__6Pickup);
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", initConfig__6Pickup);
+void Pickup::initConfig(void)
+{
+    health = maxHealth = LevelPickups::s_info[pickupType].health;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", updateCS__6PickupP8_fvectorRA3_A3_fb);
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", getVel__6PickupR8_fvector);
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", getVel__6Pickup);
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", setVisualState__6Pickupi);
+void Pickup::getVel(_fvector &v)
+{
+    if (weapIdx >= 0)
+        ((Weapon *)((char *)gameWeapons() + (weapIdx * 0x170 + 0xC00)))->GetVel(v);
+    else
+        vecScale(&v, (_fvector *)((char *)cs + 0x30), speed);
+}
+_fvector *Pickup::getVel(void)
+{
+    char *vt = *(char **)((char *)this + 0x10);
+
+    (*(void (**)(void *, _fvector *))(vt + 0x2C))((char *)this + *(short *)(vt + 0x28), &D_00731340);
+    return &D_00731340;
+}
+void Pickup::setVisualState(int s)
+{
+    HierSwitch *sw = *(HierSwitch **)((char *)cs->epNode + 0x20);
+
+    if (sw->head.opcode == 6)
+        sw->whichChild = (s < sw->numKids) ? s : sw->numKids - 1;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", hatCheck__6Pickup);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", initLocators__6PickupP9_hierhead);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", initHandle__6PickupP14_hiertranslate);

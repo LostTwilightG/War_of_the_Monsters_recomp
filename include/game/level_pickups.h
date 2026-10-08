@@ -21,7 +21,8 @@ public:
     static void throwPickup(PickupIter it, _fvector &dir, DbInteractive *by, DbInteractive *target);
     static void killPickup(PickupIter it, int how);
     struct Info {
-        char pad0[0x30];
+        float health;        /* 0x00: initial health of the pickup type */
+        char pad4[0x2C];
         float staminaGain;   /* 0x30 */
         char pad34[0x20];
     };

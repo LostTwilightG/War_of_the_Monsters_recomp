@@ -18,7 +18,7 @@ public:
     float maxHealth;          /* 0x40 */
     float speed;              /* 0x44 */
     float health;             /* 0x48 */
-    char pad4C[4];
+    int regenTimer;           /* 0x4C */
     unsigned long long bits;  /* 0x50: bit 0 regenable (cs is shared and must not be deactivated), 1 two-handed, 2 rigid body, 5 dragon head */
     char pad58[0x9C - 0x58];
     float handleRange;        /* 0x9C */
@@ -37,6 +37,11 @@ public:
     void grab(int i);
     void setVisualState(int s);
     void hatCheck(void);
+    void drop(void);
+    bool regenUpdate(void);
+    void initConfig(void);
+    _fvector *getVel(void);
+    void getVel(_fvector &v);
     PickupIter getRef(void);
     void setRef(PickupIter it);
     float getHealth(void);
