@@ -95,3 +95,4 @@ game/AiNavigator
 game/Hud
 game/Weapon
 game/Monster
+game/Pickup

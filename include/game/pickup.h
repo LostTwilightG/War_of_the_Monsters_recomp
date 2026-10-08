@@ -2,27 +2,65 @@
 #define PICKUP_H
 
 #include "hieri_types.h"
+#include "game/level_pickups.h"
 
-/* Base of the pickups (cars, military, subway, tanks ...). Virtual in retail (vptr at 0): derived pickups declare
-   their own non-virtual overrides and keep vtable/ctor/__tf as asm. Members start at 0xE0. */
+/* Base of the pickups (cars, military, subway, tanks ...). Virtual in retail (vptr at 0x10, set by the ctor; offset 0 holds a
+   constant 5): derived pickups declare their own non-virtual overrides and keep vtable/ctor/__tf as asm. sizeof == 0x170. */
 class Pickup {
 public:
-    void *vptr;               /* 0x00 */
+    int kind;                 /* 0x00: the ctor sets 5 */
     unsigned short flags;     /* 0x04: bit 1 cleared on grab/kill, bit 3 cleared when health runs out */
     char pad6[6];
     _cs *cs;                  /* 0x0C */
-    char pad10[0x48 - 0x10];
+    void *vptr;               /* 0x10 */
+    PickupIter ref;           /* 0x14: node of LevelPickups' lists */
+    char pad18[0x40 - 0x18];
+    float maxHealth;          /* 0x40 */
+    float speed;              /* 0x44 */
     float health;             /* 0x48 */
     char pad4C[4];
-    unsigned long long bits;  /* 0x50: bit 0 set when the cs is shared and must not be deactivated */
-    char pad58[0xD8 - 0x58];
-    int heldState;            /* 0xD8: zeroed on drop */
+    unsigned long long bits;  /* 0x50: bit 0 regenable (cs is shared and must not be deactivated), 1 two-handed, 2 rigid body, 5 dragon head */
+    char pad58[0x9C - 0x58];
+    float handleRange;        /* 0x9C */
+    int pickupType;           /* 0xA0 */
+    char padA4[0xB4 - 0xA4];
+    float swipeFar;           /* 0xB4 */
+    char padB8[0xC4 - 0xB8];
+    float swipeNear;          /* 0xC4 */
+    char padC8[0xD0 - 0xC8];
+    int weapIdx;              /* 0xD0 */
+    char padD4[4];
+    int heldState;            /* 0xD8: grabber slot; zeroed on drop */
     char padDC[4];
 
     void kill(void);
     void grab(int i);
     void setVisualState(int s);
     void hatCheck(void);
+    PickupIter getRef(void);
+    void setRef(PickupIter it);
+    float getHealth(void);
+    float getSpeed(void);
+    int getDbId(void);
+    int getPickupType(void);
+    int getWeapIdx(void);
+    void setWeapIdx(int i);
+    int getGrabber(void);
+    void setGrabber(int i);
+    int isRegenable(void);
+    int isTwoHanded(void);
+    int isRigidBody(void);
+    int isADragonHead(void);
+    float getSwipeRange(void);
+    float getHandleRange(void);
+    int getNumCollisSpheres(void);
+    _fvector *getCollisSphereTrans(int i);
+    float getCollisSphereRadius(int i);
+    void resetHealth(void);
+    void takeHit(_fvector *pos, float dmg, int x);
+    void takeUseDamage(float dmg);
+    void updateGenerator(void);
+    void updateGenerator(void *p);
 };
 typedef char _size_Pickup[sizeof(Pickup) == 0xE0 ? 1 : -1];
 

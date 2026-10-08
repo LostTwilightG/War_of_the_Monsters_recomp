@@ -145,7 +145,7 @@ segments:
       - [0x07CFD0, asm, game/PadFlags_4]  # c++, 4 funcs, name: guess
       - [0x07ECC8, cpp, game/PathNet]  # c++, 5 funcs, name: guess
       - [0x07F0B8, cpp, game/PathTool]  # c++, 7 funcs, name: guess
-      - [0x07F3D0, asm, game/Pickup]  # c++, 78 funcs, name: guess
+      - [0x07F3D0, cpp, game/Pickup]  # c++, 78 funcs, name: guess
       - [0x0833C8, asm, game/PlantBoss]  # c++, 27 funcs, name: manual
       - [0x086AA8, asm, game/PowerUps]  # c++, 29 funcs, name: guess
       - [0x088100, cpp, game/PowerUpTool]  # c++, 7 funcs, name: guess
@@ -555,7 +555,7 @@ segments:
       - [0x5EC750, rodata, game/MonsterMc]
       - [0x5ED3F0, rodata, game/MovementStates]
       - [0x5ED870, .rodata, game/PathTool]
-      - [0x5ED8C0, rodata, game/Pickup]
+      - [0x5ED8C0, .rodata, game/Pickup]
       - [0x5EDC10, rodata, game/PlantBoss]
       - [0x5EDEC0, .rodata, game/PowerUpTool]
       - [0x5EDEF8, rodata, game/rt]
