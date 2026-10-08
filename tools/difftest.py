@@ -94,9 +94,11 @@ def build_alt(tu, workdir):
         for s in elf.iter_sections():
             if s['sh_flags'] & 2 and s['sh_type'] == 'SHT_PROGBITS':
                 secs.append((s['sh_addr'], s.data()))
+        adata = {s.name: (s['st_value'], s['st_size']) for s in elf.get_section_by_name('.symtab').iter_symbols()
+                 if s.name and s['st_info']['type'] == 'STT_OBJECT' and s['st_size'] and s.name in sym}
         asym = {s.name: (s['st_value'], s['st_size']) for s in elf.get_section_by_name('.symtab').iter_symbols()
                 if s.name and s['st_info']['type'] == 'STT_FUNC'}
-    return secs, asym, missing
+    return secs, asym, missing, adata
 
 
 def patch_code(buf, base=0, rec=None):
@@ -196,7 +198,7 @@ def spec_from_mangled(sym):
 
 
 class Run:
-    def __init__(self, name, retail_segs, alt_secs, entry, fn_range, entries, seed, spec, objsize=0x4000):
+    def __init__(self, name, retail_segs, alt_secs, entry, fn_range, entries, seed, spec, objsize=0x4000, alias=()):
         self.name = name
         self.entries = entries                # addr -> callee name (every known function start)
         self.entry = entry
@@ -208,6 +210,7 @@ class Run:
         self.uc = uc
         self.qw = {}
         self.high = [0] * 32
+        self.alias = alias
         for vaddr, data, memsz in retail_segs:
             lo = vaddr & ~0xFFF
             hi = (vaddr + memsz + 0xFFF) & ~0xFFF
@@ -252,6 +255,8 @@ class Run:
         words = np.where(kind < 0.40, small, np.where(kind < 0.55, flt, np.where(kind < 0.60, special, ptr))).astype(np.uint32)
         uc.mem_write(ARENA, words.tobytes())
         self.rnd = rnd
+        for ra_, aa_, sz_ in self.alias:       # variables the TU defines itself start from the retail values
+            uc.mem_write(aa_, bytes(uc.mem_read(ra_, sz_)))
         for r in range(32):
             uc.reg_write(UC_MIPS_REG_0 + r, 0)
         uc.reg_write(UC_MIPS_REG_29, STACK_TOP - 0x100)
@@ -391,7 +396,7 @@ class Bench:
         self.tu = tu
         self.sym, self.segs = retail_symbols()
         with tempfile.TemporaryDirectory() as td:
-            self.alt_secs, self.asym, self.missing = build_alt(tu, Path(td))
+            self.alt_secs, self.asym, self.missing, self.adata = build_alt(tu, Path(td))
         self.sizes = {}
         with open(RETAIL, 'rb') as f:
             for s in ELFFile(f).get_section_by_name('.symtab').iter_symbols():
@@ -414,6 +419,7 @@ def run_test(b, func, altname, spec, ret, runs, verbose, objsize=0x4000):
     r_entry = sym[func]
     a_entry, a_size = asym[altname]
     r_size = b.sizes[func]
+    alias = [(sym[n], av, sz) for n, (av, sz) in b.adata.items()]
     r_entries, a_entries = b.r_entries, b.a_entries
 
     class O:
@@ -423,7 +429,7 @@ def run_test(b, func, altname, spec, ret, runs, verbose, objsize=0x4000):
     ok = bad = skipped = 0
     for seed in range(o.runs):
         ra = Run('retail', segs, [], r_entry, (r_entry, r_entry + r_size), r_entries, seed, spec, objsize)
-        rb = Run('alt', segs, alt_secs, a_entry, (a_entry, a_entry + a_size), {**r_entries, **a_entries}, seed, spec, objsize)
+        rb = Run('alt', segs, alt_secs, a_entry, (a_entry, a_entry + a_size), {**r_entries, **a_entries}, seed, spec, objsize, alias)
         # both runs patch the retail code identically; the alt run must also intercept calls into retail code
         rb.entries = {**r_entries, **a_entries}
         fa = ra.execute()
@@ -442,6 +448,16 @@ def run_test(b, func, altname, spec, ret, runs, verbose, objsize=0x4000):
             k = next((i for i in range(min(len(ra.calls), len(rb.calls))) if ra.calls[i] != rb.calls[i]), min(len(ra.calls), len(rb.calls)))
             diffs.append(('calls', f'first difference at call #{k} of {len(ra.calls)}/{len(rb.calls)}', ra.calls[k:k + 2], rb.calls[k:k + 2]))
         sa, sb = ra.snapshot(segs), rb.snapshot(segs)
+        # TU-defined variables: the retail run changed the retail copy, the alt run its own copy
+        for ra_, aa_, sz_ in alias:
+            va = bytes(ra.uc.mem_read(ra_, sz_))
+            vb = bytes(rb.uc.mem_read(aa_, sz_))
+            if va != vb:
+                diffs.append(('variable', hex(ra_), va[:16].hex(), vb[:16].hex()))
+            off = ra_ - 0x400000
+            if 0 <= off and off + sz_ <= len(sa['data']):
+                sa['data'] = sa['data'][:off] + bytes(sz_) + sa['data'][off + sz_:]
+                sb['data'] = sb['data'][:off] + bytes(sz_) + sb['data'][off + sz_:]
         for region, base in (('arena', ARENA), ('data', 0x400000)):
             if sa[region] != sb[region]:
                 x = np.frombuffer(sa[region], dtype=np.uint8)
