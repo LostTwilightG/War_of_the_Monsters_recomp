@@ -89,6 +89,7 @@ public:
     void lightOnFire(float count, float damage, int source);
     void breathFire(void);
     void dropPickupImpaler(void);
+    void dropPickup(void);
     void throwPickup(int a, float b);
     void detachPickupImpaler(bool b);
     void registerComboHit(Monster *m);

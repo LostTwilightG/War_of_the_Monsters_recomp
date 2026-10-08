@@ -435,7 +435,7 @@ extern int aiLeft __asm__("D_006F8BF8");
 extern char BigShotLevel_instance[] __asm__("_12BigShotLevel$instance");
 class StateVictory {
 public:
-    int transitionOK(Monster *m);
+    int transitionOK(void);
 };
 class SoundManager {
 public:
@@ -477,7 +477,7 @@ void TheGame::gameResolveLifeAndDeath(void)
                 if (p->m_unkF7 != 0) {
                     rtReturnToShell(0, 0x1E);
                     fadeOut(4);
-                } else if (p->m_dead == 0 && *p->m_state != 0x40 && ((StateVictory *)p->m_victoryState)->transitionOK(p)) {
+                } else if (p->m_dead == 0 && *p->m_state != 0x40 && ((StateVictory *)p->m_victoryState)->transitionOK()) {
                     m_monsters[0]->enterNewState((MonsterState *)m_monsters[0]->m_victoryState);
                 }
             }

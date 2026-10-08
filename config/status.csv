@@ -1665,7 +1665,7 @@ game/MonsterDynamics,computeAuxiliaries__15MonsterDynamics,0x165970,244,asm
 game/MonsterDynamics,getSpeedModifier__15MonsterDynamics,0x165a68,60,asm
 game/MonsterDynamics,getConfig__15MonsterDynamics,0x165aa8,20,asm
 game/MonsterInit,initBeforeDbLoad__7Monster,0x165ac0,284,equivalent
-game/MonsterInit,init__7Monster,0x165be0,816,asm
+game/MonsterInit,init__7Monster,0x165be0,816,equivalent
 game/MonsterInit,playerInit__7Monster,0x165f10,292,equivalent
 game/MonsterInit,aiInit__7Monster,0x166038,220,equivalent
 game/MonsterInit,initAfterDbLoad__7Monster,0x166118,320,equivalent

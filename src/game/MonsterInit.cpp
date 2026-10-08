@@ -12,6 +12,7 @@ struct DbInteractive;
 class HealthMeter {
 public:
     void init(void);
+    void reset(void);
 };
 class Ai {
 public:
@@ -24,6 +25,9 @@ public:
 class AnimBlend {
 public:
     void init(_animHandle &h);
+    void rampIn(float t);
+    void setSpeed(float s);
+    void setPercent(float p);
 };
 class Interactives {
 public:
@@ -108,7 +112,137 @@ void Monster::initBeforeDbLoad(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/MonsterInit", initBeforeDbLoad__7Monster);
 #endif
+#ifdef NON_MATCHING
+class AnimContact {
+public:
+    void init(_animHandle &h);
+};
+class MonsterDynamics {
+public:
+    void init(void);
+};
+class FireBreath {
+public:
+    void Init(void);
+};
+class MonsterSound {
+public:
+    void initMonsterSound(Monster *m);
+};
+class AiPathNet {
+public:
+    int getClosestPath(_fvector &pos, unsigned char flags);
+};
+void animationResetCharacter(_animHandle &h);
+void hierSetCsDrawMe(_cs *cs, unsigned char v);
+void mathfUnitMatrix(float (*m)[4]);
+void particleKillFx(int &handle);
+extern char pointLights[];
+extern char camerasObj[] __asm__("_7Cameras$m_cameras");
+extern char aiPathNetMonster[] __asm__("_9AiPathNet$monster");
+
+/* Brings a monster to life at the start of a round and after every death: clears the per-life flags (0xE8..0xFD), drops what it carries,
+   kills its effects, resets its cs to an identity matrix, puts it on a start point, re-initialises pad flags, dynamics, contacts, fire
+   breath, meters, sound and the two base animation blends (200-tick ramp, speed 0, half weight), and enters the idle state (0x7984). */
+void Monster::init(void)
+{
+    char *cs;
+    float *mat;
+
+    memset(MP(this, 0xE8), 0, 0x16);
+    MI(this, 0x6870) = 0xFF;
+    *(char *)MP(this, 0xF9) = 1;
+    MI(this, 0x438) = 0;
+    MI(this, 0x68B0) = 0;
+    MI(this, 0x68B4) = 0;
+    MI(this, 0x68B8) = 0;
+    MI(this, 0x6C00) = 0;
+    MI(this, 0x6C04) = 0;
+    MI(this, 0x5020) = 0;
+    *(char *)MP(this, 0x49) = 1;
+    *(char *)MP(this, 0x4A) = 1;
+    MI(this, 0x6C3C) = 0;
+    MI(this, 0x6C30) = 0;
+    *(char *)MP(this, 0x4AC) = 1;
+    MI(this, 0x1A70) = 0;
+    MI(this, 0x4B0) = 0;
+    MI(this, 0x4B4) = 0;
+    MI(this, 0x4B8) = 0;
+    MI(this, 0x4BC) = 0;
+    MI(this, 0x4C0) = 0;
+    MI(this, 0x4C4) = 0;
+    MI(this, 0x4C8) = 0;
+    MI(this, 0x4CC) = 0;
+    MI(this, 0x4D0) = 0;
+    MI(this, 0x686C) = 0;
+    MI(this, 0x6980) = 0;
+    MI(this, 0x6CB8) = 0;
+    MI(this, 0x6CC4) = 0;
+    MI(this, 0x311C) = 0;
+    MI(this, 0x3120) = 0;
+    *(char *)MP(this, 0xF3) = 1;
+    *(char *)MP(this, 0xE8) = 0;
+    *(char *)MP(this, 0xF6) = 0;
+    *(char *)MP(this, 0xFA) = 0;
+    MI(this, 0xD8) = 0;
+    if (MI(this, 0x68A4) != 0)
+        dropPickup();
+    if (MI(this, 0x68A8) != 0 || MI(this, 0x68AC) != 0)
+        dropPickupImpaler();
+    if (MI(this, 0x6974) >= 0)
+        *(int *)(pointLights + (MI(this, 0x6974) << 6) + 0x38) = 1;
+    particleKillFx(*(int *)MP(this, 0x6CB4));
+    particleKillFx(*(int *)MP(this, 0x4A4));
+    particleKillFx(*(int *)MP(this, 0x4A8));
+    particleKillFx(*(int *)MP(this, 0x6C80));
+    particleKillFx(*(int *)MP(this, 0x6C84));
+    particleKillFx(*(int *)MP(this, 0x430));
+    particleKillFx(*(int *)MP(this, 0x434));
+    hierSetCsDrawMe(*(_cs **)MP(this, 0x1A3C), 1);
+    hierSetCsDrawMe(m_cs, 1);
+    cs = (char *)m_cs;
+    cs[0xD] = 1;
+    MI(this, 0xA0) = 0;
+    MI(this, 0xA8) = 0;
+    MI(this, 0xA4) = 0;
+    mathfUnitMatrix((float (*)[4])(cs + 0x20));
+    mat = (float *)(cs + 0x20);
+    memcpy(MP(this, 0x50), mat, 0x40);
+    {
+        float *rot = (float *)((char *)m_cs + 0x60);
+
+        rot[0] = 0.0f;
+        rot[1] = 0.0f;
+        rot[2] = 0.0f;
+        rot[3] = 1.0f;
+    }
+    game->gameGetStartPoint(this);
+    MI(this, 0x1A10) = ((AiPathNet *)aiPathNetMonster)->getClosestPath(*(_fvector *)((char *)m_cs + 0x10), 0xFF);
+    ((PadFlags *)MP(this, 0x5040))->init(this);
+    ((MonsterDynamics *)MP(this, 0x100))->init();
+    ((AnimContact *)MP(this, 0x3124))->init(*(_animHandle *)MP(this, 0x2290));
+    ((FireBreath *)MP(this, 0x68C0))->Init();
+    ((HealthMeter *)MP(this, 0x448))->reset();
+    m_stamina.reset();
+    MI(this, 0x488) = (int)this;
+    ((MonsterSound *)MP(this, 0x1A7C))->initMonsterSound(this);
+    animationResetCharacter(*(_animHandle *)MP(this, 0x2290));
+    ((AnimBlend *)MP(this, 0x2FE0))->rampIn(200.0f);
+    ((AnimBlend *)MP(this, 0x2FE0))->setSpeed(0.0f);
+    ((AnimBlend *)MP(this, 0x2FE0))->setPercent(0.5f);
+    ((AnimBlend *)MP(this, 0x3048))->rampIn(200.0f);
+    ((AnimBlend *)MP(this, 0x3048))->setSpeed(0.0f);
+    ((AnimBlend *)MP(this, 0x3048))->setPercent(0.5f);
+    if (MI(this, 0x30B0) != 0)
+        ((AnimBlend *)MI(this, 0x30B0))->rampIn(0.0f);
+    enterNewState((MonsterState *)MP(this, 0x7984));
+    setCloakOff();
+    MI(camerasObj + MI(this, 0x6CD8) * 0xEB0, 0xD98) = 1;
+    MI(this, 0x2C) = MI(this, 0x2C) + 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/MonsterInit", init__7Monster);
+#endif
 
 #ifdef NON_MATCHING
 /* 10/73 words: retail inlines the list loop */
