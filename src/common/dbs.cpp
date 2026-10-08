@@ -1,12 +1,36 @@
 #include "common.h"
 #include "memory_stack.h"
+#include "hieri_types.h"
 
 extern "C" int printf(const char *, ...);
 extern "C" int sprintf(char *, const char *, ...);
 extern "C" int strcmp(const char *, const char *);
 extern "C" void *memset(void *, int, unsigned);
+extern "C" void *memcpy(void *, const void *, unsigned);
 
 enum _vramAddrs { VRAM_ADDRS_DUMMY };
+
+struct _hierhead;
+struct _animCharInstance;
+/* One level of the database traversal stack (0x60 bytes): the siblings still to visit and the transform to restore. */
+struct _dbsstack {
+    float x, y, z;               /* 0x00: translation (w is not kept) */
+    float pad0C;
+    float mat[4][4];             /* 0x10 */
+    _hierhead **cur;             /* 0x50: next sibling to visit */
+    unsigned remaining;          /* 0x54 */
+    _animCharInstance *anim;     /* 0x58 */
+    int pad5C;
+};
+static inline void copyMat(float (*dst)[4], float (*src)[4])
+{
+    int i;
+
+    for (i = 0; i < 16; i++)
+        ((float *)dst)[i] = ((float *)src)[i];
+}
+extern _dbsstack dbsStack[];
+extern int dbsStackIdx;
 
 int fileReadf(char *name, void *dest);
 char *getNextTexLoadAddr(void);
@@ -25,8 +49,50 @@ extern char D_006F8618[]; /* "UI" */
 extern char D_006F8620[]; /* "shella" */
 extern char D_006F8628[]; /* "SHELLA" */
 
+#ifdef NON_MATCHING
+/* 3/34 words: the matrix copy is 4 lq/sq in retail */
+void dbsPush(_hierhead **list, _fvector *pos, unsigned count, float (*m)[4], _animCharInstance *anim)
+{
+    _dbsstack *e = &dbsStack[dbsStackIdx];
+
+    e->cur = list;
+    e->remaining = count;
+    e->x = pos->x;
+    e->y = pos->y;
+    e->anim = anim;
+    e->z = pos->z;
+    copyMat(e->mat, m);
+    if (dbsStackIdx < 0x96)
+        dbsStackIdx++;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/dbs", dbsPush__FPP9_hierheadP8_fvectorUiPA3_fP17_animCharInstance);
+#endif
+#ifdef NON_MATCHING
+/* 18/46 words: the matrix copy is 4 lq/sq in retail */
+int dbsPop(_dbsstack *out, _hierhead **head)
+{
+    _dbsstack *e = &dbsStack[dbsStackIdx - 1];
+
+    if (dbsStackIdx > 0) {
+        *head = *e->cur;
+        out->x = e->x;
+        out->y = e->y;
+        out->z = e->z;
+        out->anim = e->anim;
+        copyMat(out->mat, e->mat);
+        if (--e->remaining == 0)
+            dbsStackIdx--;
+        else
+            e->cur++;
+    } else {
+        dbsStackIdx--;
+    }
+    return dbsStackIdx;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/dbs", dbsPop__FP9_dbsstackPP9_hierhead);
+#endif
 INCLUDE_ASM("asm/nonmatchings/common/dbs", dbsTraverse__FPP9_hierheadPFP9_hierheadP8_fvectorPA3_f_vP8_fvector);
 /* Relocates the monster image `idx` (mon/<name>.ptr, loaded to a temporary buffer on the memory stack). Images are linked for address
    0xA00000. The pointer file holds four lists, each a count followed by byte offsets into the image (0 = unused):

@@ -1,6 +1,7 @@
 #ifndef SHELL_H
 #define SHELL_H
 
+struct _hierhead;
 enum _vramAddrs { VRAM_ADDRS_DUMMY };
 
 /* Front-end shell: level names and file name formatting used by the point tools. */
@@ -26,6 +27,7 @@ public:
     void LoadResTexture(void);
     void LoadTexture(void);
     _vramAddrs getVramAddr(void);
+    void AddEpNode(int i, _hierhead *h);
     void formatFilename1(char *dst, const char *name, int costume, const char *ext, _shFileType t);
     void formatFilename(char *dst, const char *level, const char *ext, _shFileType t);
     static void formatFilename(char *dst, const char *a, const char *b, const char *c);

@@ -1,4 +1,4 @@
-param([string]$elf, [int]$watch = 40)
+param([string]$elf, [int]$watch = 40, [string]$dump = '')
 $S = $PSScriptRoot
 $log = "C:\Users\TwistZero\WoTM\build\pcsx2_test\log_play_$elf.txt"
 Stop-Process -Name pcsx2-qt -Force -ErrorAction SilentlyContinue; Start-Sleep 2
@@ -20,6 +20,7 @@ for ($i = 0; $i -lt $watch; $i++) {
   $m = Select-String -Path $log -Pattern 'Unrecognized op|ReportErrorAsync|Trap exception' | Select-Object -First 1
   if ($m) { $bad = $m.Line; break }
 }
+if ($dump -and -not $bad) { python "$S\ramdump.py" "C:\Users\TwistZero\WoTM\build\pcsx2_test\SCUS_971.97_$elf.elf" $dump }
 & "$S\emu.ps1" snap "$S\play_$elf.png"
 $rp = (Select-String -Path $log -Pattern 'Rich presence' | Select-Object -Last 1).Line
 "last: $rp"
