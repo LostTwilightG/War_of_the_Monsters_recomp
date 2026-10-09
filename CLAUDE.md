@@ -1,6 +1,11 @@
 # WotM: decompilação de War of the Monsters (PS2, NTSC-U, SCUS-97197)
 
-Projeto de decompilação por correspondência (matching) do executável `SCUS_971.97`. O objetivo final é um port nativo de PC fácil de modar, sem código de emulador. O dono do projeto escreve em português; responda em português.
+Projeto de decompilação do executável `SCUS_971.97`. O objetivo final é um port nativo de PC fácil de modar. O dono do projeto escreve em português; responda em português.
+
+**Direção atual (2026-10-09, em validação):** a base passa a ser o jogo recompilado com o PS2Recomp (fora do repo; o C++ gerado é código do jogo) e a decompilação daqui vira a camada legível que substitui,
+por hook, só o que importa para modar. **Byte match não é mais requisito por função** (`equivalent` basta; `matched` quando sai barato; o `gate.sh` continua obrigatório). Priorize pelo que importa para modar
+usando `config/boot_coverage_asm.csv`, não por tamanho. O VU1/GS emulado do runtime do PS2Recomp é só ponte; o destino é renderização nativa na fronteira da engine. Detalhes em `docs/PROXIMOS_PASSOS.md`
+("Direção atual") e `docs/ANALYSIS.md` ("Recompilação estática"). As regras abaixo continuam valendo; onde disserem "matching", leia "matching quando for o objetivo da função".
 
 Leia antes de começar: `README.md` (setup), `docs/ANALYSIS.md` (o que se sabe do ELF e as convenções de status) e `docs/PROXIMOS_PASSOS.md` (como retomar, ferramentas, headers compartilhados).
 
@@ -33,7 +38,7 @@ Uma pontuação "untuned" pode esconder erro de semântica. Depois de escrever u
 - **Ordem e helpers.** Ao trocar `INCLUDE_ASM` por C++, mantenha as funções na ordem de endereço original (cada definição onde estava seu `INCLUDE_ASM`, nunca agrupadas). Helpers `static`/`static inline` vão dentro de `#ifdef NON_MATCHING`: o ee-gcc 2.95 emite helpers não usados e desloca a ROM.
 - **Strings e rodata.** Mover strings de `INCLUDE_ASM` para C muda o padding do rodata (adicione `.word 0` em asm no `.rodata`). Jump tables de `switch` em C precisam do mesmo padding. Classes virtuais: mantenha vtable, ctor e `__tf` como `INCLUDE_ASM`; `tools/place_data.py` posiciona dados por endereço.
 - **Headers compartilhados.** Mover classe para header pode mudar `sizeof` e deslocar campos de structs parciais. Antes de mexer: `sh tools/wsl/scoreall.sh <todos os TUs de src/game> > ~/base.txt`; depois compare com `diff`.
-- **Truques do compilador.** `__asm__("#SNFIX_SMALL sym")` marca um global como gp-relative; `register float x __asm__("$f2")` fixa registrador FPR; retorno `int` vs `void` do callee muda a alocação; argumentos são avaliados da esquerda para a direita (içar uma chamada para um local move um `addiu`); `sqrt.s` precisa de `.word 0x46040104`.
+- **Truques do compilador.** `__asm__("#SNFIX_SMALL sym")` marca um global como gp-relative; `register float x __asm__("$f2")` fixa registrador FPR; retorno `int` vs `void` do callee muda a alocação; argumentos são avaliados da esquerda para a direita (içar uma chamada para um local move um `addiu`); `sqrt.s` precisa de `.word 0x46040104` (em C++ NM use `eeSqrtf` de `include/vecmath.h`: o gas codifica `sqrtf` na forma MIPS32 e o EE lê `$f0`).
 
 ## Ordem de ataque
 Decompile de cima para baixo ao longo do caminho real de execução, não por filtro de "funções pequenas": `main` → `Shell::LoadLevelFiles/LoadLevelDB/LoadMonstersDB` → `dbInitDb`/`dbsRelocate*`/`file*` → `InitPlayers`/`AddMonster`/`MonsterParse` → laço `rtMain` (hier/animação/desenho) → lógica de `TheGame::Update`. Esses carregadores também documentam os formatos de arquivo. Para o escopo por alcance: `python3 tools/callgraph.py <raízes> --no-libs` (grava `config/callgraph.csv`; copie e restaure se não quiser sobrescrever; só segue `jal`, então é um piso).

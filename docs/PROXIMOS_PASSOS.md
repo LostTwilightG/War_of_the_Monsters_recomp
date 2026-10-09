@@ -1,4 +1,20 @@
-# Próximos passos (atualizado em 2026-10-07 14:10)
+# Próximos passos (atualizado em 2026-10-09)
+
+## Direção atual (decidida com o usuário em 2026-10-09; em validação)
+O objetivo continua sendo um port nativo de PC fácil de modar, mas o **meio** mudou: a base passa a ser o jogo **recompilado** (PS2Recomp, fora do repo) e a decompilação vira a
+camada legível que substitui, por *hook*, só as funções que importam para modar. Consequências práticas:
+- **Byte match deixou de ser requisito por função.** `equivalent` é suficiente para o que vamos modar. `matched` continua sendo bem-vindo quando sai barato, e o `gate.sh`
+  continua obrigatório (a ROM do build normal tem que bater o SHA1).
+- **Fila de prioridade**: `config/boot_coverage_asm.csv` (601 funções ainda em asm que o jogo chama do boot até a interface; é um piso, não cobre gameplay). Priorizar o que é
+  engine/formatos/lógica de jogo (`common/animation`, `AnimCurve`, `mathf`, `hier`, `dbs`, `texm`, `view`; `game/Monster*`, `Shell`, IA) e deixar para o fim memory card,
+  `input`, `vi`, `ps`, `sce/*`, `lib989snd`.
+- **Verificação**: para equivalentes com VU0 ou `min/max/madd` (62 de 329) use `tools/recomp_oracle` (retail × nossa, ambos recompilados); para as demais, `tools/difftest.py`.
+  O oracle já achou dois erros reais (`sqrtf` com `sqrt.s` mal codificado e `sb` virando `sw`; ver "Armadilhas").
+- **Renderização**: a meta é cortar na fronteira da engine (`config/hw_boundary.csv`) e desenhar nativo; o VU1/GS emulado do runtime do PS2Recomp é só ponte para ver imagem.
+  Som, FMVs e entrada completa ficam fora do primeiro port (só um mapeamento mínimo de teclado para o pad).
+- **Pendente**: (1) testar o build do runtime no Windows/MSVC e ver se aparece imagem; (2) PR no PS2Recomp com a correção de `SQRT.S`/`RSQRT.S` (o upstream usa `fs` onde o R5900 usa
+  `ft`; 108 + 76 funções do jogo afetadas); (3) oracle para funções com chamadas (hoje só folhas: 24 de 60 candidatas rodaram); (4) cobertura com gameplay.
+- O que foi medido e como reproduzir está em `tools/recomp_oracle/README.md` e na seção "Recompilação estática" de `docs/ANALYSIS.md`.
 
 ## Onde estamos
 - `sh tools/wsl/gate.sh` diz `ROM OK` (build + SHA1). Último estado medido (`python3 tools/progress.py`): `game` ~170 de 3181 funções
@@ -88,27 +104,30 @@ que o próprio TU define (alias para a cópia do retail). Serve para validar as 
 - Armazenar num campo de `struct` (ex.: `gameHud(i)->f0D0 = 0`) não invalida o `game` já carregado; armazenar via `*(int*)((char*)p + off)` invalida e o gcc recarrega. Por isso `Hud` ganhou campos reais.
 - `EnemyInfo::s_info[i][j']` (include/game/enemy_info.h): tabela par-a-par, `j' = j - 1` quando `i < j`. `vecLenSq` (vecmath.h) = `mula.s/madda.s/madd.s` do retail.
 - Em laços `for (j = 0; j < n; j++, m++)` guardar `n = game->m_numSlots` numa local (senão o gcc recarrega a cada volta).
-- **`ccmatch.py` mascara os nomes dos s�mbolos chamados** (reloca��es): uma fun��o pode dar MATCH chamando um callee com nome/mangling errado (classe local `MemoryStackG` em vez de `MemoryStack`, `transitionOK(Monster*)` em vez de `transitionOK()`). S� vale como "bate" depois do `gate.sh` (link real) com a fun��o fora do `#ifdef NON_MATCHING`.
-- **Vari�vel vs objeto em `__asm__("sym")`**: `shell` e `game` s�o PONTEIROS (`Shell *shell`); `extern char x[] __asm__("shell")` d� o endere�o da vari�vel, n�o do objeto, e `x + 0x2C30` corrompe a mem�ria em sil�ncio (o jogo congelava ~30-40 s depois, com `fileStatus`/`cdFileSystemToc` sobrescritos, `getNgpFilesLoaded()` = 80 e o la�o de anima��o lendo lixo: `cpuTlbMiss` em `animationManager`/`AnimPlayer::UpdateAnimations` no log). S� use `char[]` para objetos de verdade (`gsPkt`, `_7Cameras$m_cameras`, `_12BigShotLevel$instance`); para ponteiros use `extern T *x`. `ccmatch.py` e o gate n�o pegam isso (reloca��es mascaradas); s� jogando.
-- **Build NM com erro de link deixa o `halfcpp.elf` ANTIGO** e o `play.ps1` continua dizendo "OK". Sempre ler a sa�da de `build_nm.sh` procurando `undefined reference` (use `| tail -3`, n�o esconda).
-- **Ordem no arquivo**: cada fun��o nova entra onde estava seu `INCLUDE_ASM` (ordem de endere�o). Declara��es, macros (`GM`, `SHI`) e classes locais que uma fun��o NM usa precisam estar ACIMA do primeiro uso nessa ordem; fun��es que batem (fora do `#ifdef`) s� podem usar declara��es tamb�m fora do `#ifdef`.
-- Chamar um s�mbolo retail com assinatura "criativa" (floats em `$f12`, `this` solto): declarar uma fun��o livre com `__asm__("nome__Mangled")` (ver `src/game/rt.cpp`, bloco `SYM(...)`) em vez de adivinhar a classe; para vari�veis `static` de classe: `extern char x[] __asm__("_12BigShotLevel$instance")`.
-- m2c mostra argumentos a mais em chamadas (`transitionOK(this, monstro)`): o mangling diz quantos par�metros existem de verdade (`transitionOK__12StateVictory` = s� `this`). Confira o nome do s�mbolo antes de escrever.
-- `extern int x;` de uma global gp pode sair como `lui/%lo` no primeiro store (em vez de `%gp_rel`); o rem�dio � o `__asm__("#SNFIX_SMALL x")` descrito acima (n�o testei neste caso: `numModsLeft`, `_7Cameras$m_numCameras` ficaram como equivalentes).
-- Loops de espera por registrador de hardware (`objsInPacket`, `gRtReturn`): declarar `volatile`; sem isso o gcc vira la�o infinito/hoisting.
+- **`ccmatch.py` mascara os nomes dos símbolos chamados** (relocações): uma função pode dar MATCH chamando um callee com nome/mangling errado (classe local `MemoryStackG` em vez de `MemoryStack`, `transitionOK(Monster*)` em vez de `transitionOK()`). Só vale como "bate" depois do `gate.sh` (link real) com a função fora do `#ifdef NON_MATCHING`.
+- **Variável vs objeto em `__asm__("sym")`**: `shell` e `game` são PONTEIROS (`Shell *shell`); `extern char x[] __asm__("shell")` dá o endereço da variável, não do objeto, e `x + 0x2C30` corrompe a memória em silêncio (o jogo congelava ~30-40 s depois, com `fileStatus`/`cdFileSystemToc` sobrescritos, `getNgpFilesLoaded()` = 80 e o laço de animação lendo lixo: `cpuTlbMiss` em `animationManager`/`AnimPlayer::UpdateAnimations` no log). Só use `char[]` para objetos de verdade (`gsPkt`, `_7Cameras$m_cameras`, `_12BigShotLevel$instance`); para ponteiros use `extern T *x`. `ccmatch.py` e o gate não pegam isso (relocações mascaradas); só jogando.
+- **Build NM com erro de link deixa o `halfcpp.elf` ANTIGO** e o `play.ps1` continua dizendo "OK". Sempre ler a saída de `build_nm.sh` procurando `undefined reference` (use `| tail -3`, não esconda).
+- **Ordem no arquivo**: cada função nova entra onde estava seu `INCLUDE_ASM` (ordem de endereço). Declarações, macros (`GM`, `SHI`) e classes locais que uma função NM usa precisam estar ACIMA do primeiro uso nessa ordem; funções que batem (fora do `#ifdef`) só podem usar declarações também fora do `#ifdef`.
+- Chamar um símbolo retail com assinatura "criativa" (floats em `$f12`, `this` solto): declarar uma função livre com `__asm__("nome__Mangled")` (ver `src/game/rt.cpp`, bloco `SYM(...)`) em vez de adivinhar a classe; para variáveis `static` de classe: `extern char x[] __asm__("_12BigShotLevel$instance")`.
+- m2c mostra argumentos a mais em chamadas (`transitionOK(this, monstro)`): o mangling diz quantos parâmetros existem de verdade (`transitionOK__12StateVictory` = só `this`). Confira o nome do símbolo antes de escrever.
+- `extern int x;` de uma global gp pode sair como `lui/%lo` no primeiro store (em vez de `%gp_rel`); o remédio é o `__asm__("#SNFIX_SMALL x")` descrito acima (não testei neste caso: `numModsLeft`, `_7Cameras$m_numCameras` ficaram como equivalentes).
+- **`sqrtf` em C++ NM sai com `sqrt.s` na codificação errada.** O R5900 usa `SQRT.S fd, ft` (fonte em `ft`, `fs=0`; retail `0x46020084`); o gas/ee-gcc emite a forma MIPS32 com a fonte em `fs`
+  (`0x46006044`), que no EE lê `$f0`. Em `AiPathFinder::computeCostEstimate` isso descartava o termo z (comprovado rodando retail × nossa versão recompilada, 300/300 divergentes). O `difftest` (unicorn)
+  não vê isso. Use `eeSqrtf` (`include/vecmath.h`, `.word 0x46040104`) em vez de `sqrtf` em código NM; para varrer um ELF NM: forma errada = `ft==0 && fs!=0` (o retail tem 127 `sqrt.s`, todos `ft`).
+- Loops de espera por registrador de hardware (`objsInPacket`, `gRtReturn`): declarar `volatile`; sem isso o gcc vira laço infinito/hoisting.
 - Ordem de stores em struct pequena pode inverter no gcc 2.95 (`rtReturnToShell`: escrever `code, active, delay` para sair `delay, active, code`).
-- Teste autom�tico: `powershell -ExecutionPolicy Bypass -File tools/pcsx2_auto/play.ps1 halfcpp [-pause]` (sem `-File`/`Bypass` o PowerShell recusa o script). S� exercita 1 jogador/free-for-all; telas de 2P, elimination, minigames e hist�ria n�o s�o cobertas.
+- Teste automático: `powershell -ExecutionPolicy Bypass -File tools/pcsx2_auto/play.ps1 halfcpp [-pause]` (sem `-File`/`Bypass` o PowerShell recusa o script). Só exercita 1 jogador/free-for-all; telas de 2P, elimination, minigames e história não são cobertas.
 
 ## Testar o C++ novo no PCSX2 (meio asm, meio C++)
-- O ROM do build normal � id�ntico ao retail (equivalentes ficam como `INCLUDE_ASM`). Para rodar as equivalentes: `sh tools/wsl/build_nm.sh` (WSL) compila uma c�pia em `~/wotm_nm`
+- O ROM do build normal é idêntico ao retail (equivalentes ficam como `INCLUDE_ASM`). Para rodar as equivalentes: `sh tools/wsl/build_nm.sh` (WSL) compila uma cópia em `~/wotm_nm`
   com `-DNON_MATCHING` e grava `build/pcsx2_test/SCUS_971.97_halfcpp.elf` e `..._control_matching.elf` (controle). Ambos com `p_paddr = p_vaddr` (o PCSX2 carrega por `p_paddr`).
-- Rodar: `pcsx2-qt.exe -elf build\pcsx2_test\SCUS_971.97_halfcpp.elf -- "ISO\SCUS_971.97.War of the Monsters.iso"`. D� para automatizar: `-batch -nogui -logfile <log>` e matar depois de ~30 s;
-  o log mostra `microVU1: Cached Prog`, `FMV started` etc. quando o jogo anda, e `Vif0: Unknown VifCmd` / `microVU0: Possible infinite compiling loop` quando os dados est�o errados.
-- **Layout**: o linker script normal empilha as pe�as (`x.o(.sec)`) uma atr�s da outra e usa `SUBALIGN(4)`, ent�o qualquer fun��o equivalente maior/menor desloca todos os dados que v�m depois
-  (248/252/280 bytes) e os buffers de DMA ficam desalinhados: foi o que quebrou o primeiro teste. `tools/gen_nm_ld.py` gera um script onde toda pe�a que n�o cresceu fica no endere�o retail
-  (`. = <endere�o - base da se��o>`; `.cod_bss` fixo em seu endere�o) e as pe�as que cresceram (13, quase todas `.text`) v�o para `.nm_extra`, depois do bss.
-- `CrushLevel` � compilado com `-G0` no build NM (as strings do c�digo novo cairiam em `.sdata`, onde n�o h� espa�o). `Monster.cpp`: `cloaker` � o s�mbolo `cloaker.2691`.
-- Resultado at� agora: o halfcpp passa do boot e chega � FMV de abertura sem erro de VIF. Falta testar menu/fase.
+- Rodar: `pcsx2-qt.exe -elf build\pcsx2_test\SCUS_971.97_halfcpp.elf -- "ISO\SCUS_971.97.War of the Monsters.iso"`. Dá para automatizar: `-batch -nogui -logfile <log>` e matar depois de ~30 s;
+  o log mostra `microVU1: Cached Prog`, `FMV started` etc. quando o jogo anda, e `Vif0: Unknown VifCmd` / `microVU0: Possible infinite compiling loop` quando os dados estão errados.
+- **Layout**: o linker script normal empilha as peças (`x.o(.sec)`) uma atrás da outra e usa `SUBALIGN(4)`, então qualquer função equivalente maior/menor desloca todos os dados que vêm depois
+  (248/252/280 bytes) e os buffers de DMA ficam desalinhados: foi o que quebrou o primeiro teste. `tools/gen_nm_ld.py` gera um script onde toda peça que não cresceu fica no endereço retail
+  (`. = <endereço - base da seção>`; `.cod_bss` fixo em seu endereço) e as peças que cresceram (13, quase todas `.text`) vão para `.nm_extra`, depois do bss.
+- `CrushLevel` é compilado com `-G0` no build NM (as strings do código novo cairiam em `.sdata`, onde não há espaço). `Monster.cpp`: `cloaker` é o símbolo `cloaker.2691`.
+- Resultado até agora: o halfcpp passa do boot e chega à FMV de abertura sem erro de VIF. Falta testar menu/fase.
 
 ### Bisseção do ELF com C++ novo (estado em 2026-10-08, ~02:00)
 - Layout corrigido (gen_nm_ld.py); o halfcpp completo chega à fase mas trava/crasha. Resultados com variantes (build_nm.sh):
@@ -167,3 +186,30 @@ Agora em C++ (equivalentes, validados no halfcpp: boot -> menu -> fase com jogad
 - `rtMain(first)` (equivalente) é o laço por quadro: `startFrame` → input → por view: `CullView`, double buffer GS, `viewUpdate`, HUD, `hier(view,0)`, `TheGame::Update` (só view 0), `animationRunGlobal`, `Update2` (view 1 ou única), partículas, `TaskManager(debris)`, `hier(view,1)`, DMA; no fim do quadro `updateLevelObjectSoundManager`, `updateSoundManager`, `g_frame++` e o pacing de tempo. Retorna o código dado a `rtReturnToShell` (2 = pausa/diálogo, 3 = sair, 5 = encerrar sessão, 0/1/4 = fim de fase).
 - `rtPauseRT` (START ou controle desconectado → `rtReturnToShell(2, bit do campo GS)`) está equivalente; `play.ps1 halfcpp -pause` aperta START no jogo e fotografa o diálogo (CONTINUE/RESTART/…/QUIT).
 - Números dos códigos de retorno vêm de `Shell::EvaluateGameStatus` e dos `Evaluate*Status` (história, desafio, FFA com/sem IA, endurance, bigshot, crush, dodgeball escritos; falta `EvaluateMultiPlayerBattleStatusNoAI`).
+
+### Observações de jogo ainda sem causa (2026-10-08, `halfcpp` com `takeHit` equivalente)
+- A IA às vezes repete a mesma ação sem parar (pode ser comportamento do jogo original).
+- Dois casos de "teleporte" depois de um golpe forte que arremessa o monstro (um no jogador, um na IA): o último `HitEvent` era tipo 3 / subtipo 30, tratado só com dano (igual ao retail); a causa pode ser o knockback/física fora da `takeHit`. Não confirmado; comparar com `bis_notakehit` (`jogar.bat bis_notakehit`) se voltar a incomodar.
+- Decisão do projeto: primeiro ter código suficiente (equivalente) para um port reproduzir o jogo; acertar byte a byte e corrigir esses detalhes vem depois.
+
+### Roteiro até ter código para um port (2026-10-08)
+Prioridade combinada: cobrir o jogo com código equivalente antes de tentar casar byte a byte. Blocos grandes que ainda são só asm (nº de funções): `MonsterStates` 266, `SpecialStates` 151, `MovementStates` 99 (TU já convertido; só getters feitos), `AiReflex` 147, `AiSeek` 99, `Weapon`/projéteis (~25, `DetonateWeapon` 0x1220), `Hud` (update/print), `Cameras::Update`, `Sound`/`StreamingSoundManager`/`MonsterMc`/`McPage`/`McFile` (hardware: o port troca por áudio/save próprios, só interessa o contrato).
+- **Estados de monstro**: base em `include/game/monster_state.h` (`id`@0, `flags`@4, `owner`@0xC, `vptr`@0x10; vtable `{delta, 0, função}`; ctor e vtable ficam asm, métodos sem `virtual`). Cada estado vive embutido em `Monster` num offset fixo (Recoil 0x7E30, Block 0x7DA0, Stunned 0x10714, Shocked 0x10BA0, Grappled 0xDDCC, vitória 0x10E70, estado especial 0x7980). Ordem sugerida: `transitionOK/transitionFeasible/getRelevantConfig` (pequenos) -> `update` de cada estado -> `transitionInto/handleCollis`.
+- **IA**: `AiReflex` e `AiSeek` dependem de `AiBrain`/`AiNavigator` (já em C++); a navegação (A*, `seek/arrive/tag`) já está.
+- Para cada função: `m2c`, escrever com offsets crus, `scoreall.sh`, depois `tools/nm_calls.py` (compara a ordem das chamadas com o retail) antes de testar jogando.
+
+
+## Notas da sessão da IA (AiAction / Ai / AiReflex / AiSeek)
+
+- **Estrutura**: `include/game/ai.h` (classe `Ai`, campos já vistos), `ai_action.h` (`AiActionTuple`/`AiActionList`/`AiActionGroup`, chamadas virtuais à mão via `AI_VENT`/`VCALL_F`/`VCALL_V`, vptr em 0x44 nas tuplas e 0x84 nas listas) e `ai_support.h` (macros `MI/MF/MB/MP`, `NAV(ai)` = `AiNavigator` embutido em `Ai+0x80`, `FMAX/FMIN`, `StateButtSlam`, `GamePadClipPlayer`...). Cada ação (`AiPunchReflex`, `AiBlockReflex`...) deriva de `AiActionTuple` (0x48 bytes) e os campos próprios começam em 0x48. Ctor, vtable e `__tf` ficam em asm.
+- **min.s / max.s**: o retail usa `max.s`/`min.s`, mas `-ffast-math` (única forma de o gcc 2.95 emitir isso) também reescreve todo `a < b` em `c.le` invertido. Em `Ai` e `AiAction` (`config/tu_flags.txt`) isso fecha; nos TUs com muita comparação use `FMAX`/`FMIN` (asm inline `max.s`), que não mexe nos outros compares.
+- **Build NM com .sdata novo**: constantes float do código equivalente caem em `.sdata`; TUs cujo retail não tem `.sdata` precisam de `-G0` no build NM (`tools/wsl/build_nm.sh`, lista `for t in game/AiAction`). Sintoma: `defined in discarded section .sdata`.
+- **Heredoc de Python**: nesta ferramenta uma barra invertida dupla dentro de heredoc vira uma só, e sequências como barra-1 ou barra-r viram caracteres de controle. Para scripts com regex ou `sed`, grave o arquivo com a ferramenta Write em vez de heredoc (um `build_nm.sh` ficou com `^A`/CR no meio por causa disso).
+- **Fluxo usado para classes de ação**: escrever o C++ a partir do asm, `tools/wsl/scoreall.sh <TU>`; o que bate sai do `#ifdef NON_MATCHING`, o resto fica com nota `untuned: N/M words`. Funções com `switch` (jump table) ficam em NM mesmo quando batem, porque a tabela precisa vir do rodata do retail.
+- **Offsets do Monster vistos de fora** (por offset cru, ainda sem campo nomeado): 0x34 estado atual (id em [0], flags em [1]: 4 = atacando, 0x10 = reação), 0x49 alvo válido, 0x4A ataques ligados, 0x280 no chão, 0x448 vida (max, cur), 0x460 stamina, 0x68A4 objeto segurado (kind em +0xA0), 0x6C34/0x6C38 botão apertado, 0x7978/0x7980 estados especiais, 0xDCE0 StateGrapple, 0xFA1C StateButtSlam.
+
+### Onde parei na IA (2026-10-09, 00:45)
+- `AiReflex`: todas as classes de ação já têm C++ equivalente (ctor, vtable e `__tf` seguem em asm).
+- `AiSeek`: feitos SeekMonster, SeekPickup, SeekHealth, SeekStamina, SeekSpecial, SeekCloak, DodgeRam e DodgeStomp. **Faltam**: `AiDodgeThrow` (entry 0x264, update 0x21C, exit relevance 0x160), `AiDodgeSpecial` (`getExitRelevance`, `updateAction`; entry, enter, exit e `updateFleeSpot` já casam), `AiBatThrow`, `AiCatchThrow` e `AiSwarm` (estados, `getBestTarget`, `updateAction`).
+- Depois do `AiSeek`: `SpecialStates` (151 funções) e os TUs convertidos em 2026-10-09 que ainda estão só como stub (`Grapple*`, `FinalBoss`, `PlantBoss`, `Debris`, `Destructible`, `collision`, `MonsterDynamics`, `MonsterAnimBlend`, `StateThrowBack`, `PowerUps`).
+- O ELF `build/pcsx2_test/SCUS_971.97_next.elf` (todas as equivalências até aqui) ainda não foi testado em jogo.
