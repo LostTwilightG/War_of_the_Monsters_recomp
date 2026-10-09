@@ -18,6 +18,9 @@ struct AiVEntry {
 
 #define AI_VENT(self, vptrOff, off) ((AiVEntry *)(*(char **)((char *)(self) + (vptrOff)) + (off)))
 
+#define VCALL_F(self, off, ai) (((float (*)(void *, Ai &))AI_VENT(self, 0x44, off)->fn)((char *)(self) + AI_VENT(self, 0x44, off)->delta, ai))
+#define VCALL_V(self, off, ai) (((void (*)(void *, Ai &))AI_VENT(self, 0x44, off)->fn)((char *)(self) + AI_VENT(self, 0x44, off)->delta, ai))
+
 class AiActionTuple {
 public:
     float m_weight;         /* 0x00: scale of the relevance */

@@ -13,7 +13,7 @@ class _fvector;
 class Ai {
 public:
     Monster *monster;               /* 0x000 */
-    char pad4[0x44 - 4];
+    Monster *m_opponents[16];       /* 0x004: the other monsters, null-terminated */
     unsigned char *pad;             /* 0x044: the virtual pad the AI drives */
     char pad48[0x2E0 - 0x48];
     int *m_gate;                    /* 0x2E0: pointer to a word that, when 0, lets every action start (mask 3) */
@@ -33,7 +33,10 @@ public:
     int m_mashMin;                  /* 0x1520: button-mash delay range (fields) */
     int m_mashMax;                  /* 0x1524 */
 
-    static int isMinion(void);
+    int isMinion(void);
+    int okayToCC(Monster *m, float f);
+    float getClosestStillApproach(DbInteractive &d, float t);
+    float getClosestApproach(DbInteractive &d, float t);
 
     void setFocus(DbInteractive *d);
     float getGroundHeight(void);

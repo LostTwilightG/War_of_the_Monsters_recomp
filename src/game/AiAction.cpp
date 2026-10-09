@@ -3,8 +3,6 @@
 #include "game/ai.h"
 #include "game/ai_action.h"
 
-#define VCALL_F(self, off, ai) (((float (*)(void *, Ai &))AI_VENT(self, 0x44, off)->fn)((char *)(self) + AI_VENT(self, 0x44, off)->delta, ai))
-#define VCALL_V(self, off, ai) (((void (*)(void *, Ai &))AI_VENT(self, 0x44, off)->fn)((char *)(self) + AI_VENT(self, 0x44, off)->delta, ai))
 #define EPS 1.0e-10f
 
 INCLUDE_ASM("asm/nonmatchings/game/AiAction", __13AiActionTuplef);
