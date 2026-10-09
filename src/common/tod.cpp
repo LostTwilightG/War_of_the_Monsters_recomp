@@ -1,10 +1,73 @@
 #include "common.h"
 #include "hieri_types.h"
 
-/* One time-of-day key (12 of them, 0x80 bytes each); the fields are filled by todSetTOD. */
-struct _todInfo {
-    char data[0x80];
+/* One time-of-day key, file format 1.4 (12 of them, one every two hours); todUpdate blends the keys around the current time. */
+struct _todInfo14 {
+    float time;                                    /* 0x00: hour */
+    float ambientRed, ambientGreen, ambientBlue;   /* 0x04 */
+    float fogMinRange, fogMaxRange, fogMaxVal;     /* 0x10 */
+    float fogFarClip;                              /* 0x1C */
+    float fogRed, fogGreen, fogBlue;               /* 0x20 */
+    float unk2C[3];                                /* 0x2C */
+    float unk38;                                   /* 0x38 */
+    float dirHeading;                              /* 0x3C */
+    float dirRed, dirGreen, dirBlue;               /* 0x40 */
+    float unk4C;                                   /* 0x4C */
+    float backRed, backGreen, backBlue;            /* 0x50 */
+    int sky;                                       /* 0x5C: sky set */
+    float unk60;                                   /* 0x60 */
+    float unk64[7];                                /* 0x64 */
 };
+
+/* Older key layouts accepted by todSetTOD. */
+struct _todInfo10 {
+    float time;
+    float ambientRed, ambientGreen, ambientBlue;
+    float fogRed, fogGreen, fogBlue;
+    float fogMinRange;
+    int sky;
+};
+struct _todInfo11 {
+    float time;
+    float ambientRed, ambientGreen, ambientBlue;
+    float fogRed, fogGreen, fogBlue;
+    float fogMinRange;
+    int sky;
+    float unk24, unk28; /* not loaded */
+    float unk60;
+    float unk64[3];
+};
+struct _todInfo12 {
+    float time;
+    float ambientRed, ambientGreen, ambientBlue;
+    float fogMinRange, fogMaxRange, fogMaxVal, fogFarClip;
+    float fogRed, fogGreen, fogBlue;
+    float unk38;
+    float dirHeading;
+    float dirRed, dirGreen, dirBlue;
+    int sky;
+    float unk44, unk48; /* not loaded */
+    float unk60;
+    float unk64[3];
+};
+struct _todInfo13 {
+    float time;
+    float ambientRed, ambientGreen, ambientBlue;
+    float fogMinRange, fogMaxRange, fogMaxVal, fogFarClip;
+    float fogRed, fogGreen, fogBlue;
+    float unk38;
+    float dirHeading;
+    float dirRed, dirGreen, dirBlue;
+    float unk4C;
+    int sky;
+    float unk60;
+    float unk64[7];
+};
+typedef char _size__todInfo10[sizeof(_todInfo10) == 0x24 ? 1 : -1];
+typedef char _size__todInfo11[sizeof(_todInfo11) == 0x3C ? 1 : -1];
+typedef char _size__todInfo12[sizeof(_todInfo12) == 0x5C ? 1 : -1];
+typedef char _size__todInfo13[sizeof(_todInfo13) == 0x68 ? 1 : -1];
+typedef char _size__todInfo14[sizeof(_todInfo14) == 0x80 ? 1 : -1];
 
 /* Node of the time-of-day key list (indices into CTODLinkList::nodes, -1 = none). */
 struct _LinkNode {
@@ -12,7 +75,7 @@ struct _LinkNode {
     int prev;       /* 0x04 */
     int index;      /* 0x08 */
     int time;       /* 0x0C */
-    _todInfo *info; /* 0x10 */
+    _todInfo14 *info; /* 0x10 */
 };
 
 class CTODLinkList {
@@ -33,7 +96,7 @@ public:
     void ClearNode(_LinkNode *node);
 };
 
-extern _todInfo todInfo[12];
+extern _todInfo14 todInfo[12];
 
 /* One sky group (todSetSkyEntry): its first three objects' colors and UV scroll / fog burn-through. */
 struct _todSky {
@@ -94,8 +157,197 @@ int todActive(void)
 {
     return todTimeOfDayOn;
 }
+#ifdef NON_MATCHING
+/* 98% (16 differing words incl. relocs): the spilled loop counter is reloaded before the compare in retail */
+void todGetTOD(int *on, float *minutesPerSecond, _todInfo14 *out)
+{
+    int i;
+
+    *on = todTimeOfDayOn;
+    *minutesPerSecond = todTimeOfDayMinutesPerSecond;
+    for (i = 0; i < 12; i++, out++) {
+        out->time = todInfo[i].time;
+        out->ambientRed = todInfo[i].ambientRed;
+        out->ambientGreen = todInfo[i].ambientGreen;
+        out->ambientBlue = todInfo[i].ambientBlue;
+        out->fogMinRange = todInfo[i].fogMinRange;
+        out->fogMaxRange = todInfo[i].fogMaxRange;
+        out->fogMaxVal = todInfo[i].fogMaxVal;
+        out->fogFarClip = todInfo[i].fogFarClip;
+        out->fogRed = todInfo[i].fogRed;
+        out->fogGreen = todInfo[i].fogGreen;
+        out->fogBlue = todInfo[i].fogBlue;
+        out->unk2C[0] = todInfo[i].unk2C[0];
+        out->unk2C[1] = todInfo[i].unk2C[1];
+        out->unk2C[2] = todInfo[i].unk2C[2];
+        out->unk38 = todInfo[i].unk38;
+        out->dirHeading = todInfo[i].dirHeading;
+        out->dirRed = todInfo[i].dirRed;
+        out->dirGreen = todInfo[i].dirGreen;
+        out->dirBlue = todInfo[i].dirBlue;
+        out->unk4C = todInfo[i].unk4C;
+        out->backRed = todInfo[i].backRed;
+        out->backGreen = todInfo[i].backGreen;
+        out->backBlue = todInfo[i].backBlue;
+        out->sky = todInfo[i].sky;
+        out->unk60 = todInfo[i].unk60;
+        out->unk64[0] = todInfo[i].unk64[0];
+        out->unk64[1] = todInfo[i].unk64[1];
+        out->unk64[2] = todInfo[i].unk64[2];
+        out->unk64[3] = todInfo[i].unk64[3];
+        out->unk64[4] = todInfo[i].unk64[4];
+        out->unk64[5] = todInfo[i].unk64[5];
+        out->unk64[6] = todInfo[i].unk64[6];
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/tod", todGetTOD__FPiPfP10_todInfo14);
+#endif
+/* Loads the time-of-day settings of a level: 12 keys in file format 1.0 to 1.4 (key times keep their defaults). */
+#ifdef NON_MATCHING
+/* 175/394: same per-version copies; the 1.3 and 1.4 loops strength-reduce different todInfo field addresses (register pressure) */
+void todSetTOD(int on, float minutesPerSecond, void *data, float version)
+{
+    int i;
+
+    if ((unsigned)on < 2)
+        todSetTimeOfDay = on;
+    else
+        todSetTimeOfDay = 0;
+    if (minutesPerSecond <= 60.0f && 0.0f <= minutesPerSecond)
+        todTimeOfDayMinutesPerSecond = minutesPerSecond;
+    else
+        todTimeOfDayMinutesPerSecond = 30.0f;
+    if (version == 1.0f) {
+        _todInfo10 *src = (_todInfo10 *)data;
+
+        for (i = 0; i < 12; i++, src++) {
+            todInfo[i].ambientRed = src->ambientRed;
+            todInfo[i].ambientGreen = src->ambientGreen;
+            todInfo[i].ambientBlue = src->ambientBlue;
+            todInfo[i].fogMinRange = src->fogMinRange;
+            todInfo[i].fogRed = src->fogRed;
+            todInfo[i].fogGreen = src->fogGreen;
+            todInfo[i].fogBlue = src->fogBlue;
+            todInfo[i].sky = src->sky;
+        }
+    }
+    if (version == 1.1f) {
+        _todInfo11 *src = (_todInfo11 *)data;
+
+        for (i = 0; i < 12; i++, src++) {
+            todInfo[i].ambientRed = src->ambientRed;
+            todInfo[i].ambientGreen = src->ambientGreen;
+            todInfo[i].ambientBlue = src->ambientBlue;
+            todInfo[i].fogRed = src->fogRed;
+            todInfo[i].fogGreen = src->fogGreen;
+            todInfo[i].fogBlue = src->fogBlue;
+            todInfo[i].fogMinRange = src->fogMinRange;
+            todInfo[i].sky = src->sky;
+            todInfo[i].unk60 = src->unk60;
+            todInfo[i].unk64[0] = src->unk64[0];
+            todInfo[i].unk64[1] = src->unk64[1];
+            todInfo[i].unk64[2] = src->unk64[2];
+        }
+    }
+    if (version == 1.2f) {
+        _todInfo12 *src = (_todInfo12 *)data;
+
+        for (i = 0; i < 12; i++, src++) {
+            todInfo[i].ambientRed = src->ambientRed;
+            todInfo[i].ambientGreen = src->ambientGreen;
+            todInfo[i].ambientBlue = src->ambientBlue;
+            todInfo[i].fogMinRange = src->fogMinRange;
+            todInfo[i].fogMaxRange = src->fogMaxRange;
+            todInfo[i].fogMaxVal = src->fogMaxVal;
+            todInfo[i].fogFarClip = src->fogFarClip;
+            todInfo[i].fogRed = src->fogRed;
+            todInfo[i].fogGreen = src->fogGreen;
+            todInfo[i].fogBlue = src->fogBlue;
+            todInfo[i].unk38 = src->unk38;
+            todInfo[i].dirHeading = src->dirHeading;
+            todInfo[i].dirRed = src->dirRed;
+            todInfo[i].dirGreen = src->dirGreen;
+            todInfo[i].dirBlue = src->dirBlue;
+            todInfo[i].sky = src->sky;
+            todInfo[i].unk60 = src->unk60;
+            todInfo[i].unk64[0] = src->unk64[0];
+            todInfo[i].unk64[1] = src->unk64[1];
+            todInfo[i].unk64[2] = src->unk64[2];
+        }
+    }
+    if (version == 1.3f) {
+        _todInfo13 *src = (_todInfo13 *)data;
+
+        for (i = 0; i < 12; i++, src++) {
+            todInfo[i].ambientRed = src->ambientRed;
+            todInfo[i].ambientGreen = src->ambientGreen;
+            todInfo[i].ambientBlue = src->ambientBlue;
+            todInfo[i].fogMinRange = src->fogMinRange;
+            todInfo[i].fogMaxRange = src->fogMaxRange;
+            todInfo[i].fogMaxVal = src->fogMaxVal;
+            todInfo[i].fogFarClip = src->fogFarClip;
+            todInfo[i].fogRed = src->fogRed;
+            todInfo[i].fogGreen = src->fogGreen;
+            todInfo[i].fogBlue = src->fogBlue;
+            todInfo[i].unk38 = src->unk38;
+            todInfo[i].dirHeading = src->dirHeading;
+            todInfo[i].dirRed = src->dirRed;
+            todInfo[i].dirGreen = src->dirGreen;
+            todInfo[i].dirBlue = src->dirBlue;
+            todInfo[i].unk4C = src->unk4C;
+            todInfo[i].sky = src->sky;
+            todInfo[i].unk60 = src->unk60;
+            todInfo[i].unk64[0] = src->unk64[0];
+            todInfo[i].unk64[1] = src->unk64[1];
+            todInfo[i].unk64[2] = src->unk64[2];
+            todInfo[i].unk64[3] = src->unk64[3];
+            todInfo[i].unk64[4] = src->unk64[4];
+            todInfo[i].unk64[5] = src->unk64[5];
+            todInfo[i].unk64[6] = src->unk64[6];
+        }
+    }
+    if (version == 1.4f) {
+        _todInfo14 *src = (_todInfo14 *)data;
+
+        for (i = 0; i < 12; i++, src++) {
+            todInfo[i].ambientRed = src->ambientRed;
+            todInfo[i].ambientGreen = src->ambientGreen;
+            todInfo[i].ambientBlue = src->ambientBlue;
+            todInfo[i].fogMinRange = src->fogMinRange;
+            todInfo[i].fogMaxRange = src->fogMaxRange;
+            todInfo[i].fogMaxVal = src->fogMaxVal;
+            todInfo[i].fogFarClip = src->fogFarClip;
+            todInfo[i].fogRed = src->fogRed;
+            todInfo[i].fogGreen = src->fogGreen;
+            todInfo[i].fogBlue = src->fogBlue;
+            todInfo[i].unk2C[0] = src->unk2C[0];
+            todInfo[i].unk2C[1] = src->unk2C[1];
+            todInfo[i].unk2C[2] = src->unk2C[2];
+            todInfo[i].unk38 = src->unk38;
+            todInfo[i].dirHeading = src->dirHeading;
+            todInfo[i].dirRed = src->dirRed;
+            todInfo[i].dirGreen = src->dirGreen;
+            todInfo[i].dirBlue = src->dirBlue;
+            todInfo[i].unk4C = src->unk4C;
+            todInfo[i].backRed = src->backRed;
+            todInfo[i].backGreen = src->backGreen;
+            todInfo[i].backBlue = src->backBlue;
+            todInfo[i].sky = src->sky;
+            todInfo[i].unk60 = src->unk60;
+            todInfo[i].unk64[0] = src->unk64[0];
+            todInfo[i].unk64[1] = src->unk64[1];
+            todInfo[i].unk64[2] = src->unk64[2];
+            todInfo[i].unk64[3] = src->unk64[3];
+            todInfo[i].unk64[4] = src->unk64[4];
+            todInfo[i].unk64[5] = src->unk64[5];
+            todInfo[i].unk64[6] = src->unk64[6];
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/tod", todSetTOD__FifPvf);
+#endif
 float todGetCurrentTOD(void)
 {
     if (todActive())
@@ -139,7 +391,29 @@ void todSetSkyEntry(HierHead *node)
     if (todSky[0].hier && todSky[1].hier && todSky[2].hier && todSky[3].hier)
         todSkySetFound = 1;
 }
-INCLUDE_ASM("asm/nonmatchings/common/tod", todSetSkyObjects__Fiffffff);
+/* Applies a sky's stored layer values to its objects: colors scaled, z fudge / fog burn-through offset. */
+void todSetSkyObjects(int which, float alpha, float zBufferFudge, float fogBurnThru, float red, float green, float blue)
+{
+    _todSky *sky = &todSky[which];
+    _hiergroup *group = (_hiergroup *)sky->hier;
+    float (*row)[4] = (float (*)[4])sky;
+    int i;
+
+    if (group == 0 || group->head.opcode != GROUP_NODE)
+        return;
+    for (i = 0; i < group->numKids; i++) {
+        _hierobject *obj = (_hierobject *)group->child[i];
+
+        if (group->child[i]->opcode == OBJECT_NODE) {
+            obj->fogBurnThru = row[i + 4][2] + fogBurnThru;
+            obj->zBufferFudge = row[i + 4][3] + zBufferFudge;
+            obj->redAnim = row[i + 1][0] * red;
+            obj->greenAnim = row[i + 1][1] * green;
+            obj->blueAnim = row[i + 1][2] * blue;
+            obj->alphaAnim = row[i + 1][3] * alpha;
+        }
+    }
+}
 void todSetPlightsActive(int which, int on)
 {
     s_todPlightsEnabled[which] = on;
