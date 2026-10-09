@@ -40,6 +40,7 @@ public:
     int okayToCC(Monster *m, float f);
     float getClosestStillApproach(DbInteractive &d, float t);
     float getClosestApproach(DbInteractive &d, float t);
+    int inFlight(DbInteractive &d);
 
     void setFocus(DbInteractive *d);
     float getGroundHeight(void);

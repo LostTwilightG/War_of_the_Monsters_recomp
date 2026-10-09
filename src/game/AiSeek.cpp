@@ -60,6 +60,23 @@ public:
     void exitAction(Ai &ai);
 };
 
+/* Getting away from a thrown object (or from an opponent about to throw one at us). */
+class AiDodgeThrow : public AiActionTuple {
+public:
+    Monster *m_target; /* 0x48 */
+    DbInteractive *m_obj; /* 0x4C: the object that will fly */
+    float m_pos[4];    /* 0x50: thrower position when the object was picked */
+    float m_dir[4];    /* 0x60: point to run to; [3] (0x6C) keeps the signed length while it is being built */
+    int m_timer;       /* 0x70 */
+    float m_range;     /* 0x74: 10000.0 */
+
+    float getEntryRelevance(Ai &ai);
+    float getExitRelevance(Ai &ai);
+    void enterAction(Ai &ai);
+    void updateAction(Ai &ai);
+    void exitAction(Ai &ai);
+};
+
 extern float stamMed __asm__("med.2444");
 __asm__("#SNFIX_SMALL med.2444");
 
@@ -801,11 +818,181 @@ INCLUDE_ASM("asm/nonmatchings/game/AiSeek", updateAction__7AiSwarmR2Ai);
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", enterState__7AiSwarmR2AiQ27AiSwarm5State);
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", exitAction__7AiSwarmR2Ai);
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", __12AiDodgeThrow);
+#ifdef NON_MATCHING
+/* untuned: 3/153 words, size 0x254 vs 0x264 */
+float AiDodgeThrow::getEntryRelevance(Ai &ai)
+{
+    float best = 0.0f;
+    Monster **p;
+
+    if (MI(ai.monster, 0x68B4) != 0 || ai.monster->isHolding()) {
+        unsigned long long bits = *(unsigned long long *)MP(MI(MI(ai.monster, 0x68A4), 0), 0x50);
+        if ((int)(bits >> 1) & 1)
+            return 0.0f;
+    }
+    for (p = (Monster **)((char *)&ai + 4); *p; p++) {
+        Monster *o = *p;
+        EnemyInfo::Info *info = EnemyInfo::getInfo(*ai.monster, *o);
+        int id;
+        int obj = 0;
+        float w;
+
+        if (!info->los)
+            continue;
+        if (m_range < info->dist)
+            continue;
+        w = 1.0f;
+        id = STATE_ID(o);
+        if (id == 0x1A) {
+            int held = MI(o, 0x68A4);
+            if (held)
+                obj = MI(held, 0);
+            if (!obj)
+                continue;
+            if (MI(obj, 0xA0) == 7)
+                w = 2.0f;
+        } else if (id == 10) {
+            obj = MI(o, 0x68B4);
+            w = 2.0f;
+        } else if (id == 0x32) {
+            int held = MI(o, 0x68A4);
+            if (held)
+                obj = MI(held, 0);
+            w = 2.0f;
+        }
+        if (!obj)
+            continue;
+        if (MATCH_MODE < 2)
+            w = w * (ai.getFovRelevance(info->dot, -1.0f) * 0.5f + 0.5f);
+        if (MI(o, 0x6C04) == (int)ai.monster)
+            w = w + w;
+        w = w * (1.0f - info->dist / m_range);
+        if (best < w) {
+            m_obj = (DbInteractive *)obj;
+            best = w;
+            m_target = o;
+            {
+                float *src = (float *)MP(MI(o, 0x6BF8), 0x10);
+                m_pos[0] = src[0];
+                m_pos[1] = src[1];
+                m_pos[2] = src[2];
+                m_pos[3] = src[3];
+            }
+        }
+    }
+    if (MB(ai.monster, 0x280))
+        best = best * 0.5f;
+    return best;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", getEntryRelevance__12AiDodgeThrowR2Ai);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 1/100 words, size 0x190 vs 0x160 */
+float AiDodgeThrow::getExitRelevance(Ai &ai)
+{
+    int held = 0;
+
+    if (m_target->isHolding()) {
+        int h = MI(m_target, 0x68A4);
+        if (h && MI(h, 0) == (int)m_obj)
+            held = 1;
+        else {
+            int o = MI(m_target, 0x68B4);
+            if (o && o == (int)m_obj)
+                held = 1;
+        }
+    }
+    if (!held) {
+        if (!ai.inFlight(*m_obj))
+            return 0.0f;
+        if (!MI(m_obj, 0xC))
+            return 0.0f;
+        if (!*(unsigned char *)MP(MI(m_obj, 0xC), 0xC))
+            return 0.0f;
+        {
+            AiVEntry *e = AI_VENT(ai.monster, 0x10, 0x10);
+            float *a = (float *)((_fvector * (*)(void *))e->fn)((char *)ai.monster + e->delta);
+            AiVEntry *e2 = AI_VENT(m_obj, 0x10, 0x10);
+            float *b = (float *)((_fvector * (*)(void *))e2->fn)((char *)m_obj + e2->delta);
+            AiVEntry *e3 = AI_VENT(m_obj, 0x10, 0x20);
+            float *v = (float *)((_fvector * (*)(void *))e3->fn)((char *)m_obj + e3->delta);
+            float d[4];
+
+            d[0] = a[0] - b[0];
+            d[1] = a[1] - b[1];
+            d[2] = a[2] - b[2];
+            if (d[0] * v[0] + d[1] * v[1] + d[2] * v[2] < 0.0f)
+                return 0.0f;
+        }
+    }
+    return FMAX(1.0f, m_entryRel);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", getExitRelevance__12AiDodgeThrowR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiSeek", enterAction__12AiDodgeThrowR2Ai);
+#endif
+void AiDodgeThrow::enterAction(Ai &ai)
+{
+    ai.setFocus((DbInteractive *)m_target);
+    NAV(ai)->target(*(_fvector *)MP(MI(m_target, 0xC), 0x10), 0.1f);
+    m_timer = ai.getReflexDelay();
+}
+#ifdef NON_MATCHING
+/* untuned: 2/165 words, size 0x294 vs 0x21c */
+void AiDodgeThrow::updateAction(Ai &ai)
+{
+    if (EnemyInfo::getInfo(*ai.monster, *m_target)->dot > 0.7f)
+        ai.targetPin();
+    if (--m_timer < 0 && ai.getClosestStillApproach(*m_obj, 2.0f) < 40000.0f) {
+        AiVEntry *e = AI_VENT(m_obj, 0x10, 0x20);
+        float *vel = (float *)((_fvector * (*)(void *))e->fn)((char *)m_obj + e->delta);
+        float v[4];
+        float len, inv, dot, s;
+        float *pos;
+
+        v[0] = vel[0];
+        v[1] = vel[1];
+        v[2] = vel[2];
+        v[3] = vel[3];
+        v[2] = 0.0f;
+        inv = 1.0f / sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        v[0] = v[0] * inv;
+        v[1] = v[1] * inv;
+        v[2] = inv * v[2];
+        mathfVectorCrossUp((_fvector *)m_dir, (_fvector *)v);
+        len = sqrtf(m_dir[0] * m_dir[0] + m_dir[1] * m_dir[1] + m_dir[2] * m_dir[2]);
+        m_dir[3] = len;
+        vel = (float *)MP(ai.monster, 0x260);
+        dot = vel[0] * m_dir[0] + vel[1] * m_dir[1] + vel[2] * m_dir[2];
+        if (dot < v[2])
+            m_dir[3] = -len;
+        s = 100.0f / m_dir[3];
+        m_dir[0] *= s;
+        m_dir[1] *= s;
+        m_dir[2] *= s;
+        pos = (float *)MP(MI(ai.monster, 0xC), 0x10);
+        m_dir[0] += pos[0];
+        m_dir[1] += pos[1];
+        m_dir[2] += pos[2];
+        m_dir[2] += 200.0f;
+        if (NAV(ai)->status == 5)
+            ai.pad[6] = 0xFF;
+        else
+            NAV(ai)->tag(*(_fvector *)m_dir, 50.0f);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", updateAction__12AiDodgeThrowR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiSeek", exitAction__12AiDodgeThrowR2Ai);
+#endif
+void AiDodgeThrow::exitAction(Ai &ai)
+{
+    AiNavigator *nav;
+
+    ai.setFocus(0);
+    nav = NAV(ai);
+    if (nav->status)
+        nav->disable(AiNavigator::STATUS_3, AiNavigator::HINT_0);
+}
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", __12AiCatchThrow);
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", getEntryRelevance__12AiCatchThrowR2Ai);
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", getExitRelevance__12AiCatchThrowR2Ai);

@@ -375,11 +375,11 @@ game/AiSeek,updateAction__7AiSwarmR2Ai,0x111680,728,asm
 game/AiSeek,enterState__7AiSwarmR2AiQ27AiSwarm5State,0x111958,328,asm
 game/AiSeek,exitAction__7AiSwarmR2Ai,0x111aa0,84,asm
 game/AiSeek,__12AiDodgeThrow,0x111af8,92,asm
-game/AiSeek,getEntryRelevance__12AiDodgeThrowR2Ai,0x111b58,612,asm
-game/AiSeek,getExitRelevance__12AiDodgeThrowR2Ai,0x111dc0,352,asm
-game/AiSeek,enterAction__12AiDodgeThrowR2Ai,0x111f20,100,asm
-game/AiSeek,updateAction__12AiDodgeThrowR2Ai,0x111f88,540,asm
-game/AiSeek,exitAction__12AiDodgeThrowR2Ai,0x1121a8,68,asm
+game/AiSeek,getEntryRelevance__12AiDodgeThrowR2Ai,0x111b58,612,equivalent
+game/AiSeek,getExitRelevance__12AiDodgeThrowR2Ai,0x111dc0,352,equivalent
+game/AiSeek,enterAction__12AiDodgeThrowR2Ai,0x111f20,100,matched
+game/AiSeek,updateAction__12AiDodgeThrowR2Ai,0x111f88,540,equivalent
+game/AiSeek,exitAction__12AiDodgeThrowR2Ai,0x1121a8,68,matched
 game/AiSeek,__12AiCatchThrow,0x1121f0,104,asm
 game/AiSeek,getEntryRelevance__12AiCatchThrowR2Ai,0x112258,468,asm
 game/AiSeek,getExitRelevance__12AiCatchThrowR2Ai,0x112430,284,asm
