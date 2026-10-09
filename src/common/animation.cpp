@@ -18,7 +18,7 @@ public:
 
     AnimPlayer(_animCharInstance *ci);
     void UpdateAnimations(void);
-    void AddBlendToActiveList(AnimBlendNode *node);
+    int AddBlendToActiveList(AnimBlendNode *node);
     int RemoveBlendFromActiveList(AnimBlendNode *node);
     int IsBlendInActiveList(AnimBlendNode *node);
     HierHead *GetMainTreeNode(void);
@@ -51,6 +51,23 @@ public:
             freeList[i] = i;
         numUsed = 0;
     }
+
+    /* Gives a node back unless its index is already among the free ones. */
+    void release(AnimBlendNode *node)
+    {
+        unsigned char idx;
+        unsigned char *p;
+        unsigned char n;
+
+        if (numUsed == 0)
+            return;
+        idx = (unsigned)(node - nodes);
+        p = &freeList[numUsed];
+        for (n = 128 - numUsed; n; n--, p++)
+            if (*p == idx)
+                return;
+        freeList[--numUsed] = idx;
+    }
 };
 
 extern MemoryStack D_007329F0; /* scratchpad stack (0x70000000, 16 KB) */
@@ -77,6 +94,7 @@ int animationGetDirection(_animHandle h);
 void animationSetIterations(_animHandle h, unsigned short n);
 void animationSetSpeed(_animHandle h, float speed);
 void animationManager(_animmgr *mgr);
+void animationUpdateActiveTree(HierHead *tree, _animCharInstance *ci);
 
 INCLUDE_ASM("asm/nonmatchings/common/animation", D_006F3150);
 void animationInitModifierBlends(_animCharInstance *ci)
@@ -547,8 +565,56 @@ void animationCollapseBlend(AnimBlendNode *node, _animCharInstance *ci)
     }
     animationCleanUpTree(node->blendFrom, ci);
 }
+#ifdef NON_MATCHING
+/* 72% of words; blend-node release loop: retail tests numUsed before the index and addresses the free list off the pool base */
+void animationCleanUpTree(HierHead *tree, _animCharInstance *ci)
+{
+    if (tree == 0 || ci == 0)
+        return;
+    switch (tree->opcode) {
+    case 0x21: {
+        _animHandle h;
+        h.ci = ci;
+        h.unk8 = 0;
+        h.ctrl = (AnimControlNode *)tree;
+        h.animIdx = ((AnimControlNode *)tree)->anim->animIdx;
+        animationPause(h);
+        break;
+    }
+    case 0x22:
+        animationCleanUpTree(((AnimBlendNode *)tree)->blendFrom, ci);
+        animationCleanUpTree(((AnimBlendNode *)tree)->blendTo, ci);
+        D_00732A08.release((AnimBlendNode *)tree);
+        break;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationCleanUpTree__FP9_hierheadP17_animCharInstance);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationAddToActiveTree__FG11_animHandle);
+#endif
+void animationAddToActiveTree(_animHandle h)
+{
+    _animCharInstance *ci = h.ci;
+    AnimPlayer *player;
+    HierHead *tree;
+
+    if (ci == 0 || h.ctrl == 0)
+        return;
+    player = (AnimPlayer *)ci->activeTree;
+    tree = player->GetMainTreeNode();
+    if (tree) {
+        if (tree->opcode == 0x21) {
+            _animHandle old;
+            old.ci = ci;
+            old.unk8 = 0;
+            old.ctrl = (AnimControlNode *)tree;
+            old.animIdx = ((AnimControlNode *)tree)->anim->animIdx;
+            animationPause(old);
+        } else if (tree->opcode == 0x22) {
+            animationCleanUpTree(tree, ci);
+        }
+    }
+    player->mainTree = (HierHead *)h.ctrl;
+}
 void animationUpdate(HierAnimation *anim, _animCharInstance *ci)
 {
     AnimControlNode *ctrl = &ci->animCtx[anim->animIdx];
@@ -659,8 +725,92 @@ AnimPlayer::AnimPlayer(_animCharInstance *ci)
     activeList = 0;
     numNodes = 0;
 }
-INCLUDE_ASM("asm/nonmatchings/common/animation", UpdateAnimations__10AnimPlayer);
-INCLUDE_ASM("asm/nonmatchings/common/animation", AddBlendToActiveList__10AnimPlayerP14_animBlendNode);
+void AnimPlayer::UpdateAnimations(void)
+{
+    _animCharInstance *ci = animCI;
+    AnimBlendNode *n;
+
+    if (ci->bits.disableCI)
+        return;
+    if (mainTree && (mainTree->opcode != 0x21 || ((AnimControlNode *)mainTree)->active))
+        animationUpdateActiveTree(mainTree, ci);
+    if (activeList == 0)
+        return;
+    if (mainTreePureOut) {
+        float *pure = mainTreePureOut;
+        float *val = animCI->animOutput.val;
+        uint8 *dirty = animCI->animOutput.dirty;
+        int i;
+
+        for (i = 0; i < animCI->character->numChannels; i++, val++, pure++) {
+            if ((dirty[i / 8] >> (i % 8)) & 1)
+                *pure = *val;
+            else
+                *val = *pure;
+        }
+    }
+    n = activeList;
+    while (n) {
+        animationUpdateActiveTree((HierHead *)n, animCI);
+        if (n == n->next) {
+            printf("Animation blend list is broke.  Next pointer equals itself.\n");
+            break;
+        }
+        n = n->next;
+    }
+}
+int AnimPlayer::AddBlendToActiveList(AnimBlendNode *node)
+{
+    int inserted = 0;
+    AnimBlendNode *n = activeList;
+
+    if (n) {
+        while (n && !inserted) {
+            if (n->prev == 0 && n != activeList)
+                printf("STOP HERE(3)\n");
+            if (node->priority < n->priority) {
+                if (n->prev == 0) {
+                    activeList = node;
+                    node->next = n;
+                    n->prev = node;
+                    if (node == n)
+                        printf("AddBlendToActiveList doubly inserting a node(1)\n");
+                    inserted = 1;
+                } else {
+                    if (node == n->prev || node == n)
+                        printf("AddBlendToActiveList doubly inserting a node(2)\n");
+                    inserted = 1;
+                    n->prev->next = node;
+                    node->prev = n->prev;
+                    node->next = n;
+                    n->prev = node;
+                }
+            } else if (n->next == 0) {
+                if (node == n)
+                    printf("AddBlendToActiveList doubly inserting a node(3)\n");
+                n->next = node;
+                inserted = 1;
+                node->prev = n;
+            } else {
+                n = n->next;
+            }
+        }
+    } else {
+        inserted = 1;
+        activeList = node;
+        if (mainTreePureOut) {
+            float *dst = mainTreePureOut;
+            float *src = animCI->animOutput.val;
+            unsigned short count = animCI->character->numChannels;
+            int i;
+
+            for (i = 0; i < count; i++)
+                *dst++ = *src++;
+        }
+    }
+    numNodes++;
+    return inserted;
+}
 int AnimPlayer::RemoveBlendFromActiveList(AnimBlendNode *node)
 {
     AnimBlendNode *n;
