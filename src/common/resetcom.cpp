@@ -22,7 +22,7 @@ public:
     int oldStyleRead(char *buf);
     void init(void);
     void update(void);
-    void getFileAndPathname(int read);
+    void getFileAndPathname(int which);
     int validFileAndExtension(int read);
     void forceRead(void);
     void forceRead(int on);
@@ -32,7 +32,11 @@ public:
     void setFileName(char *name, bool flag);
 };
 
-extern "C" char *strcpy(char *dst, const char *src);
+extern "C" {
+char *strcpy(char *dst, const char *src);
+int printf(const char *fmt, ...);
+}
+int fileWritef(char *name, void *buf, int size);
 int fileReadf(char *name, void *dest);
 
 INCLUDE_ASM("asm/nonmatchings/common/resetcom", __8resetcom);
@@ -48,7 +52,26 @@ int resetcom::oldStyleRead(char *)
 void resetcom::init(void)
 {
 }
-INCLUDE_ASM("asm/nonmatchings/common/resetcom", update__8resetcom);
+void resetcom::update(void)
+{
+    m_buf = m_data;
+    if (m_forceRead) {
+        getFileAndPathname(m_forceRead);
+        if (fileReadf(m_path, m_buf) <= 0)
+            printf("ACCESS_DENIED to the reset file %s.\n", m_path);
+        else
+            read(m_buf);
+        m_forceRead = 0;
+        if (m_forceWrite)
+            m_forceWrite = 0;
+    } else if (m_forceWrite) {
+        getFileAndPathname(m_forceWrite);
+        printf("Saving reset file named : %s\n", m_path);
+        write(m_buf);
+        fileWritef(m_path, m_buf, 0xC000);
+        m_forceWrite = 0;
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/common/resetcom", getFileAndPathname__8resetcomi);
 int resetcom::validFileAndExtension(int read)
 {
