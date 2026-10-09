@@ -4,7 +4,10 @@
 
 class Monster;
 class AiPath;
-class AiPathNet;
+class AiPathNet {
+public:
+    AiPath *getClosestPath(_fvector &pos, unsigned char flags);
+};
 struct _hdResult;
 struct DbInteractive;
 
@@ -119,6 +122,7 @@ public:
     void updateSeek(void);
     AiPath *getFleePath(_fvector &p);
     void nextPathPoint(void);
+    void tag(_fvector &p, float r);
 };
 
 AiNavigator::AiNavigator(Monster &m) : monster(&m), sensor(*this), pathFinder(*s_net, m)
@@ -153,7 +157,23 @@ void AiNavigator::wander(_fvector &p)
     mode = 1;
     status = 0;
 }
+#ifdef NON_MATCHING
+/* Navigation mode 2: go to `p`, stopping within `r`. */
+void AiNavigator::seek(_fvector &p, float r)
+{
+    goal = &p;
+    f18C = 0;
+    f190 = (int)s_net->getClosestPath(p, *(unsigned char *)(*(char **)((char *)monster + 0x1A10) + 0xC));
+    f198 = r;
+    f19C = 1.0f;
+    mode = 2;
+    f194 = r;
+    status = 0;
+    pathInfo.init(*(AiPath **)((char *)monster + 0x1A10), goal);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", seek__11AiNavigatorR8_fvectorf);
+#endif
 void AiNavigator::seek(DbInteractive &it, float r)
 {
     seek(*(_fvector *)((char *)*(_cs **)((char *)&it + 0xC) + 0x10), r);
@@ -167,13 +187,41 @@ void AiNavigator::target(_fvector &p, float r)
     mode = 3;
     goal = &p;
 }
-INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", arrive__11AiNavigatorR8_fvectorfff);
+/* Navigation mode 4: go to `p` and slow down on arrival (a, b, c are the arrival parameters). */
+void AiNavigator::arrive(_fvector &p, float a, float b, float c)
+{
+    goal = &p;
+    f18C = 0;
+    f190 = (int)s_net->getClosestPath(p, *(unsigned char *)(*(char **)((char *)monster + 0x1A10) + 0xC));
+    f194 = a;
+    f198 = b;
+    f19C = c;
+    mode = 4;
+    status = 0;
+    pathInfo.init(*(AiPath **)((char *)monster + 0x1A10), goal);
+}
 void AiNavigator::arrive(DbInteractive &it, float a, float b, float c)
 {
     arrive(*(_fvector *)((char *)*(_cs **)((char *)&it + 0xC) + 0x10), a, b, c);
     f18C = hatId(it);
 }
+#ifdef NON_MATCHING
+/* Navigation mode 5: chase `p` (tag game). */
+void AiNavigator::tag(_fvector &p, float r)
+{
+    goal = &p;
+    f18C = 0;
+    f190 = (int)s_net->getClosestPath(p, *(unsigned char *)(*(char **)((char *)monster + 0x1A10) + 0xC));
+    f198 = r;
+    f19C = 1.0f;
+    mode = 5;
+    f194 = r;
+    status = 0;
+    pathInfo.init(*(AiPath **)((char *)monster + 0x1A10), goal);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", tag__11AiNavigatorR8_fvectorf);
+#endif
 #ifdef NON_MATCHING
 /* 10/12 words: store order of the eight fields differs */
 void AiNavigator::flee(_fvector &p, float r)
