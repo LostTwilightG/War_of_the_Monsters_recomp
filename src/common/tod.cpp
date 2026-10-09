@@ -135,6 +135,7 @@ extern _todSky todSky[10];
 extern int s_todPlightsEnabled[];
 
 int todActive(void);
+float todCalculateValue(int i, float lo, float hi);
 
 void todBoundAngle(float *angle)
 {
@@ -148,7 +149,89 @@ float todCalculateValue(int i, float lo, float hi)
 {
     return lo + cosf(((float)i / 5.5f - 1.0f) * 1.5707964f) * (hi - lo);
 }
-INCLUDE_ASM("asm/nonmatchings/common/tod", todInit__Fv);
+void todInit(void)
+{
+    int i;
+
+    todNumSkys = 0;
+    todTimeOfDayMinutesPerSecond = 30.0f;
+    todSkySetFound = 0;
+    todTimeOfDayOn = 0;
+    todSetTimeOfDay = 0;
+    todTimeOfDay = 0.0f;
+    todFrame = 0;
+    todAddFrame = 0;
+    todDeleteFrame = 0;
+    for (i = 9; i >= 0; i--)
+        todSky[i].hier = 0;
+    for (i = 0; i < 12; i++) {
+        todInfo[i].ambientRed = todCalculateValue(i, 10.0f, 30.0f);
+        todInfo[i].ambientGreen = todCalculateValue(i, 10.0f, 30.0f);
+        todInfo[i].ambientBlue = todCalculateValue(i, 10.0f, 30.0f);
+        todInfo[i].fogMinRange = 3000.0f;
+        todInfo[i].fogMaxRange = 8000.0f;
+        todInfo[i].fogMaxVal = 255.0f;
+        todInfo[i].fogFarClip = 8000.0f;
+        todInfo[i].fogRed = todCalculateValue(i, 20.0f, 50.0f);
+        todInfo[i].fogGreen = todCalculateValue(i, 20.0f, 50.0f);
+        todInfo[i].fogBlue = todCalculateValue(i, 20.0f, 50.0f);
+        todInfo[i].unk2C[0] = todCalculateValue(i, 20.0f, 90.0f);
+        todInfo[i].unk2C[1] = todCalculateValue(i, 20.0f, 90.0f);
+        todInfo[i].unk2C[2] = todCalculateValue(i, 20.0f, 90.0f);
+        todInfo[i].unk38 = 0.0f;
+        todInfo[i].dirRed = todCalculateValue(i, 70.0f, 70.0f);
+        todInfo[i].dirGreen = todCalculateValue(i, 70.0f, 200.0f);
+        todInfo[i].dirBlue = todCalculateValue(i, 70.0f, 200.0f);
+        todInfo[i].unk4C = 20.0f;
+        todInfo[i].backRed = 128.0f;
+        todInfo[i].backGreen = 128.0f;
+        todInfo[i].backBlue = 128.0f;
+        todInfo[i].unk60 = 0.0f;
+        todInfo[i].unk64[0] = 1.0f;
+        todInfo[i].unk64[1] = 1.0f;
+        todInfo[i].unk64[2] = 1.0f;
+        todInfo[i].unk64[3] = 1.0f;
+        todInfo[i].unk64[4] = 1.0f;
+        todInfo[i].unk64[5] = 1.0f;
+        todInfo[i].unk64[6] = 1.0f;
+    }
+    todInfo[0].time = 0.0f;
+    todInfo[1].time = 2.0f;
+    todInfo[2].time = 4.0f;
+    todInfo[3].time = 6.0f;
+    todInfo[4].time = 8.0f;
+    todInfo[5].time = 10.0f;
+    todInfo[6].time = 12.0f;
+    todInfo[7].time = 14.0f;
+    todInfo[8].time = 16.0f;
+    todInfo[9].time = 18.0f;
+    todInfo[10].time = 20.0f;
+    todInfo[11].time = 22.0f;
+    todInfo[0].sky = 2;
+    todInfo[1].sky = 2;
+    todInfo[2].sky = 2;
+    todInfo[3].sky = 3;
+    todInfo[4].sky = 3;
+    todInfo[5].sky = 0;
+    todInfo[6].sky = 0;
+    todInfo[7].sky = 0;
+    todInfo[8].sky = 0;
+    todInfo[9].sky = 1;
+    todInfo[10].sky = 1;
+    todInfo[11].sky = 2;
+    todInfo[0].dirHeading = 270.0f;
+    todInfo[1].dirHeading = 300.0f;
+    todInfo[2].dirHeading = 330.0f;
+    todInfo[3].dirHeading = 0.0f;
+    todInfo[4].dirHeading = 30.0f;
+    todInfo[5].dirHeading = 60.0f;
+    todInfo[6].dirHeading = 90.0f;
+    todInfo[7].dirHeading = 120.0f;
+    todInfo[8].dirHeading = 150.0f;
+    todInfo[9].dirHeading = 180.0f;
+    todInfo[10].dirHeading = 210.0f;
+    todInfo[11].dirHeading = 240.0f;
+}
 void todInitStats(void)
 {
 }
