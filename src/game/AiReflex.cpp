@@ -9,6 +9,58 @@
 
 #include "game/level_pickups.h"
 
+class StateButtSlam {
+public:
+    int transitionFeasible(void);
+};
+/* Butt-stomping a nearby monster. */
+class AiStompReflex : public AiActionTuple {
+public:
+    Monster *m_target; /* 0x48 */
+    int m_timer;       /* 0x4C */
+    float m_range;     /* 0x50: 200.0 */
+
+    float getEntryRelevance(Ai &ai);
+    float getExitRelevance(Ai &ai);
+    void enterAction(Ai &ai);
+    void updateAction(Ai &ai);
+    void exitAction(Ai &ai);
+};
+/* Smashing a pickup/vehicle the monster is standing next to. */
+class AiSmashReflex : public AiActionTuple {
+public:
+    int m_timer; /* 0x48 */
+
+    float getEntryRelevance(Ai &ai);
+    float getExitRelevance(Ai &ai);
+    void enterAction(Ai &ai);
+    void updateAction(Ai &ai);
+};
+/* Getting back up after being thrown. */
+class AiThrowRecover : public AiActionTuple {
+public:
+    int m_timer; /* 0x48 */
+
+    float getEntryRelevance(Ai &ai);
+    float getExitRelevance(Ai &ai);
+    void enterAction(Ai &ai);
+    void updateAction(Ai &ai);
+};
+/* Throwing the held object at the best opponent. */
+class AiThrowPickup : public AiActionTuple {
+public:
+    Monster *m_target; /* 0x48 */
+    float m_range;     /* 0x4C: 1000.0 */
+    int m_timer;       /* 0x50 */
+
+    float getEntryRelevance(Ai &ai);
+    Monster *getBestTarget(Ai &ai, float &best);
+    float getExitRelevance(Ai &ai);
+    void enterAction(Ai &ai);
+    void updateAction(Ai &ai);
+    void exitAction(Ai &ai);
+};
+
 class GamePad;
 class GamePadClipPlayer {
 public:
@@ -108,6 +160,8 @@ public:
 #define MB(m, o) (*(signed char *)((char *)(m) + (o)))
 #define MP(m, o) ((char *)(m) + (o))
 #define STATE_ID(m) (*(m)->m_state)
+/* max.s without -ffast-math (which also rewrites every float compare) */
+#define FMAX(a, b) ({ float _r; __asm__("max.s %0,%1,%2" : "=f"(_r) : "f"(a), "f"(b)); _r; })
 #define NAV(ai) ((AiNavigator *)((char *)&(ai) + 0x80))
 #define LEVEL_ID (*(int *)((char *)game + 0x1203D0))
 #define MATCH_MODE (*(int *)((char *)game + 0x1203CC))
@@ -1054,7 +1108,7 @@ float AiCounterReflex::getExitRelevance(Ai &ai)
         if (STATE_ID(ai.monster) != 0x37)
             return 0.0f;
     }
-    return m_entryRel > 1.0f ? m_entryRel : 1.0f;
+    return FMAX(1.0f, m_entryRel);
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getExitRelevance__15AiCounterReflexR2Ai);
@@ -1177,7 +1231,7 @@ float AiDisposeReflex::getExitRelevance(Ai &ai)
 {
     if (!ai.monster->isHolding())
         return 0.0f;
-    return m_entryRel > 1.0f ? m_entryRel : 1.0f;
+    return FMAX(1.0f, m_entryRel);
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getExitRelevance__15AiDisposeReflexR2Ai);
@@ -1236,36 +1290,318 @@ void AiDisposeReflex::exitAction(Ai &ai)
         nav->disable(AiNavigator::STATUS_3, AiNavigator::HINT_0);
 }
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", __13AiSmashReflex);
+#ifdef NON_MATCHING
+/* untuned: 18/63 words, size 0xfc vs 0xf4 */
+float AiSmashReflex::getEntryRelevance(Ai &ai)
+{
+    float dx, dy, dz;
+    float *a;
+    float *b;
+
+    if (MI(ai.monster, 0x130) != 0 || ai.monster->isHolding())
+        return 0.0f;
+    if (!(*(unsigned long long *)MP(ai.monster, 0x6C50) & (0xFFE0ULL << 27)))
+        return 0.0f;
+    if (!ai.monster->m_stamina.hasEnough(12.0f))
+        return 0.0f;
+    a = (float *)MP(ai.monster, 0x3E30);
+    b = (float *)MP(MI(ai.monster, 0x6BF8), 0x10);
+    dx = a[0] - b[0];
+    dy = a[1] - b[1];
+    dz = a[2] - b[2];
+    if (!(dx * dx + dy * dy + dz * dz < 200.0f * 200.0f))
+        return 0.0f;
+    if (MI(NAV(ai), 0x1C) != 2)
+        return 0.0f;
+    if (MI(NAV(ai), 0x20) == 3)
+        return 1.0f;
+    return 0.0f;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getEntryRelevance__13AiSmashReflexR2Ai);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 16/20 words, size 0x50 vs 0x50 */
+float AiSmashReflex::getExitRelevance(Ai &ai)
+{
+    if (m_timer < -2) {
+        if (STATE_ID(ai.monster) != 3)
+            return 0.0f;
+    }
+    return FMAX(1.0f, m_entryRel);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getExitRelevance__13AiSmashReflexR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", enterAction__13AiSmashReflexR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", updateAction__13AiSmashReflexR2Ai);
+#endif
+void AiSmashReflex::enterAction(Ai &ai)
+{
+    int d = ai.getReflexDelay() - getFieldsSinceEval();
+
+    m_timer = d > -1 ? d : 0;
+}
+void AiSmashReflex::updateAction(Ai &ai)
+{
+    if (--m_timer > 0)
+        return;
+    ai.pad[0xF] = 0xFF;
+    ai.heavyPunch();
+}
 void exitAction__13AiSmashReflexR2Ai(void *self) __asm__("exitAction__13AiSmashReflexR2Ai");
 void exitAction__13AiSmashReflexR2Ai(void *self)
 {
 }
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", __14AiThrowRecover);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getEntryRelevance__14AiThrowRecoverR2Ai);
+float AiThrowRecover::getEntryRelevance(Ai &ai)
+{
+    char *st = (char *)ai.monster->m_state;
+    int ok;
+
+    if (!(MI(st, 4) & 0x10))
+        return 0.0f;
+    ok = 0;
+    if (MI(st, 0x38)) {
+        if (MI(st, 0x530))
+            ok = MI(st, 0x2A4) == 0;
+    }
+    if (!ok)
+        return 0.0f;
+    if (MF(MI(ai.monster, 0xC), 0x48) < 0.9f)
+        return 0.0f;
+    if (MATCH_MODE < 2) {
+        if (mathfRand(0, 5) > 0)
+            return 0.0f;
+    }
+    return 1.0f;
+}
+#ifdef NON_MATCHING
+/* untuned: 1/13 words, size 0x34 vs 0x30 */
+float AiThrowRecover::getExitRelevance(Ai &ai)
+{
+    if (m_timer < 0)
+        return 0.0f;
+    return FMAX(1.0f, m_entryRel);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getExitRelevance__14AiThrowRecoverR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", enterAction__14AiThrowRecoverR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", updateAction__14AiThrowRecoverR2Ai);
+#endif
+void AiThrowRecover::enterAction(Ai &ai)
+{
+    int d;
+
+    ai.setFocus(0);
+    d = ai.getReflexDelay() - getFieldsSinceEval();
+    m_timer = d > -1 ? d : 0;
+}
+void AiThrowRecover::updateAction(Ai &ai)
+{
+    if (--m_timer > 0)
+        return;
+    ai.block();
+}
 void exitAction__14AiThrowRecoverR2Ai(void *self) __asm__("exitAction__14AiThrowRecoverR2Ai");
 void exitAction__14AiThrowRecoverR2Ai(void *self)
 {
 }
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", __13AiThrowPickup);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getEntryRelevance__13AiThrowPickupR2Ai);
+float AiThrowPickup::getEntryRelevance(Ai &ai)
+{
+    float best;
+
+    if (!ai.monster->m_attacksEnabled || !MI(ai.monster, 0x68A4))
+        return 0.0f;
+    m_target = getBestTarget(ai, best);
+    if (MI(ai.monster, 0x68A4)) {
+        int kind = MI(MI(MI(ai.monster, 0x68A4), 0), 0xA0);
+
+        if (kind == 6 || kind == 0x10)
+            best = best * 0.2f;
+    }
+    return best;
+}
+#ifdef NON_MATCHING
+/* untuned: 48/115 words, size 0x1cc vs 0x1c8 */
+Monster *AiThrowPickup::getBestTarget(Ai &ai, float &best)
+{
+    Monster *bestM = 0;
+    Monster **p = (Monster **)((char *)&ai + 4);
+    int heavy;
+
+    best = 0.0f;
+    heavy = MI(MI(MI(ai.monster, 0x68A4), 0), 0xA0) == 3;
+    for (; *p; p++) {
+        Monster *o = *p;
+        EnemyInfo::Info *info = EnemyInfo::getInfo(*ai.monster, *o);
+        float w;
+        float rel;
+
+        if (!info->los)
+            continue;
+        if (m_range < info->dist)
+            continue;
+        if (!o->m_unk49)
+            continue;
+        if (o->m_state[1] & 0x10)
+            continue;
+        w = 1.0f;
+        if (o->m_playerNum == 2)
+            w = (o->m_health / ((HealthMeter *)((char *)o + 0x448))->getMaxLevel()) * 0.25f;
+        if (!o->m_attacksEnabled)
+            w = w + w;
+        if (heavy) {
+            if (info->dist < 500.0f)
+                w = w * 0.0f;
+            else
+                w = w * 10.0f;
+        }
+        rel = ai.getFovRelevance(info->dot, -1.0f);
+        w = w * (rel * 0.25f + 0.75f);
+        if (best < w) {
+            best = w;
+            bestM = o;
+        }
+    }
+    return bestM;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getBestTarget__13AiThrowPickupR2AiRf);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 6/26 words, size 0x64 vs 0x68 */
+float AiThrowPickup::getExitRelevance(Ai &ai)
+{
+    if (!MI(ai.monster, 0x68A4))
+        return 0.0f;
+    if (!s_attackOtherAi && ai.pinningAi())
+        return 0.0f;
+    return FMAX(1.0f, m_entryRel);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getExitRelevance__13AiThrowPickupR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", enterAction__13AiThrowPickupR2Ai);
+#endif
+void AiThrowPickup::enterAction(Ai &ai)
+{
+    int d;
+
+    NAV(ai)->target(*(_fvector *)MP(MI(m_target, 0xC), 0x10), 0.1f);
+    ai.setFocus((DbInteractive *)m_target);
+    ((GamePadClipPlayer *)((char *)&ai + 0x48))->clip = AiPadClips::getThrow();
+    ((GamePadClipPlayer *)((char *)&ai + 0x48))->rewind();
+    d = ai.getReflexDelay() - getFieldsSinceEval();
+    m_timer = d > -1 ? d : 0;
+}
+#ifdef NON_MATCHING
+/* untuned: 46/55 words, size 0xdc vs 0xdc */
+void AiThrowPickup::updateAction(Ai &ai)
+{
+    Monster *m;
+    int pressed;
+    GamePadClipPlayer *cp;
+
+    if (MF(EnemyInfo::getInfo(*ai.monster, *m_target), 0x14) > 0.7f || ai.overPit(*ai.monster))
+        ai.targetPin();
+    if (--m_timer > 0)
+        return;
+    m = ai.monster;
+    if (MI(m, 0x6C38) == 0)
+        pressed = (*(PadFlags *)MP(m, 0x5040))[0]->f32 != 0;
+    else
+        pressed = MI(m, 0x6C34) != 0;
+    if (!pressed)
+        return;
+    cp = (GamePadClipPlayer *)((char *)&ai + 0x48);
+    if (!cp->update(*(GamePad *)ai.pad))
+        cp->rewind();
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", updateAction__13AiThrowPickupR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", exitAction__13AiThrowPickupR2Ai);
+#endif
+void AiThrowPickup::exitAction(Ai &ai)
+{
+    ai.setFocus(0);
+}
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", __13AiStompReflex);
+#ifdef NON_MATCHING
+/* untuned: 31/92 words, size 0x16c vs 0x170 */
+float AiStompReflex::getEntryRelevance(Ai &ai)
+{
+    float rel;
+    EnemyInfo::Info *info;
+    StaminaMeter *sm;
+    float st;
+
+    if (!ai.monster->m_attacksEnabled)
+        return 0.0f;
+    if (!MB(ai.monster, 0x280))
+        return 0.0f;
+    m_target = ai.monster->getClosestMonster2D(m_range);
+    if (!m_target)
+        return 0.0f;
+    if (!m_target->m_unk49)
+        return 0.0f;
+    if (m_target->m_state[1] & 0x10)
+        return 0.0f;
+    if (!((StateButtSlam *)MP(ai.monster, 0xFA1C))->transitionFeasible())
+        return 0.0f;
+    rel = 1.0f;
+    info = EnemyInfo::getInfo(*ai.monster, *m_target);
+    if (m_target->m_playerNum == 2) {
+        float h = m_target->m_health;
+
+        h = h / ((HealthMeter *)((char *)m_target + 0x448))->getMaxLevel();
+        rel = h * 0.5f;
+    }
+    if (!m_target->m_attacksEnabled)
+        rel = rel + rel;
+    {
+        float d = info->dist2D / m_range;
+
+        rel = rel * (1.0f - d * d);
+    }
+    sm = &ai.monster->m_stamina;
+    st = sm->cur;
+    rel = rel * 1.0f;
+    st = st / sm->getMaxLevel();
+    rel = rel * (st * st);
+    if (ai.monster->isSpecialAvailable())
+        rel = rel * 0.0f;
+    return rel;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getEntryRelevance__13AiStompReflexR2Ai);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 2/14 words, size 0x38 vs 0x34 */
+float AiStompReflex::getExitRelevance(Ai &ai)
+{
+    if (!MB(ai.monster, 0x280))
+        return 0.0f;
+    return FMAX(1.0f, m_entryRel);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getExitRelevance__13AiStompReflexR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", enterAction__13AiStompReflexR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", updateAction__13AiStompReflexR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", exitAction__13AiStompReflexR2Ai);
+#endif
+void AiStompReflex::enterAction(Ai &ai)
+{
+    AiNavigator *nav;
+    int d;
+
+    ai.setFocus((DbInteractive *)m_target);
+    nav = NAV(ai);
+    if (nav->status)
+        nav->disable(AiNavigator::STATUS_3, AiNavigator::HINT_0);
+    d = ai.getReflexDelay() - getFieldsSinceEval();
+    m_timer = d > -1 ? d : 0;
+}
+void AiStompReflex::updateAction(Ai &ai)
+{
+    if (--m_timer > 0)
+        return;
+    ai.buttStomp();
+}
+void AiStompReflex::exitAction(Ai &ai)
+{
+    ai.setFocus(0);
+}
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", __11AiRamAttack);
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getEntryRelevance__11AiRamAttackR2Ai);
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getBestTarget__11AiRamAttackR2AiRf);
