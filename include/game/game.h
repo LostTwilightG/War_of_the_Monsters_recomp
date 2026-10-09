@@ -567,6 +567,7 @@ public:
     static void SetCameraToFollowMonster(int view, Monster *m);
     static void SetCameraPOV(int view, Camera::CameraPOV pov);
     static void TogglePOV(int view);
+    static float GetUnifiedTime(void);
 };
 
 void fontSetColor(int font, int r, int g, int b, int a);
