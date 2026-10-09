@@ -104,3 +104,4 @@ game/ui
 game/screen
 game/rt
 common/input
+common/font

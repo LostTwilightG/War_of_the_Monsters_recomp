@@ -210,7 +210,7 @@ segments:
       - [0x0F9290, asm, common/electric]  # c++, 5 funcs, name: guess
       - [0x0FA228, cpp, common/file]  # c++, 44 funcs, name: guess
       - [0x0FBBD8, cpp, common/fog]  # c++, 16 funcs, name: guess
-      - [0x0FC3D0, asm, common/font]  # c++, 30 funcs, name: guess
+      - [0x0FC3D0, cpp, common/font]  # c++, 30 funcs, name: guess
       - [0x0FD650, cpp, common/GsPkt]  # c++, 4 funcs, name: guess
       - [0x0FD7F8, asm, common/hd]  # c++, 16 funcs, name: guess
       - [0x0FE980, cpp, common/hdHat]  # c++, 3 funcs, name: manual
@@ -597,7 +597,7 @@ segments:
       - [0x5F37D0, .rodata, common/CsPool]
       - [0x5F3870, .rodata, common/dbs]
       - [0x5F3B30, .rodata, common/file]
-      - [0x5F3D80, rodata, common/font]
+      - [0x5F3D80, .rodata, common/font]
       - [0x5F3E30, .rodata, common/hdSphere]
       - [0x5F3E50, rodata, common/hdTraverse]
       - [0x5F3FA0, rodata, common/texm]
