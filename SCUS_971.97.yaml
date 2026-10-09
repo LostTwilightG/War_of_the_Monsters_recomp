@@ -253,7 +253,7 @@ segments:
       - [0x1223B0, cpp, common/td]  # c++, 2 funcs, name: guess
       - [0x122500, asm, common/tex]  # c++, 20 funcs, name: guess
       - [0x123328, cpp, common/timer]  # c++, 16 funcs, name: guess
-      - [0x123858, asm, common/tod]  # c++, 25 funcs, name: guess
+      - [0x123858, cpp, common/tod]  # c++, 25 funcs, name: guess
       - [0x125708, asm, common/blit]  # c++, 11 funcs, name: guess
       - [0x126370, asm, common/vi]  # c++, 18 funcs, name: guess
       - [0x127380, asm, common/videodec]  # c++, 23 funcs, name: manual
