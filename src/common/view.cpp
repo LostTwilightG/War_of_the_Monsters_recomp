@@ -4,21 +4,28 @@
 
 struct _todInfo14;
 
-/* Screen rectangle of a view. */
+/* Screen layouts (only the first three are known: full screen and the two split-screen halves). */
+enum _viewports { VIEWPORT_0, VIEWPORT_1, VIEWPORT_2 };
+
+/* Screen rectangle and field of view of a viewport (0xC0 bytes). */
 struct _viewDef {
-    int pad0;
+    float fovH;            /* 0x00 */
     unsigned short width;  /* 0x04 */
     unsigned short height; /* 0x06 */
     int pad8[4];
     int centerX;           /* 0x18 */
     int centerY;           /* 0x1C */
+    float fovV;            /* 0x20 */
+    char pad24[0xC0 - 0x24];
 };
 
 /* One view (player camera): its coordinate system and screen rectangle. */
 struct _viewInfo {
     CS *cs;        /* 0x00 */
     _viewDef *def; /* 0x04 */
-    int pad[3];
+    int unk8;      /* 0x08 */
+    int unkC;      /* 0x0C */
+    int unk10;     /* 0x10 */
 };
 
 /* GS RGBAQ register value (color bytes, Q = 1.0 in the high word). */
@@ -58,7 +65,20 @@ extern int viewBgR, viewBgG, viewBgB, viewBgA;
 extern int viewTODBgR, viewTODBgG, viewTODBgB, viewTODBgA;
 extern FMATRIX worldToScreenMat[5];
 extern FMATRIX viewScreenMats[5];
+extern _viewDef viewDef[];
+extern FMATRIX viewShadWorldToScrMat;
+extern int viewRearLargeActive;
+extern int viewRearViewConfig;
+extern int viewAmbientChanged;
+extern float viewFovH;
+extern float viewAmbientRed, viewAmbientGreen, viewAmbientBlue;
+extern float viewAnimAmbientRed, viewAnimAmbientGreen, viewAnimAmbientBlue;
+extern int viewOddScan __asm__("D_006F8DF0");
 int todActive(void);
+void todInit(void);
+void viewSetFov(int view, float h, float v);
+void viewCreate(_viewports vp, int view);
+_viewDef *viewGetDef(int view);
 void todSetSkyEntry(HierHead *node);
 __asm__("#SNFIX_SMALL viewCurView");
 __asm__("#SNFIX_SMALL gUseUnifiedView");
@@ -74,8 +94,14 @@ INCLUDE_ASM("asm/nonmatchings/common/view", viewInFOV__FiP8_fvectorT1f);
 INCLUDE_ASM("asm/nonmatchings/common/view", viewShadowUpdate__Fi);
 INCLUDE_ASM("asm/nonmatchings/common/view", viewStoreNorms1InVu0__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/view", viewStoreNorms2InVu0__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetWorld2ScreenMat__Fi);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetShadWorldScreenMat__Fv);
+FMATRIX *viewGetWorld2ScreenMat(int view)
+{
+    return &worldToScreenMat[view];
+}
+FMATRIX *viewGetShadWorldScreenMat(void)
+{
+    return &viewShadWorldToScrMat;
+}
 void viewGetTOD(int *on, float *minutesPerSecond, _todInfo14 *info)
 {
     todGetTOD(on, minutesPerSecond, info);
@@ -304,19 +330,82 @@ void viewGetZBuffParams(int view, float *a, float *b)
     *a = m[2][2];
     *b = m[2][3];
 }
-INCLUDE_ASM("asm/nonmatchings/common/view", viewInit__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewTweakInit__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewTweakSetFov__Fv);
+void viewInit(void)
+{
+    int i;
+
+    for (i = 0; i < 5; i++) {
+        viewInfo[i].cs = 0;
+        viewInfo[i].def = 0;
+        viewInfo[i].unk8 = 0;
+        viewInfo[i].unkC = 0;
+    }
+    todInit();
+    viewRearLargeActive = 0;
+    viewRearViewConfig = 1;
+    viewAmbientChanged = 0;
+}
+void viewTweakInit(void)
+{
+}
+void viewTweakSetFov(void)
+{
+    int i;
+
+    for (i = 0; i < viewNumViews; i++)
+        viewSetFov(i, viewFovH, viewGetDef(i)->fovV);
+}
 INCLUDE_ASM("asm/nonmatchings/common/view", viewSetAmbient__Ffff);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetAmbient__FPfN20);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetAnimAmbient__FPfN20);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetFov__FiPfT1);
+void viewGetAmbient(float *r, float *g, float *b)
+{
+    *r = viewAmbientRed;
+    *g = viewAmbientGreen;
+    *b = viewAmbientBlue;
+}
+int viewGetAnimAmbient(float *r, float *g, float *b)
+{
+    *r = viewAnimAmbientRed;
+    *g = viewAnimAmbientGreen;
+    *b = viewAnimAmbientBlue;
+    return viewAmbientChanged;
+}
+void viewGetFov(int view, float *h, float *v)
+{
+    float (*m)[4] = viewScreenMats[view];
+
+    *h = viewInfo[view].def->fovH;
+    *v = m[1][1] / *h;
+}
 INCLUDE_ASM("asm/nonmatchings/common/view", viewSetFov__Fiff);
 INCLUDE_ASM("asm/nonmatchings/common/view", viewComputeNormal__FP8_fvectorN30);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewToggleSplitScreen__FbT0);
+void viewToggleSplitScreen(bool, bool)
+{
+    if (viewNumViews < 3) {
+        if (viewNumViews == 1) {
+            viewNumViews = 2;
+            viewCreate(VIEWPORT_1, 0);
+            viewCreate(VIEWPORT_2, 1);
+        } else {
+            viewNumViews = 1;
+            viewCreate(VIEWPORT_0, 0);
+        }
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/common/view", viewGetScreenDisplay__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/view", viewGrappleConfig__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetDef__Fi);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetDef__F10_viewports);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewSetOddEven__Fi);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewIsOddScan__Fv);
+_viewDef *viewGetDef(int view)
+{
+    return viewInfo[view].def;
+}
+_viewDef *viewGetDef(_viewports vp)
+{
+    return &viewDef[vp];
+}
+void viewSetOddEven(int odd)
+{
+    viewOddScan = odd != 0;
+}
+int viewIsOddScan(void)
+{
+    return viewOddScan;
+}
