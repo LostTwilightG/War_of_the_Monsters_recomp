@@ -257,7 +257,7 @@ segments:
       - [0x125708, asm, common/blit]  # c++, 11 funcs, name: guess
       - [0x126370, asm, common/vi]  # c++, 18 funcs, name: guess
       - [0x127380, asm, common/videodec]  # c++, 23 funcs, name: manual
-      - [0x127BD8, asm, common/view]  # c++, 56 funcs, name: guess
+      - [0x127BD8, cpp, common/view]  # c++, 56 funcs, name: guess
       - [0x129A28, cpp, common/vo]  # c++, 9 funcs, name: guess
       - [0x129C08, cpp, common/zip]  # c++, 14 funcs, name: guess
       - [0x12B7E0, cpp, common/audio]  # c++, 13 funcs, name: guess
@@ -616,7 +616,7 @@ segments:
       - [0x5F4B40, rodata, common/blit]
       - [0x5F4BA0, rodata, common/vi]
       - [0x5F4BB8, rodata, common/videodec]
-      - [0x5F4C00, rodata, common/view]
+      - [0x5F4C00, .rodata, common/view]
       - [0x5F4C20, .rodata, common/zip]
       - [0x5F57A0, .rodata, common/CsColor]
       - [0x5F57C8, .rodata, common/ColGrid]

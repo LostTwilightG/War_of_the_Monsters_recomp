@@ -109,3 +109,4 @@ common/resetcom
 common/animation
 common/AnimCurve
 common/tod
+common/view
