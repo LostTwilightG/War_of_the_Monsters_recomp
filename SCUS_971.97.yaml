@@ -243,7 +243,7 @@ segments:
       - [0x11DCE8, cpp, common/PointToolKit]  # c++, 15 funcs, name: guess
       - [0x11E090, cpp, common/videocb]  # c++, 3 funcs, name: manual
       - [0x11E3C0, cpp, common/readbuf]  # c++, 6 funcs, name: manual
-      - [0x11E4D0, asm, common/resetcom]  # c++, 18 funcs, name: guess
+      - [0x11E4D0, cpp, common/resetcom]  # c++, 18 funcs, name: guess
       - [0x11EF08, asm, common/RigidBody]  # c++, 37 funcs, name: guess
       - [0x120510, asm, common/ScreenPolys]  # c++, 19 funcs, name: guess
       - [0x121090, cpp, common/ShiftJIS]  # c++, 7 funcs, name: guess
@@ -610,7 +610,7 @@ segments:
       - [0x5F4620, rodata, common/particle]
       - [0x5F4720, .rodata, common/PointToolKit]
       - [0x5F4810, .rodata, common/videocb]
-      - [0x5F4830, rodata, common/resetcom]
+      - [0x5F4830, .rodata, common/resetcom]
       - [0x5F4A70, .rodata, common/ShiftJIS]
       - [0x5F4A88, .rodata, common/str]
       - [0x5F4B40, rodata, common/blit]

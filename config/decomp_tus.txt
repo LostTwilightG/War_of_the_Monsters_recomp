@@ -105,3 +105,4 @@ game/screen
 game/rt
 common/input
 common/font
+common/resetcom

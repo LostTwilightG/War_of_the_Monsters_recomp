@@ -1,0 +1,21 @@
+#include "common.h"
+
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", __8resetcom);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", __8resetcom11CREATOR_KEY);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", writeKeys__8resetcomPc);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", write__8resetcomPc);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", readKey__8resetcomPc);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", read__8resetcomPc);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", oldStyleRead__8resetcomPc);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", init__8resetcom);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", update__8resetcom);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", getFileAndPathname__8resetcomi);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", validFileAndExtension__8resetcomi);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", forceRead__8resetcom);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", forceRead__8resetcomi);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", forceWrite__8resetcom);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", forceWrite__8resetcomi);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", getFileName__8resetcomPPc);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", setFileName__8resetcomPcb);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", _vt$8resetcom);
+INCLUDE_ASM("asm/nonmatchings/common/resetcom", __tf8resetcom);
