@@ -1,19 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="150" viewBox="0 0 720 150" role="img" aria-label="War of the Monsters: 868 de 5381 funcoes decompiladas (16,1%), 1212 ignoradas">
-  <title>War of the Monsters: 868 de 5381 funcoes decompiladas (16,1%), 1212 ignoradas</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="150" viewBox="0 0 720 150" role="img" aria-label="War of the Monsters: 880 de 5381 funcoes decompiladas (16,4%), 1212 ignoradas">
+  <title>War of the Monsters: 880 de 5381 funcoes decompiladas (16,4%), 1212 ignoradas</title>
   <rect x="0.5" y="0.5" width="719" height="149" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
   <g font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
-  <text x="20" y="30" font-size="16" font-weight="600" fill="#24292f">Progresso da decompilação: 868 de 5381 funções (16,1%)</text>
+  <text x="20" y="30" font-size="16" font-weight="600" fill="#24292f">Progresso da decompilação: 880 de 5381 funções (16,4%)</text>
   <rect x="20" y="54" width="680" height="28" rx="4" fill="#c9d1d9"/>
   <clipPath id="r"><rect x="20" y="54" width="680" height="28" rx="4"/></clipPath>
   <g clip-path="url(#r)">
-  <rect x="20.00" y="54" width="79.23" height="28" fill="#ff1413"/>
-  <rect x="99.23" y="54" width="30.46" height="28" fill="#ff8e00"/>
-  <rect x="129.69" y="54" width="417.15" height="28" fill="#c9d1d9"/>
+  <rect x="20.00" y="54" width="80.75" height="28" fill="#ff1413"/>
+  <rect x="100.75" y="54" width="30.46" height="28" fill="#ff8e00"/>
+  <rect x="131.21" y="54" width="415.63" height="28" fill="#c9d1d9"/>
   <rect x="546.84" y="54" width="153.16" height="28" fill="#8b949e"/>
   </g>
-  <rect x="20" y="99" width="12" height="12" rx="2" fill="#ff1413"/><text x="40" y="110" font-size="13" fill="#24292f">game: 627/3181 (19,7%)</text>
+  <rect x="20" y="99" width="12" height="12" rx="2" fill="#ff1413"/><text x="40" y="110" font-size="13" fill="#24292f">game: 639/3181 (20,1%)</text>
   <rect x="370" y="99" width="12" height="12" rx="2" fill="#ff8e00"/><text x="390" y="110" font-size="13" fill="#24292f">common / engine: 241/1144 (21,1%)</text>
-  <rect x="20" y="123" width="12" height="12" rx="2" fill="#c9d1d9"/><text x="40" y="134" font-size="13" fill="#24292f">pendente (asm): 3301</text>
+  <rect x="20" y="123" width="12" height="12" rx="2" fill="#c9d1d9"/><text x="40" y="134" font-size="13" fill="#24292f">pendente (asm): 3289</text>
   <rect x="370" y="123" width="12" height="12" rx="2" fill="#8b949e"/><text x="390" y="134" font-size="13" fill="#24292f">ignorado: 1212 (libs 1056 + hw 156)</text>
   </g>
 </svg>
