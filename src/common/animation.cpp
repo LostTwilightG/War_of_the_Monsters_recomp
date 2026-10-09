@@ -95,6 +95,8 @@ void animationSetIterations(_animHandle h, unsigned short n);
 void animationSetSpeed(_animHandle h, float speed);
 void animationManager(_animmgr *mgr);
 void animationUpdateActiveTree(HierHead *tree, _animCharInstance *ci);
+void animationProcessActiveTree(HierHead *tree, _animCharInstance *ci);
+float animCurveEvaluate(AnimCurveHeader *curve, float t, unsigned short *key);
 
 INCLUDE_ASM("asm/nonmatchings/common/animation", D_006F3150);
 void animationInitModifierBlends(_animCharInstance *ci)
@@ -506,8 +508,48 @@ unsigned short animationGetIterations(_animHandle h)
         return h.ctrl->iterations;
     return 0;
 }
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationCheckDirty__FP17_animCharInstanceP14_animtransform);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationClearDirty);
+#define ANIM_DIRTY(ci, idx) (((ci)->animOutput.dirty[(idx) / 8] >> ((idx) % 8)) & 1)
+#define ANIM_CLEAN(ci, idx) ((ci)->animOutput.dirty[(idx) / 8] &= ~(1 << ((idx) % 8)))
+void animationCheckDirty(_animCharInstance *ci, _animtransform *xf)
+{
+    int dirty = 0;
+    int idx;
+
+    if ((idx = xf->rXidx) >= 0)
+        dirty = ANIM_DIRTY(ci, idx);
+    if ((idx = xf->rYidx) >= 0)
+        dirty |= ANIM_DIRTY(ci, idx);
+    if ((idx = xf->rZidx) >= 0)
+        dirty |= ANIM_DIRTY(ci, idx);
+    if (dirty)
+        *(unsigned long *)&xf->dirty |= 2;
+    dirty = 0;
+    if ((idx = xf->tXidx) >= 0)
+        dirty = ANIM_DIRTY(ci, idx);
+    if ((idx = xf->tYidx) >= 0)
+        dirty |= ANIM_DIRTY(ci, idx);
+    if ((idx = xf->tZidx) >= 0)
+        dirty |= ANIM_DIRTY(ci, idx);
+    if (dirty)
+        *(unsigned long *)&xf->dirty |= 1;
+}
+extern "C" void animationClearDirty(_animCharInstance *ci, _animtransform *xf)
+{
+    int idx;
+
+    if ((idx = xf->rXidx) >= 0)
+        ANIM_CLEAN(ci, idx);
+    if ((idx = xf->rYidx) >= 0)
+        ANIM_CLEAN(ci, idx);
+    if ((idx = xf->rZidx) >= 0)
+        ANIM_CLEAN(ci, idx);
+    if ((idx = xf->tXidx) >= 0)
+        ANIM_CLEAN(ci, idx);
+    if ((idx = xf->tYidx) >= 0)
+        ANIM_CLEAN(ci, idx);
+    if ((idx = xf->tZidx) >= 0)
+        ANIM_CLEAN(ci, idx);
+}
 int animationGetChannelIdx(int id, AnimChannelIdMap *map)
 {
     int lo, hi, mid;
@@ -539,9 +581,80 @@ float *animationGetChannelVal(int id, _animHandle &h)
         return 0;
     return &ci->animOutput.val[idx];
 }
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationUpdateHandle__FR11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationUpdateFromControlNode__FP16_animControlNodeP17_animCharInstance);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationUpdateActiveTree__FP9_hierheadP17_animCharInstance);
+float animationUpdateHandle(_animHandle &h)
+{
+    float t = animationGetCurrentTime(h);
+    AnimControlNode *ctrl = h.ctrl;
+    HierAnimation *anim = ctrl->anim;
+
+    if (anim->endTime < t && 0.0f < ctrl->deltaTime) {
+        if (!ctrl->loop) {
+            if (((AnimPlayer *)h.ci->activeTree)->mainTree == (HierHead *)ctrl)
+                animationPause(h);
+            animationSetToEnd(h, 0);
+            t = animationGetCurrentTime(h);
+        } else {
+            ctrl->iterations++;
+            animationSetToBeginning(h, 0);
+            t = animationGetCurrentTime(h);
+        }
+    } else if (t < anim->startTime && ctrl->deltaTime < 0.0f) {
+        if (!ctrl->loop) {
+            if (((AnimPlayer *)h.ci->activeTree)->mainTree == (HierHead *)ctrl)
+                animationPause(h);
+            animationSetToBeginning(h, 0);
+            t = animationGetCurrentTime(h);
+        } else {
+            ctrl->iterations++;
+            animationSetToEnd(h, 0);
+            t = animationGetCurrentTime(h);
+        }
+    }
+    return t;
+}
+void animationUpdateFromControlNode(AnimControlNode *ctrl, _animCharInstance *ci)
+{
+    _animHandle h;
+    HierAnimation *anim;
+    AnimCurveHeader **chan;
+    uint16 *key;
+    int count;
+    float t;
+    int idx;
+
+    h.ci = ci;
+    h.unk8 = 0;
+    h.ctrl = ctrl;
+    anim = ctrl->anim;
+    chan = anim->channels;
+    h.animIdx = anim->animIdx;
+    t = animationUpdateHandle(h);
+    key = ctrl->prevKey;
+    for (count = anim->numChannels; count != 0; count--, chan++, key++) {
+        ctrl->animOutput.val[(*chan)->dataIdx] = animCurveEvaluate(*chan, t, key);
+        idx = (*chan)->dataIdx;
+        ctrl->animOutput.dirty[idx / 8] |= 1 << (idx % 8);
+    }
+}
+void animationUpdateActiveTree(HierHead *tree, _animCharInstance *ci)
+{
+    if (tree->opcode == 0x21) {
+        ((AnimControlNode *)tree)->animOutput.val = ci->animOutput.val;
+        ((AnimControlNode *)tree)->animOutput.dirty = ci->animOutput.dirty;
+        ((AnimControlNode *)tree)->animOutput.atMat = ci->animOutput.atMat;
+        animationProcessActiveTree(tree, ci);
+    } else if (tree->opcode == 0x22) {
+        ((AnimBlendNode *)tree)->animOutput.val = ci->animOutput.val;
+        ((AnimBlendNode *)tree)->animOutput.dirty = ci->animOutput.dirty;
+        ((AnimBlendNode *)tree)->animOutput.atMat = ci->animOutput.atMat;
+        animationProcessActiveTree(tree, ci);
+    } else if (tree->opcode == 0x2B) {
+        ((AnimProcNode *)tree)->animOutput.val = ci->animOutput.val;
+        ((AnimProcNode *)tree)->animOutput.dirty = ci->animOutput.dirty;
+        ((AnimProcNode *)tree)->animOutput.atMat = ci->animOutput.atMat;
+        animationProcessActiveTree(tree, ci);
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessActiveTree__FP9_hierheadP17_animCharInstance);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessTransitionBlend__FP14_animBlendNodeP17_animCharInstance);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessStaticBlend__FP14_animBlendNodeP17_animCharInstance);
