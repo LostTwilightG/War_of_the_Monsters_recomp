@@ -1,4 +1,20 @@
-# Próximos passos (atualizado em 2026-10-07 14:10)
+# Próximos passos (atualizado em 2026-10-09)
+
+## Direção atual (decidida com o usuário em 2026-10-09; em validação)
+O objetivo continua sendo um port nativo de PC fácil de modar, mas o **meio** mudou: a base passa a ser o jogo **recompilado** (PS2Recomp, fora do repo) e a decompilação vira a
+camada legível que substitui, por *hook*, só as funções que importam para modar. Consequências práticas:
+- **Byte match deixou de ser requisito por função.** `equivalent` é suficiente para o que vamos modar. `matched` continua sendo bem-vindo quando sai barato, e o `gate.sh`
+  continua obrigatório (a ROM do build normal tem que bater o SHA1).
+- **Fila de prioridade**: `config/boot_coverage_asm.csv` (601 funções ainda em asm que o jogo chama do boot até a interface; é um piso, não cobre gameplay). Priorizar o que é
+  engine/formatos/lógica de jogo (`common/animation`, `AnimCurve`, `mathf`, `hier`, `dbs`, `texm`, `view`; `game/Monster*`, `Shell`, IA) e deixar para o fim memory card,
+  `input`, `vi`, `ps`, `sce/*`, `lib989snd`.
+- **Verificação**: para equivalentes com VU0 ou `min/max/madd` (62 de 329) use `tools/recomp_oracle` (retail × nossa, ambos recompilados); para as demais, `tools/difftest.py`.
+  O oracle já achou dois erros reais (`sqrtf` com `sqrt.s` mal codificado e `sb` virando `sw`; ver "Armadilhas").
+- **Renderização**: a meta é cortar na fronteira da engine (`config/hw_boundary.csv`) e desenhar nativo; o VU1/GS emulado do runtime do PS2Recomp é só ponte para ver imagem.
+  Som, FMVs e entrada completa ficam fora do primeiro port (só um mapeamento mínimo de teclado para o pad).
+- **Pendente**: (1) testar o build do runtime no Windows/MSVC e ver se aparece imagem; (2) PR no PS2Recomp com a correção de `SQRT.S`/`RSQRT.S` (o upstream usa `fs` onde o R5900 usa
+  `ft`; 108 + 76 funções do jogo afetadas); (3) oracle para funções com chamadas (hoje só folhas: 24 de 60 candidatas rodaram); (4) cobertura com gameplay.
+- O que foi medido e como reproduzir está em `tools/recomp_oracle/README.md` e na seção "Recompilação estática" de `docs/ANALYSIS.md`.
 
 ## Onde estamos
 - `sh tools/wsl/gate.sh` diz `ROM OK` (build + SHA1). Último estado medido (`python3 tools/progress.py`): `game` ~170 de 3181 funções
