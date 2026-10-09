@@ -921,8 +921,167 @@ void animationProcessAdditiveBlend(AnimBlendNode *node, _animCharInstance *ci)
 void animationProcessProceeduralBlend(AnimBlendNode *, _animCharInstance *)
 {
 }
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationEvaluateFromNode__FP14_animBlendNodeP17_animCharInstancePP21_animationOutputBlock);
+void animationEvaluateFromNode(AnimBlendNode *node, _animCharInstance *ci, AnimationOutputBlock **out)
+{
+    HierHead *from = node->blendFrom;
+    _animHandle h;
+    AnimationOutputBlock *blk;
+    unsigned char *dirty;
+    unsigned char *p;
+    int n;
+
+    h.unk8 = 0;
+    if (from == 0)
+        return;
+    if (from->opcode == 0x21) {
+        AnimControlNode *ctrl = (AnimControlNode *)from;
+
+        blk = &ctrl->animOutput;
+        ctrl->animOutput.val = (float *)D_007329F0.alloc16(ci->character->numChannels * 4);
+        n = ci->character->numChannels;
+        n = (n >> 3) + 1;
+        p = dirty = (unsigned char *)D_007329F0.alloc16(n);
+        for (; n != 0; n--)
+            *p++ = 0;
+        ctrl->animOutput.dirty = dirty;
+        ctrl->animOutput.atMat = ci->animOutput.atMat;
+        h.ci = ci;
+        h.ctrl = ctrl;
+        h.animIdx = ctrl->anim->animIdx;
+        animationResume(h);
+        ctrl->startField = node->fromTime.startField;
+        ctrl->startTime = node->fromTime.startTime;
+        ctrl->deltaTime = node->fromTime.deltaTime;
+        animationProcessActiveTree(node->blendFrom, ci);
+        ctrl->deltaTime = node->fromTime.deltaTime;
+        node->fromTime.startField = ctrl->startField;
+        node->fromTime.startTime = ctrl->startTime;
+    } else if (from->opcode == 0x2B) {
+        AnimProcNode *proc = (AnimProcNode *)from;
+
+        blk = &proc->animOutput;
+        proc->animOutput.val = (float *)D_007329F0.alloc16(ci->character->numChannels * 4);
+        n = ci->character->numChannels;
+        n = (n >> 3) + 1;
+        p = dirty = (unsigned char *)D_007329F0.alloc16(n);
+        for (; n != 0; n--)
+            *p++ = 0;
+        proc->animOutput.dirty = dirty;
+        proc->animOutput.atMat = ci->animOutput.atMat;
+        animationProcessActiveTree(node->blendFrom, ci);
+        *out = blk;
+        return;
+    } else if (from->opcode == 0x22) {
+        AnimBlendNode *blend = (AnimBlendNode *)from;
+
+        blk = &blend->animOutput;
+        blend->animOutput.val = (float *)D_007329F0.alloc16(ci->character->numChannels * 4);
+        n = ci->character->numChannels;
+        n = (n >> 3) + 1;
+        p = dirty = (unsigned char *)D_007329F0.alloc16(n);
+        for (; n != 0; n--)
+            *p++ = 0;
+        blend->animOutput.dirty = dirty;
+        blend->animOutput.atMat = ci->animOutput.atMat;
+        animationProcessActiveTree(node->blendFrom, ci);
+        node->fromTime.startField = blend->toTime.startField;
+        node->fromTime.startTime = blend->toTime.startTime;
+        node->fromTime.deltaTime = blend->toTime.deltaTime;
+    } else {
+        return;
+    }
+    *out = blk;
+}
+#ifdef NON_MATCHING
+/* 190/205: out and the result block pointer swap callee-saved registers (s3/s4) */
+void animationEvaluateToNode(AnimBlendNode *node, _animCharInstance *ci, AnimationOutputBlock **out)
+{
+    HierHead *to = node->blendTo;
+    _animHandle h;
+    AnimationOutputBlock *blk;
+    unsigned char *dirty;
+    unsigned char *p;
+    int n;
+
+    h.unk8 = 0;
+    if (to == 0)
+        return;
+    if (to->opcode == 0x21) {
+        AnimControlNode *ctrl = (AnimControlNode *)to;
+
+        blk = &ctrl->animOutput;
+        if (*out == 0) {
+            ctrl->animOutput.atMat = ci->animOutput.atMat;
+            ctrl->animOutput.val = (float *)D_007329F0.alloc16(ci->character->numChannels * 4);
+            n = ci->character->numChannels;
+            n = (n >> 3) + 1;
+            p = dirty = (unsigned char *)D_007329F0.alloc16(n);
+            for (; n != 0; n--)
+                *p++ = 0;
+            ctrl->animOutput.dirty = dirty;
+        } else {
+            ctrl->animOutput = **out;
+        }
+        h.ci = ci;
+        h.ctrl = ctrl;
+        h.animIdx = ctrl->anim->animIdx;
+        animationResume(h);
+        ctrl->startField = node->toTime.startField;
+        ctrl->startTime = node->toTime.startTime;
+        if (node->blendType == BLEND_FREEZETRANS)
+            ctrl->deltaTime = 0.0f;
+        else
+            ctrl->deltaTime = node->toTime.deltaTime;
+        animationProcessActiveTree(node->blendTo, ci);
+        node->toTime.startField = ctrl->startField;
+        node->toTime.startTime = ctrl->startTime;
+    } else if (to->opcode == 0x2B) {
+        AnimProcNode *proc = (AnimProcNode *)to;
+
+        blk = &proc->animOutput;
+        if (*out == 0) {
+            proc->animOutput.val = (float *)D_007329F0.alloc16(ci->character->numChannels * 4);
+            n = ci->character->numChannels;
+            n = (n >> 3) + 1;
+            p = dirty = (unsigned char *)D_007329F0.alloc16(n);
+            for (; n != 0; n--)
+                *p++ = 0;
+            proc->animOutput.dirty = dirty;
+            proc->animOutput.atMat = ci->animOutput.atMat;
+        } else {
+            proc->animOutput = **out;
+        }
+        animationProcessActiveTree(node->blendTo, ci);
+        *out = blk;
+        return;
+    } else if (to->opcode == 0x22) {
+        AnimBlendNode *blend = (AnimBlendNode *)to;
+
+        blk = &blend->animOutput;
+        if (*out == 0) {
+            blend->animOutput.val = (float *)D_007329F0.alloc16(ci->character->numChannels * 4);
+            n = ci->character->numChannels;
+            n = (n >> 3) + 1;
+            p = dirty = (unsigned char *)D_007329F0.alloc16(n);
+            for (; n != 0; n--)
+                *p++ = 0;
+            blend->animOutput.dirty = dirty;
+            blend->animOutput.atMat = ci->animOutput.atMat;
+        } else {
+            blend->animOutput = **out;
+        }
+        animationProcessActiveTree(node->blendTo, ci);
+        node->toTime.startField = blend->toTime.startField;
+        node->toTime.startTime = blend->toTime.startTime;
+        node->toTime.deltaTime = blend->toTime.deltaTime;
+    } else {
+        return;
+    }
+    *out = blk;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationEvaluateToNode__FP14_animBlendNodeP17_animCharInstancePP21_animationOutputBlock);
+#endif
 void animationCollapseBlend(AnimBlendNode *node, _animCharInstance *ci)
 {
     node->active = 0;

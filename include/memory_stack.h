@@ -27,6 +27,15 @@ public:
         *q = old;
     }
 
+    /* Allocates 16-byte aligned memory at the low end. */
+    void *alloc16(unsigned short size)
+    {
+        char *p = (char *)(((int)low + 15) & ~15);
+
+        low = p + size;
+        return p;
+    }
+
     /* Pops back to the last mark. */
     void popMark(void)
     {
