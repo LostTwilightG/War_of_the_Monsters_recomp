@@ -104,3 +104,5 @@ game/ui
 game/screen
 game/rt
 common/input
+game/MovementStates
+game/MonsterStates

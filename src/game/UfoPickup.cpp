@@ -1,6 +1,13 @@
 #include "common.h"
 #include "engine.h"
 #include "game/pickup.h"
+#include "game/pickup_fx.h"
+#include "cs_pool.h"
+
+class GenericSound {
+public:
+    void terminateGenericSound(void);
+};
 
 class UfoPickup : public Pickup {
 public:
@@ -13,6 +20,8 @@ public:
     void drop(void);
     void grab(int i);
     void enterState(State s);
+    void kill(void);
+    void regen(void);
 };
 
 INCLUDE_ASM("asm/nonmatchings/game/UfoPickup", __9UfoPickup);
@@ -30,10 +39,40 @@ void UfoPickup::drop(void)
     Pickup::hatCheck();
     hdReparentCsGrid(cs);
 }
-INCLUDE_ASM("asm/nonmatchings/game/UfoPickup", kill__9UfoPickup);
+void UfoPickup::kill(void)
+{
+    int f210 = *(int *)((char *)this + 0x210);
+
+    cs->drawMe = 0;
+    cs->testCollision = 0;
+    particleCreateFx(&cs->trans, 0xB, 12.0f, 0, 0.0f);
+    PICKUP_SOUNDS()->playDestructibleSound(0x66, &cs->trans);
+    ((GenericSound *)((char *)this + 0x21C))->terminateGenericSound();
+    flags &= 0xFFFD;
+    if ((bits & 1) == 0 && *(int *)((char *)this + 0x210) == 0) {
+        CsPool::csDeactivate(cs);
+        cs = 0;
+    }
+    if (*(int *)((char *)this + 0x210) != 0)
+        regenTimer = 1;
+}
 INCLUDE_ASM("asm/nonmatchings/game/UfoPickup", update__9UfoPickup);
 INCLUDE_ASM("asm/nonmatchings/game/UfoPickup", fire__9UfoPickupR8_fvector);
-INCLUDE_ASM("asm/nonmatchings/game/UfoPickup", regen__9UfoPickup);
+void UfoPickup::regen(void)
+{
+    Pickup::regen();
+    cs->testCollision = 1;
+    *(int *)((char *)this + 0x1F0) = 0;
+    *(int *)((char *)this + 0x1F8) = 0;
+    *(int *)((char *)this + 0x1F4) = 0;
+    if (*(int *)((char *)this + 0x210) != 0) {
+        *(int *)((char *)this + 0x214) = 0;
+        enterState(STATE_5);
+        cs->trans.z = 3000.0f;
+        return;
+    }
+    enterState(STATE_0);
+}
 INCLUDE_ASM("asm/nonmatchings/game/UfoPickup", updateAttackBehavior__9UfoPickup);
 INCLUDE_ASM("asm/nonmatchings/game/UfoPickup", enterState__9UfoPickupQ29UfoPickup5State);
 INCLUDE_ASM("asm/nonmatchings/game/UfoPickup", _vt$9UfoPickup);

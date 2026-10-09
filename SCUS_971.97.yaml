@@ -128,7 +128,7 @@ segments:
       - [0x04D8E8, cpp, game/MilitaryPickup]  # c++, 13 funcs, name: guess
       - [0x04DAB0, cpp, game/MissileTruckPickup]  # c++, 16 funcs, name: guess
       - [0x04E590, cpp, game/MonkeyChains]  # c++, 4 funcs, name: guess
-      - [0x04EA90, asm, game/MonsterStates]  # c++, 263 funcs, name: manual
+      - [0x04EA90, cpp, game/MonsterStates]  # c++, 263 funcs, name: manual
       - [0x05B3E0, cpp, game/Monster]  # c++, 261 funcs, name: manual
       - [0x063CF8, asm, game/MonsterAnimBlend]  # c++, 18 funcs, name: manual
       - [0x064778, asm, game/MonsterDynamics]  # c++, 21 funcs, name: guess
@@ -137,7 +137,7 @@ segments:
       - [0x06D208, cpp, game/MonsterMeters]  # c++, 15 funcs, name: manual
       - [0x06D7C0, cpp, game/MonsterTriggers]  # c++, 11 funcs, name: manual
       - [0x06E088, cpp, game/MonsterTweaks]  # c++, 5 funcs, name: guess
-      - [0x06E158, asm, game/MovementStates]  # c++, 95 funcs, name: manual
+      - [0x06E158, cpp, game/MovementStates]  # c++, 95 funcs, name: manual
       - [0x076DF0, cpp, game/OgreMace]  # c++, 4 funcs, name: guess
       - [0x077680, cpp, game/PadFlags]  # c++, 21 funcs, name: guess
       - [0x078D58, asm, game/PadFlags_2]  # c++, 4 funcs, name: guess
@@ -550,10 +550,10 @@ segments:
       - [0x5EAF80, rodata, game/MilitaryFormation]
       - [0x5EB078, .rodata, game/MilitaryPickup]
       - [0x5EB120, .rodata, game/MissileTruckPickup]
-      - [0x5EB210, rodata, game/MonsterStates]
+      - [0x5EB210, .rodata, game/MonsterStates]
       - [0x5EBDA0, .rodata, game/Monster]
       - [0x5EC750, rodata, game/MonsterMc]
-      - [0x5ED3F0, rodata, game/MovementStates]
+      - [0x5ED3F0, .rodata, game/MovementStates]
       - [0x5ED870, .rodata, game/PathTool]
       - [0x5ED8C0, .rodata, game/Pickup]
       - [0x5EDC10, rodata, game/PlantBoss]

@@ -414,7 +414,416 @@ INCLUDE_ASM("asm/nonmatchings/game/Monster", dropPickup__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", launchDefaultProjectile__7Monsteri);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updateDefaultProjectile__7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", updatePosition__7Monster);
+#ifdef NON_MATCHING
+class HitEvent;
+class StateRecoil {
+public:
+    int transitionOK(void);
+};
+class StateStunned {
+public:
+    int transitionOK(void);
+};
+class StateShocked {
+public:
+    int transitionOK(void);
+};
+class StateBlock {
+public:
+    int isBlockable(HitEvent &e);
+};
+class StateGrappled {
+public:
+    enum SubState { SUB_0, SUB_1, SUB_2 };
+    void enterSubState(SubState s);
+};
+class LevelObjectSoundManager {
+public:
+    void playDestructibleSound(unsigned id, _fvector *pos);
+};
+struct ActuatorData {
+    int w[8];
+};
+void inputSetActuator(int pad, ActuatorData *a);
+int particleCreateFx(_fvector *pos, int id, float scale, float (*m)[4], float strength);
+extern "C" float sqrtf(float);
+extern char takeHitInfo[] __asm__("_8HitEvent$s_takeHitInfo");
+extern int attackState;
+extern int attackSuccessful;
+extern int craterSwitched;
+
+#define HI(o) (*(int *)(takeHitInfo + (o)))
+#define HF(o) (*(float *)(takeHitInfo + (o)))
+#define SI(p, o) (*(int *)((char *)(p) + (o)))
+#define SF(p, o) (*(float *)((char *)(p) + (o)))
+#define COPY_DIR() do { SF(self, 0x7E70) = d[0]; SF(self, 0x7E78) = d[2]; SF(self, 0x7E74) = d[1]; } while (0)
+#define COPY_QUAD() do { SF(self, 0x7E80) = d[0]; SF(self, 0x7E84) = d[1]; SF(self, 0x7E88) = d[2]; SF(self, 0x7E8C) = d[3]; } while (0)
+#define RUMBLE(off) do { ActuatorData a = *(ActuatorData *)((char *)game + (off)); inputSetActuator(SI(self, 0x24), &a); } while (0)
+#define KNOCK(f12, f13) knockBack(*dir, (f12), (f13))
+
+/* A hit lands on this monster. `dir` is the hit direction (normalised here, its w becomes the length), `dmg` the base damage and `attackerId` the
+   interactive id of whoever hit (0 = none). The static HitEvent (takeHitInfo) describes the hit: +0xC the type (0 none, 1 normal -> recoil,
+   2 blockable, 3 big hit -> recoil/additive recoil by +0x14 subtype, 5 shock, 7 stun, 8 knockback only, 10 burn), +0x10 a source kind (0xB = melee, 1 = ...),
+   +0x24/+0x34/+0x38/+0x3C strengths copied into the recoil state. The monster's current state may refuse the hit (virtual at vtable+0x34); blocking
+   absorbs or scales the damage; the damage finally goes through takeDamage, the attacker gains stamina on melee hits and the player's pad rumbles. */
+void Monster::takeHit(_fvector *dir, float dmg, int attackerId)
+{
+    char *self = (char *)this;
+    float damage = dmg;
+    char *src;
+    float *d = (float *)dir;
+    unsigned type;
+    int reacted = 0;
+
+    if (*(signed char *)(self + 0x49) != 0) {
+        char *st = *(char **)(self + 0x34);
+        char *vt = *(char **)(st + 0x10);
+
+        reacted = ((int (*)(void *, void *))*(void **)(vt + 0x34))(st + *(short *)(vt + 0x30), takeHitInfo);
+    }
+    if (!reacted) {
+        char *st = *(char **)(self + 0x34);
+
+        if (st == *(char **)(self + 0x7980)) {
+            char *vt = *(char **)(st + 0x10);
+
+            if (((int (*)(void *))*(void **)(vt + 0x4C))(st + *(short *)(vt + 0x48)) != 0) {
+                if (attackerId != 0 && *Interactives::getInteractive(attackerId) == 1)
+                    takeDamage(damage, false, (Monster *)Interactives::getInteractive(attackerId));
+                else
+                    takeDamage(damage, false, 0);
+            }
+        }
+        return;
+    }
+    if (SI(self, 0x14) == 0x1A0) {
+        if (attackState == 4 || attackState == 0xA) {
+            if (attackerId != 0 && *Interactives::getInteractive(attackerId) == 1)
+                takeDamage(damage, false, (Monster *)Interactives::getInteractive(attackerId));
+            else
+                takeDamage(damage, false, 0);
+            return;
+        }
+        if (attackerId != SI(*(char **)((char *)game + 0x120380), 0x20))
+            return;
+    }
+    if (*(int *)((char *)game + 0x1203C8) == 7 && HI(0xC) != 8)
+        return;
+    if (isBlocking() && HI(0xC) == 7) {
+        if (SI(self, 0x68A4) != 0 || SI(self, 0x68B4) != 0)
+            return;
+    }
+    src = 0;
+    if (attackerId != 0 && *Interactives::getInteractive(attackerId) == 1)
+        src = (char *)Interactives::getInteractive(attackerId);
+    {
+        float x = d[0], y = d[1], z = d[2];
+        float len = sqrtf(x * x + y * y + z * z);
+        float inv = 1.0f / len;
+
+        d[3] = len;
+        d[2] = z * inv;
+        d[0] = x * inv;
+        d[1] = y * inv;
+    }
+    if (src != 0) {
+        if (*(signed char *)(src + 0xF4) != 0) {
+            float f = SF(src, 0x48C);
+
+            if (0.0f < f)
+                damage *= f;
+        }
+        if (*(signed char *)(src + 0xF5) != 0) {
+            float f = SF(src, 0x49C);
+
+            if (0.0f < f)
+                damage *= f;
+        }
+    }
+    if (*(signed char *)(self + 0xE8) != 0)
+        return;
+    if (isBlocking() && HI(0xC) != 7 && ((StateBlock *)(self + 0x7DA0))->isBlockable(*(HitEvent *)takeHitInfo)) {
+        int holding = SI(self, 0x68A4) != 0 || SI(self, 0x68B4) != 0;
+
+        if (holding) {
+            if (SI(self, 0x68A4) != 0) {
+                char *p = **(char ***)(self + 0x68A4);
+                char *vt = *(char **)(p + 0x10);
+
+                ((void (*)(void *, float, _fvector *, int))*(void **)(vt + 0xC))(p + *(short *)(vt + 8), damage, dir, SI(self, 0x20));
+                if (SF(**(char ***)(self + 0x68A4), 0x48) <= 0.0f) {
+                    LevelPickups::killPickup(*(PickupIter *)(self + 0x68A4), 1);
+                    SI(self, 0x68A4) = 0;
+                    particleCreateFx((_fvector *)(self + 0x3E40), 0xB, 5.0f, 0, 0.0f);
+                    ((LevelObjectSoundManager *)((char *)game + 0x121570))->playDestructibleSound(0x64, (_fvector *)(self + 0x3E40));
+                    if (((StateRecoil *)(self + 0x7E30))->transitionOK()) {
+                        COPY_DIR();
+                        SF(self + 0x7E30, 0x4C) = 0.0f;
+                        SI(self + 0x7E30, 0x30) = 0;
+                        COPY_QUAD();
+                        enterNewState((MonsterState *)(self + 0x7E30));
+                    }
+                }
+            } else {
+                ((Monster *)SI(self, 0x68B4))->takeDamage(damage, false, (Monster *)src);
+            }
+            damage = 0.0f;
+        } else {
+            if (craterSwitched != 0)
+                SF(self, 0x69A8) = 1.0f;
+            damage *= SF(self, 0x69A8);
+        }
+    }
+    if (src != 0 && *(signed char *)(src + 0xEC) != 0)
+        damage = 1000.0f;
+    type = HI(0xC);
+    if (type > 10)
+        goto dmg;
+    switch (type) {
+    case 2:
+        if (isBlocking() && ((StateBlock *)(self + 0x7DA0))->isBlockable(*(HitEvent *)takeHitInfo)) {
+            char *sr = self + 0x7E30;
+
+            if (((StateRecoil *)sr)->transitionOK()) {
+                if (src != 0 && **(int **)(src + 0x34) == 3) {
+                    char *cs = *(char **)(src + 0xC);
+                    char *a1 = src + 0x8470;
+                    int ia, ib;
+
+                    SF(self, 0x7E70) = SF(cs, 0x30);
+                    SF(self, 0x7E78) = SF(cs, 0x38);
+                    SF(self, 0x7E74) = SF(cs, 0x34);
+                    ia = SI(a1, 0x2988) * 0x420;
+                    ib = SI(a1, 0x298C) * 0xB0;
+                    SF(sr, 0x4C) = SF(a1, ia + 0x20 + ib + 0x44) * SF(a1, ia + ib + 0x70);
+                    SF(sr, 0x28) = SF(a1, ib + ia + 0x90);
+                    SI(sr, 0x30) = HI(0x24);
+                    SF(sr, 0x1C) = SF(a1, ib + ia + 0x8C);
+                } else {
+                    COPY_DIR();
+                }
+                COPY_QUAD();
+                SI(sr, 0x34) = HI(0xC);
+                enterNewState((MonsterState *)sr);
+            }
+            goto dmg;
+        }
+        if (HI(0x10) == 0xB) {
+            if (HI(0x28) != 0x10)
+                KNOCK(0.0f, d[3] * 50.0f);
+            else
+                KNOCK(HF(0x38), HF(0x34));
+            SI(self + 0x7EA0, 0x524) = (int)src;
+        } else if (src != 0) {
+            char *st2 = *(char **)(src + 0x34);
+            int sid = *(int *)st2;
+
+            if (sid == 3) {
+                int ia = SI(st2, 0x2988) * 0x420;
+                int ib = SI(st2, 0x298C) * 0xB0;
+
+                SF(self + 0x7EA0, 0x53C) = SF(st2, ib + ia + 0x90);
+                knockBack(*(_fvector *)(*(char **)(src + 0xC) + 0x30), HF(0x38), HF(0x34));
+                SI(self + 0x7EA0, 0x524) = (int)src;
+            } else if (sid == 0x23) {
+                KNOCK(SF(src, 0xF738), SF(src, 0xF73C));
+                SI(self + 0x7EA0, 0x524) = (int)src;
+            } else if (sid == 0x28) {
+                KNOCK(SF(src, 0xFD8C), SF(src, 0xFD90));
+                SI(self + 0x7EA0, 0x524) = (int)src;
+            } else {
+                if (SI(src, 0x14) != 0x100 || HI(0x10) != 5)
+                    KNOCK(HF(0x38), HF(0x34));
+                else
+                    KNOCK(SF(src, 0x10964), SF(src, 0x10968));
+                SI(self + 0x7EA0, 0x524) = (int)src;
+            }
+        } else {
+            KNOCK(HF(0x38), HF(0x34));
+        }
+        if (SI(self, 0x18) == 1)
+            RUMBLE(0x1227E0);
+        goto dmg;
+    case 5:
+        if (SI(self, 0x14) == 0x1A0)
+            goto additive;
+        {
+            char *sh = self + 0x10BA0;
+
+            if (((StateShocked *)sh)->transitionOK()) {
+                if (*(char **)(self + 0x34) != sh) {
+                    SF(self, 0x10BC0) = d[0];
+                    SF(self, 0x10BC4) = d[1];
+                    SF(self, 0x10BC8) = d[2];
+                    SF(self, 0x10BCC) = d[3];
+                }
+                enterNewState((MonsterState *)sh);
+                if (HI(0x14) == 0x13 && src != 0) {
+                    SI(self, 0x10BB8) = 1;
+                    SF(self, 0x10BD0) = SF(src, 0x105D8);
+                    SF(self, 0x10BD4) = SF(src, 0x105DC);
+                }
+            }
+        }
+        if (SI(self, 0x18) == 1)
+            RUMBLE(0x1227C0);
+        goto dmg;
+    case 1:
+        if (SI(self, 0x14) == 0x1A0 || isHoldingLarge())
+            goto additive;
+        {
+            char *sr = self + 0x7E30;
+
+            if (((StateRecoil *)sr)->transitionOK()) {
+                if (src != 0) {
+                    int sid = **(int **)(src + 0x34);
+
+                    if (sid == 3) {
+                        char *cs = *(char **)(src + 0xC);
+                        char *a1 = src + 0x8470;
+                        int ia, ib;
+
+                        SF(self, 0x7E70) = SF(cs, 0x30);
+                        SF(self, 0x7E78) = SF(cs, 0x38);
+                        SF(self, 0x7E74) = SF(cs, 0x34);
+                        ia = SI(a1, 0x2988) * 0x420;
+                        ib = SI(a1, 0x298C) * 0xB0;
+                        SF(sr, 0x4C) = SF(a1, ia + 0x20 + ib + 0x44) * SF(a1, ia + ib + 0x70);
+                        SF(sr, 0x28) = SF(a1, ib + ia + 0x90);
+                        SI(sr, 0x30) = HI(0x24);
+                        SF(sr, 0x1C) = SF(a1, ib + ia + 0x8C);
+                        if (SI(src, 0x68A4) != 0) {
+                            char *info = (char *)&LevelPickups::s_info[SI(**(char ***)(src + 0x68A4), 0xA0)];
+
+                            SF(sr, 0x1C) = SF(info, 0x1C);
+                        }
+                    } else if (sid == 0x29) {
+                        char *cs = *(char **)(src + 0xC);
+                        char *a1 = src + 0xAE90;
+                        int ia, ib;
+
+                        SF(self, 0x7E70) = SF(cs, 0x30);
+                        SF(self, 0x7E78) = SF(cs, 0x38);
+                        SF(self, 0x7E74) = SF(cs, 0x34);
+                        ia = SI(a1, 0x2D48) * 0x480;
+                        ib = SI(a1, 0x2D4C) * 0xC0;
+                        SF(sr, 0x4C) = SF(a1, ia + 0x20 + ib + 0x44) * SF(a1, ia + ib + 0x70);
+                        SI(sr, 0x30) = HI(0x24);
+                        SF(sr, 0x1C) = SF(a1, ib + ia + 0x8C);
+                    } else {
+                        COPY_DIR();
+                        SF(sr, 0x1C) = HF(0x3C);
+                    }
+                } else {
+                    COPY_DIR();
+                    SF(sr, 0x1C) = HF(0x3C);
+                }
+                COPY_QUAD();
+                enterNewState((MonsterState *)sr);
+            } else if (**(int **)(self + 0x34) == 0x12) {
+                ((StateGrappled *)(self + 0xDDCC))->enterSubState(StateGrappled::SUB_2);
+            }
+        }
+        if (SI(self, 0x18) == 1)
+            RUMBLE(0x1227C0);
+        goto dmg;
+    case 3:
+        if (SI(self, 0x14) == 0x1A0 || isHoldingLarge())
+            goto additive;
+        if (HI(0x14) == 0x17) {
+            char *sr = self + 0x7E30;
+
+            if (((StateRecoil *)sr)->transitionOK()) {
+                COPY_DIR();
+                SI(sr, 0x4C) = 0;
+                SI(sr, 0x30) = 0;
+                COPY_QUAD();
+                enterNewState((MonsterState *)sr);
+            } else if (**(int **)(self + 0x34) == 0x12) {
+                ((StateGrappled *)(self + 0xDDCC))->enterSubState(StateGrappled::SUB_2);
+            }
+        } else {
+            switch (HI(0x14)) {
+            case 28:
+            case 30:
+            case 32:
+            case 36:
+            case 38:
+                break;
+            default:
+                takeAdditiveRecoil(*dir, 1.0f);
+                break;
+            }
+        }
+        if (SI(self, 0x18) == 1) {
+            if (HI(0x10) == 1)
+                RUMBLE(0x1227A0);
+            else
+                RUMBLE(0x1227E0);
+        }
+        goto dmg;
+    case 7:
+        if (SI(self, 0x14) == 0x1A0)
+            goto additive;
+        if ((SI(*(char **)(self + 0x34), 0x4) & 0x10) == 0) {
+            if (**(int **)(self + 0x34) == 0x2E) {
+                _fvector up;
+
+                up.x = 0.0f;
+                up.y = 0.0f;
+                up.w = 0.0f;
+                up.z = -1.0f;
+                knockBack(up, 0.0f, 0.0f);
+                if (src != 0)
+                    SI(self + 0x7EA0, 0x524) = (int)src;
+            } else {
+                char *sn = self + 0x10714;
+
+                if (((StateStunned *)sn)->transitionOK()) {
+                    COPY_DIR();
+                    SI(self + 0x7E30, 0x30) = 0;
+                    SI(self + 0x7E30, 0x4C) = 0;
+                    COPY_QUAD();
+                    SI(sn, 0x24) = 1;
+                    enterNewState((MonsterState *)sn);
+                } else if (**(int **)(self + 0x34) == 0x12) {
+                    ((StateGrappled *)(self + 0xDDCC))->enterSubState(StateGrappled::SUB_1);
+                }
+            }
+        }
+        if (SI(self, 0x18) == 1)
+            RUMBLE(0x1227A0);
+        goto dmg;
+    case 8:
+        KNOCK(HF(0x38), HF(0x34));
+        goto dmg;
+    case 10:
+        if (SI(self, 0x14) == 0x1A0)
+            goto additive;
+        SF(self + 0xDE30, 0x48) = 40.0f;
+        enterNewState((MonsterState *)(self + 0xDE30));
+        goto dmg;
+    case 0:
+        if (src == 0 && (SI(*(char **)(self + 0x34), 0x4) & 0x10) != 0)
+            src = *(char **)(*(char **)(self + 0x34) + 0x524);
+        goto dmg;
+    default:
+        goto dmg;
+    }
+additive:
+    takeAdditiveRecoil(*dir, 1.0f);
+dmg:
+    takeDamage(damage, false, (Monster *)src);
+    if (src != 0 && HI(0x10) == 0xB)
+        ((Monster *)src)->m_stamina.credit(((Monster *)src)->getStaminaGain());
+    if (SI(self, 0x6CD4) != 0)
+        SI((char *)game + SI(self, 0x6CD8) * 0x2E0, 0xBC) = 0x1E;
+    if (src != 0 && SI(src, 0x14) == 0x1A0)
+        attackSuccessful = 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Monster", takeHit__7MonsterP8_fvectorfi);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Monster", takeDamage__7MonsterfbP7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", takeAdditiveRecoil__7MonsterR8_fvectorf);
 INCLUDE_ASM("asm/nonmatchings/game/Monster", knockBack__7MonsterR8_fvectorff);
@@ -1437,7 +1846,11 @@ void Monster::setPadEnabled(bool v)
 {
     m_unkF9 = v;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setPickup__7MonsterGQ2t10LinkedList1ZP6Pickup8Iterator);
+void setPickup__7MonsterGQ2t10LinkedList1ZP6Pickup8Iterator(void *self, int v) __asm__("setPickup__7MonsterGQ2t10LinkedList1ZP6Pickup8Iterator");
+void setPickup__7MonsterGQ2t10LinkedList1ZP6Pickup8Iterator(void *self, int v)
+{
+    *(int *)((char *)self + 0x68A4) = v;
+}
 void Monster::setGrapplee(Monster * v)
 {
     m_target = v;
