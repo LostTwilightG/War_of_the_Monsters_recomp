@@ -17,19 +17,10 @@ public class W {
  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L,T,R,B; }
 }
 "@
-$vk = @{ ENTER=0x0D; X=0x58; C=0x43; V=0x56; Z=0x5A; UP=0x26; DOWN=0x28; LEFT=0x25; RIGHT=0x27; F8=0x77; F1=0x70 }
+$vk = @{ ENTER=0x0D; SPACE=0x20; X=0x20; C=0x43; V=0x56; Z=0x5A; UP=0x26; DOWN=0x28; LEFT=0x25; RIGHT=0x27; F8=0x77; F1=0x70 }
 function Get-Emu { Get-Process pcsx2-qt -ErrorAction SilentlyContinue | Select-Object -First 1 }
 switch ($cmd) {
- 'start' {   # start <elf-name> : backs up ini, installs keyboard bindings, launches
-   if (-not (Test-Path $bak)) { Copy-Item $ini $bak }
-   $t = Get-Content $bak -Raw
-   $map = @{ Up='Keyboard/Up'; Right='Keyboard/Right'; Down='Keyboard/Down'; Left='Keyboard/Left'; Triangle='Keyboard/V'; Circle='Keyboard/C'; Cross='Keyboard/X'; Square='Keyboard/Z'; Start='Keyboard/Return' }
-   $lines = $t -split "`r?`n"; $in=$false
-   $out = foreach ($l in $lines) {
-     if ($l -match '^\[(.+)\]') { $in = ($Matches[1] -eq 'Pad1') }
-     if ($in -and $l -match '^(\w+) = ') { if ($map.ContainsKey($Matches[1])) { "$($Matches[1]) = $($map[$Matches[1]])" } else { $l } } else { $l }
-   }
-   Set-Content $ini ($out -join "`n") -Encoding UTF8
+ 'start' {   # start <elf-name> : launches (the keyboard bindings live permanently in PCSX2.ini; see README)
    $w = 'C:\Users\TwistZero\WoTM'
    $elf = "$w\build\pcsx2_test\SCUS_971.97_$arg1.elf"
    $log = "$w\build\pcsx2_test\log_play_$arg1.txt"
@@ -57,6 +48,5 @@ switch ($cmd) {
    [W]::PostMessage($p.MainWindowHandle, 0x101, [IntPtr]$k, $up) | Out-Null; "posted $arg1" }
  'status' { $p = Get-Emu; if ($p) { "running pid $($p.Id)" } else { 'not running' } }
  'stop' {
-   Stop-Process -Name pcsx2-qt -Force -ErrorAction SilentlyContinue; Start-Sleep 1
-   if (Test-Path $bak) { Copy-Item $bak $ini -Force; Remove-Item $bak; 'ini restored' } else { 'no backup' } }
+   Stop-Process -Name pcsx2-qt -Force -ErrorAction SilentlyContinue; Start-Sleep 1; 'stopped' }
 }
