@@ -26,6 +26,15 @@ public:
         low = (char *)(q + 1);
         *q = old;
     }
+
+    /* Pops back to the last mark. */
+    void popMark(void)
+    {
+        int *q = (int *)mark;
+
+        low = (char *)q;
+        mark = *q;
+    }
 };
 
 #endif

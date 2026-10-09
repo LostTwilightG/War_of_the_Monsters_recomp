@@ -77,6 +77,8 @@ int getNgpFilesLoaded(void);
 int timerGetFieldCount(void);
 extern "C" int printf(const char *fmt, ...);
 void *operator new(unsigned, void *);
+/* the dirty masks are read as unaligned 64-bit words (ldl/ldr) */
+struct Packed64 { unsigned long v; } __attribute__((packed));
 
 void animationCleanUpTree(HierHead *tree, _animCharInstance *ci);
 void animationAddToActiveTree(_animHandle h);
@@ -97,6 +99,17 @@ void animationManager(_animmgr *mgr);
 void animationUpdateActiveTree(HierHead *tree, _animCharInstance *ci);
 void animationProcessActiveTree(HierHead *tree, _animCharInstance *ci);
 float animCurveEvaluate(AnimCurveHeader *curve, float t, unsigned short *key);
+void animationProcessTransitionBlend(AnimBlendNode *node, _animCharInstance *ci);
+void animationProcessStaticBlend(AnimBlendNode *node, _animCharInstance *ci);
+void animationProcessOverrideBlend(AnimBlendNode *node, _animCharInstance *ci);
+void animationProcessAdditiveBlend(AnimBlendNode *node, _animCharInstance *ci);
+void animationProcessProceeduralBlend(AnimBlendNode *node, _animCharInstance *ci);
+void animationEvaluateFromNode(AnimBlendNode *node, _animCharInstance *ci, AnimationOutputBlock **out);
+void animationEvaluateToNode(AnimBlendNode *node, _animCharInstance *ci, AnimationOutputBlock **out);
+float mathfApproxCos2(float x);
+void boundEulerAngle(float *p);
+extern int s_blendCurve;
+__asm__("#SNFIX_SMALL s_blendCurve");
 
 INCLUDE_ASM("asm/nonmatchings/common/animation", D_006F3150);
 void animationInitModifierBlends(_animCharInstance *ci)
@@ -655,11 +668,172 @@ void animationUpdateActiveTree(HierHead *tree, _animCharInstance *ci)
         animationProcessActiveTree(tree, ci);
     }
 }
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessActiveTree__FP9_hierheadP17_animCharInstance);
+void animationProcessActiveTree(HierHead *tree, _animCharInstance *ci)
+{
+    switch (tree->opcode) {
+    case 0x21:
+        animationUpdateFromControlNode((AnimControlNode *)tree, ci);
+        break;
+    case 0x2B:
+        ((void (*)(HierHead *, _animCharInstance *))((AnimProcNode *)tree)->procCallback)(tree, ci);
+        break;
+    case 0x22:
+        D_007329F0.pushMark();
+        switch (((AnimBlendNode *)tree)->blendType) {
+        case BLEND_TRANSITION:
+        case BLEND_FREEZETRANS:
+            animationProcessTransitionBlend((AnimBlendNode *)tree, ci);
+            break;
+        case BLEND_STATIC:
+            animationProcessStaticBlend((AnimBlendNode *)tree, ci);
+            break;
+        case BLEND_OVERRIDE:
+            animationProcessOverrideBlend((AnimBlendNode *)tree, ci);
+            break;
+        case BLEND_ADDITIVE:
+            animationProcessAdditiveBlend((AnimBlendNode *)tree, ci);
+            break;
+        case BLEND_PROCEEDURAL:
+            animationProcessProceeduralBlend((AnimBlendNode *)tree, ci);
+            break;
+        default:
+            ((AnimBlendNode *)tree)->weight = 0.0f;
+            break;
+        }
+        D_007329F0.popMark();
+        break;
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessTransitionBlend__FP14_animBlendNodeP17_animCharInstance);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessStaticBlend__FP14_animBlendNodeP17_animCharInstance);
+#ifdef NON_MATCHING
+/* 123/134: idx=0 and the word counter land in different registers */
+void animationProcessOverrideBlend(AnimBlendNode *node, _animCharInstance *ci)
+{
+    AnimationOutputBlock *out[2];
+    float t;
+    float w;
+
+    t = ((float)timerGetFieldCount() - node->blendStartField) * 16.66667f;
+    out[0] = 0;
+    out[1] = 0;
+    if (t < node->blendTime) {
+        float r = t / node->blendTime;
+        float f;
+
+        switch (s_blendCurve) {
+        case 0:
+        default:
+            f = r;
+            break;
+        case 1:
+            f = (mathfApproxCos2(r + -1.0f) + 1.0f) * 0.5f;
+            break;
+        case 2:
+            f = r * r;
+            break;
+        case 3:
+            f = r * (2.0f - r);
+            break;
+        }
+        w = f * node->weight;
+    } else {
+        w = node->weight;
+    }
+    if (w < 1e-10f)
+        return;
+    animationEvaluateFromNode(node, ci, &out[0]);
+    animationEvaluateToNode(node, ci, &out[1]);
+    {
+        int count = ci->character->numChannels;
+        int idx = 0;
+        int words = (count >> 6) + 1;
+        unsigned long *mask = (unsigned long *)out[1]->dirty;
+
+        for (; words; words--) {
+            unsigned long bits = ((Packed64 *)mask++)->v;
+            int n = words > 1 ? 64 : count & 0x3F;
+
+            for (; n; n--, idx++) {
+                int b = bits & 1;
+
+                if (b) {
+                    node->animOutput.val[idx] = out[1]->val[idx] * w;
+                    node->animOutput.dirty[idx / 8] |= 1 << (idx % 8);
+                }
+                bits >>= 1;
+            }
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessOverrideBlend__FP14_animBlendNodeP17_animCharInstance);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessAdditiveBlend__FP14_animBlendNodeP17_animCharInstance);
+#endif
+void animationProcessAdditiveBlend(AnimBlendNode *node, _animCharInstance *ci)
+{
+    AnimControlNode *ctrl = (AnimControlNode *)node->blendTo;
+    HierAnimation *anim;
+    float t;
+    float w;
+
+    if (ctrl->head.opcode != 0x21)
+        return;
+    anim = ctrl->anim;
+    t = ((float)timerGetFieldCount() - node->blendStartField) * 16.66667f;
+    if (t < node->blendTime) {
+        float r = t / node->blendTime;
+        float f;
+
+        switch (s_blendCurve) {
+        case 0:
+        default:
+            f = r;
+            break;
+        case 1:
+            f = (mathfApproxCos2(r + -1.0f) + 1.0f) * 0.5f;
+            break;
+        case 2:
+            f = r * r;
+            break;
+        case 3:
+            f = r * (2.0f - r);
+            break;
+        }
+        w = f * node->weight;
+    } else {
+        w = node->weight;
+    }
+    {
+        _animHandle h;
+        HierAnimCharacter *chr;
+        unsigned char *angular;
+        AnimCurveHeader **chan;
+        unsigned short *key;
+        int count;
+        float at;
+
+        h.unk8 = 0;
+        h.ci = ci;
+        h.ctrl = ctrl;
+        h.animIdx = anim->animIdx;
+        at = animationUpdateHandle(h);
+        chr = ci->character;
+        if (chr->numChannels <= 16)
+            angular = chr->angularChannelBits.bytes;
+        else
+            angular = (unsigned char *)chr + chr->angularChannelBits.offset;
+        chan = anim->channels;
+        key = ctrl->prevKey;
+        for (count = anim->numChannels; count != 0; count--, chan++, key++) {
+            int idx = (*chan)->dataIdx;
+
+            node->animOutput.val[idx] += w * animCurveEvaluate(*chan, at, key);
+            if ((angular[idx / 8] >> (idx % 8)) & 1)
+                boundEulerAngle(&node->animOutput.val[idx]);
+            node->animOutput.dirty[idx / 8] |= 1 << (idx % 8);
+        }
+    }
+}
 void animationProcessProceeduralBlend(AnimBlendNode *, _animCharInstance *)
 {
 }
