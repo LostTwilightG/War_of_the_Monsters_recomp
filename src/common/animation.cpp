@@ -1,44 +1,526 @@
 #include "common.h"
 
+/* hieri_types.h has AnimPlayer as a plain struct (from the stabs); this file defines its methods, so it gets the
+   class below instead. */
+#define AnimPlayer AnimPlayer_stabs
+#include "hieri_types.h"
+#undef AnimPlayer
+#include "memory_stack.h"
+
+class AnimPlayer {
+public:
+    HierHead head;             /* 0x00 */
+    _animCharInstance *animCI; /* 0x04 */
+    HierHead *mainTree;        /* 0x08 */
+    float *mainTreePureOut;    /* 0x0C */
+    AnimBlendNode *activeList; /* 0x10 */
+    int numNodes;              /* 0x14 */
+
+    AnimPlayer(_animCharInstance *ci);
+    void UpdateAnimations(void);
+    void AddBlendToActiveList(AnimBlendNode *node);
+    int RemoveBlendFromActiveList(AnimBlendNode *node);
+    int IsBlendInActiveList(AnimBlendNode *node);
+    HierHead *GetMainTreeNode(void);
+    AnimBlendNode *GetActiveList(void);
+    int GetNumNodesInActiveList(void);
+};
+
+/* What animationGetHandle finds: a character instance and one of its animations (with its control node). */
+struct _animHandle {
+    _animCharInstance *ci; /* 0x0 */
+    AnimControlNode *ctrl; /* 0x4 */
+    int unk8;              /* 0x8 */
+    short animIdx;         /* 0xC */
+};
+
+extern _animmgr *D_00735690[]; /* animation manager of each loaded NGP file */
+
+/* Pool of blend nodes: a stack of free slot indices; numUsed is its top. */
+class AnimBlendPool {
+public:
+    AnimBlendNode nodes[128];
+    unsigned char freeList[128];
+    unsigned char numUsed;
+
+    void reset(void)
+    {
+        int i;
+
+        for (i = 127; i >= 0; i--)
+            freeList[i] = i;
+        numUsed = 0;
+    }
+};
+
+extern MemoryStack D_007329F0; /* scratchpad stack (0x70000000, 16 KB) */
+extern AnimBlendPool D_00732A08;
+
+int getNgpFilesLoaded(void);
+int timerGetFieldCount(void);
+extern "C" int printf(const char *fmt, ...);
+void *operator new(unsigned, void *);
+
+void animationCleanUpTree(HierHead *tree, _animCharInstance *ci);
+void animationAddToActiveTree(_animHandle h);
+void animationUpdate(HierAnimation *anim, _animCharInstance *ci);
+void animationUpdateFromControlNode(AnimControlNode *ctrl, _animCharInstance *ci);
+float animationGetCurrentTime(_animHandle h);
+void animationPause(_animHandle h);
+void animationResume(_animHandle h);
+void animationStart(_animHandle h, bool loop);
+void animationStartReverse(_animHandle h, bool loop);
+void animationSetToBeginning(_animHandle h, bool update);
+void animationSetToEnd(_animHandle h, bool update);
+void animationSetDirection(_animHandle h, bool forward);
+int animationGetDirection(_animHandle h);
+void animationSetIterations(_animHandle h, unsigned short n);
+void animationSetSpeed(_animHandle h, float speed);
+void animationManager(_animmgr *mgr);
+
 INCLUDE_ASM("asm/nonmatchings/common/animation", D_006F3150);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationInitModifierBlends__FP17_animCharInstance);
+void animationInitModifierBlends(_animCharInstance *ci)
+{
+    AnimPlayer *player = (AnimPlayer *)ci->activeTree;
+    char *mem = (char *)(((int)MemoryStack::global.low + 15) & ~15);
+
+    MemoryStack::global.low = mem + (unsigned short)(ci->character->numChannels * 4);
+    player->mainTreePureOut = (float *)mem;
+}
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationTransitionInto__FR11_animHandlefii);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationIsTransitioning__FR11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationIsTargetAnim__FR11_animHandle);
+int animationIsTransitioning(_animHandle &h)
+{
+    if (h.ci) {
+        HierHead *tree = ((AnimPlayer *)h.ci->activeTree)->GetMainTreeNode();
+        if (tree && tree->opcode == 0x22)
+            return 1;
+    }
+    return 0;
+}
+int animationIsTargetAnim(_animHandle &h)
+{
+    HierHead *node;
+
+    if (h.ci) {
+        node = ((AnimPlayer *)h.ci->activeTree)->mainTree;
+        while (node) {
+            if (node->opcode == 0x21)
+                return node == (HierHead *)h.ctrl;
+            else if (node->opcode == 0x22)
+                node = ((AnimBlendNode *)node)->blendTo;
+            else
+                break;
+        }
+    }
+    return 0;
+}
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationAddBlend__FG11_animHandleP14_animBlendNodeiffsi);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationRemoveBlend__FG11_animHandleP14_animBlendNodef);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationAddProcBlend__FG11_animHandleP14_animBlendNodeifs);
+#ifdef NON_MATCHING
+/* 28% of words; inner loop reloads ci->character each pass in retail (ours hoists it and strength-reduces animations[k]) */
+void animationGetHandle(_animHandle *h, unsigned id1, unsigned id2, unsigned animId)
+{
+    int i;
+    unsigned n;
+    unsigned k;
+    _animCharInstance **pp;
+
+    h->animIdx = -1;
+    h->ci = 0;
+    h->ctrl = 0;
+    for (i = 0; i < getNgpFilesLoaded(); i++) {
+        _animmgr *mgr = D_00735690[i];
+        if (mgr == 0)
+            return;
+        pp = mgr->charInstance;
+        for (n = mgr->numCharInstances; n != 0; n--, pp++) {
+            _animCharInstance *ci = *pp;
+            if (ci->head.id1 != id1 || ci->head.id2 != id2)
+                continue;
+            for (k = 0; k < ci->character->numAnims; k++) {
+                if (ci->character->animations[k]->head.id1 == animId) {
+                    h->ci = ci;
+                    h->animIdx = k;
+                    h->ctrl = &ci->animCtx[k];
+                    return;
+                }
+            }
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetHandle__FP11_animHandleUiUiUi);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetNullHandle__FP11_animHandleUiUi);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetCurrentTime__FG11_animHandle);
+#endif
+void animationGetNullHandle(_animHandle *h, unsigned id1, unsigned id2)
+{
+    int i;
+    unsigned n;
+    _animCharInstance **pp;
+
+    h->animIdx = -1;
+    h->ci = 0;
+    h->ctrl = 0;
+    for (i = 0; i < getNgpFilesLoaded(); i++) {
+        _animmgr *mgr = D_00735690[i];
+        if (mgr == 0)
+            return;
+        pp = mgr->charInstance;
+        for (n = mgr->numCharInstances; n != 0; n--, pp++) {
+            _animCharInstance *ci = *pp;
+            if (ci->head.id1 == id1 && ci->head.id2 == id2) {
+                h->ci = ci;
+                return;
+            }
+        }
+    }
+}
+float animationGetCurrentTime(_animHandle h)
+{
+    float t;
+
+    if (h.ci == 0 || h.ctrl == 0)
+        return 0.0f;
+    if (h.ctrl->active)
+        t = h.ctrl->deltaTime * (float)(int)(timerGetFieldCount() - h.ctrl->startField);
+    else
+        t = (float)(int)h.ctrl->startField * h.ctrl->deltaTime;
+    return t + h.ctrl->startTime;
+}
+#ifdef NON_MATCHING
+/* 61% of words; retail fills the bc1t delay slot with the anim load */
+float animationCalculatePlayTime(_animHandle h)
+{
+    float t = 0.0f;
+
+    if (h.ci && h.ctrl && h.ctrl->deltaTime != t)
+        t = (h.ctrl->anim->endTime - h.ctrl->anim->startTime) / __builtin_fabsf(h.ctrl->deltaTime);
+    return t;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationCalculatePlayTime__FG11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationResetCharacter__FR11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationStart__FG11_animHandleb);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationStartReverse__FG11_animHandleb);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationSetToFrame__FG11_animHandlefi);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetCurrentFrame__FG11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationSetToPercent__FG11_animHandlefi);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetCurrentPercent__FG11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationPause__FG11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationResume__FG11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationLoop__FG11_animHandleb);
+#endif
+void animationResetCharacter(_animHandle &h)
+{
+    _animCharInstance *ci = h.ci;
+    AnimPlayer *player;
+    HierHead *tree;
+    AnimBlendNode *node;
+
+    if (ci == 0)
+        return;
+    player = (AnimPlayer *)ci->activeTree;
+    tree = player->GetMainTreeNode();
+    node = player->GetActiveList();
+    if (tree) {
+        animationCleanUpTree(tree, ci);
+        player->mainTree = 0;
+    }
+    while (node) {
+        player->RemoveBlendFromActiveList(node);
+        node = player->GetActiveList();
+    }
+}
+void animationStart(_animHandle h, bool restart)
+{
+    HierAnimation *anim;
+    float t;
+
+    if (h.ci == 0)
+        return;
+    anim = h.ci->character->animations[h.animIdx];
+    animationAddToActiveTree(h);
+    animationResume(h);
+    animationSetDirection(h, 1);
+    t = animationGetCurrentTime(h);
+    if (restart || t < anim->startTime)
+        animationSetToBeginning(h, 0);
+    animationSetIterations(h, 0);
+}
+void animationStartReverse(_animHandle h, bool restart)
+{
+    HierAnimation *anim;
+    float t;
+
+    if (h.ci == 0)
+        return;
+    anim = h.ci->character->animations[h.animIdx];
+    animationAddToActiveTree(h);
+    animationResume(h);
+    animationSetDirection(h, 0);
+    t = animationGetCurrentTime(h);
+    if (restart || anim->endTime < t)
+        animationSetToEnd(h, 0);
+    animationSetIterations(h, 0);
+}
+void animationSetToFrame(_animHandle h, float frame, int update)
+{
+    HierAnimation *anim;
+
+    if (h.ci == 0 || h.ctrl == 0)
+        return;
+    anim = h.ci->character->animations[h.animIdx];
+    animationResume(h);
+    h.ctrl->startField = timerGetFieldCount();
+    if (anim->endTime < frame)
+        h.ctrl->startTime = anim->endTime;
+    else if (frame < anim->startTime)
+        h.ctrl->startTime = anim->startTime;
+    else
+        h.ctrl->startTime = frame;
+    if (update)
+        animationUpdate(anim, h.ci);
+    animationPause(h);
+}
+float animationGetCurrentFrame(_animHandle h)
+{
+    float frame = -1.0f;
+
+    if (h.ci)
+        frame = animationGetCurrentTime(h);
+    return frame;
+}
+void animationSetToPercent(_animHandle h, float percent, int update)
+{
+    AnimControlNode *ctrl;
+    HierAnimation *anim;
+    float t;
+
+    if (h.ci == 0 || (ctrl = h.ctrl) == 0)
+        return;
+    anim = h.ci->character->animations[h.animIdx];
+    t = (anim->endTime - anim->startTime) * percent + anim->startTime;
+    ctrl->startField = ctrl->active ? timerGetFieldCount() : 0;
+    h.ctrl->startTime = t;
+    if (update) {
+        if (!h.ctrl->active)
+            animationResume(h);
+        animationUpdate(anim, h.ci);
+    }
+}
+float animationGetCurrentPercent(_animHandle h)
+{
+    HierAnimation *anim;
+    float len;
+    float percent = -1.0f;
+
+    if (h.ci) {
+        anim = h.ci->character->animations[h.animIdx];
+        len = anim->endTime - anim->startTime;
+        percent = (animationGetCurrentTime(h) - anim->startTime) / len;
+    }
+    return percent;
+}
+void animationPause(_animHandle h)
+{
+    if (h.ci == 0 || h.ctrl == 0)
+        return;
+    if (h.ctrl->active) {
+        h.ctrl->startField = timerGetFieldCount() - h.ctrl->startField;
+        h.ctrl->active = 0;
+    }
+}
+void animationResume(_animHandle h)
+{
+    if (h.ci == 0 || h.ctrl == 0)
+        return;
+    if (!h.ctrl->active) {
+        h.ctrl->startField = timerGetFieldCount() - h.ctrl->startField;
+        h.ctrl->active = 1;
+    }
+    if (h.ci->activeTree == 0) {
+        if (animationGetDirection(h))
+            animationStart(h, 0);
+        else
+            animationStartReverse(h, 0);
+    }
+}
+void animationLoop(_animHandle h, bool loop)
+{
+    if (h.ci && h.ctrl)
+        h.ctrl->loop = loop;
+}
+#ifdef NON_MATCHING
+/* 91% of words; v0/v1 swapped around the active test */
+void animationSetSpeed(_animHandle h, float speed)
+{
+    float mag = __builtin_fabsf(speed);
+    AnimControlNode *ctrl;
+    float t;
+    int now;
+
+    if (h.ci == 0 || h.ctrl == 0)
+        return;
+    t = animationGetCurrentTime(h);
+    now = timerGetFieldCount();
+    ctrl = h.ctrl;
+    ctrl->startTime = t;
+    if (!ctrl->active)
+        h.ctrl->startField = 0;
+    else
+        h.ctrl->startField = now;
+    if (h.ctrl->deltaTime == 0.0f)
+        h.ctrl->deltaTime = speed;
+    else
+        h.ctrl->deltaTime = 0.0f < h.ctrl->deltaTime ? mag : -mag;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationSetSpeed__FG11_animHandlef);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationResetSpeed__FG11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationSetToBeginning__FG11_animHandleb);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationSetToEnd__FG11_animHandleb);
+#endif
+void animationResetSpeed(_animHandle h)
+{
+    if (h.ci)
+        animationSetSpeed(h, 1.0f);
+}
+void animationSetToBeginning(_animHandle h, bool update)
+{
+    HierAnimation *anim;
+
+    if (h.ci == 0 || h.ctrl == 0)
+        return;
+    anim = h.ci->character->animations[h.animIdx];
+    if (update) {
+        animationSetToFrame(h, anim->startTime, 1);
+        return;
+    }
+    if (h.ctrl->active)
+        h.ctrl->startField = timerGetFieldCount();
+    else
+        h.ctrl->startField = 0;
+    h.ctrl->startTime = anim->startTime;
+}
+void animationSetToEnd(_animHandle h, bool update)
+{
+    HierAnimation *anim;
+
+    if (h.ci == 0 || h.ctrl == 0)
+        return;
+    anim = h.ci->character->animations[h.animIdx];
+    if (update) {
+        animationSetToFrame(h, anim->endTime, 1);
+        return;
+    }
+    if (h.ctrl->active)
+        h.ctrl->startField = timerGetFieldCount();
+    else
+        h.ctrl->startField = 0;
+    h.ctrl->startTime = anim->endTime;
+}
+#ifdef NON_MATCHING
+/* 55% of words; retail joins both direction tests on one bc1f */
+void animationSetDirection(_animHandle h, bool forward)
+{
+    int now;
+    float t;
+
+    if (h.ci == 0 || h.ctrl == 0)
+        return;
+    now = timerGetFieldCount();
+    t = (float)(now - h.ctrl->startField) * h.ctrl->deltaTime + h.ctrl->startTime;
+    if (forward ? h.ctrl->deltaTime < 0.0f : 0.0f < h.ctrl->deltaTime) {
+        if (h.ctrl->active) {
+            h.ctrl->startTime = t;
+            h.ctrl->startField = now;
+        }
+        h.ctrl->deltaTime = -h.ctrl->deltaTime;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationSetDirection__FG11_animHandleb);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetDirection__FG11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetLastFrame__FG11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationIsRunning__FG11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationSetTotalRunFrames__FG11_animHandlef);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetTotalRunFrames__FG11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetFrameAtPercent__FG11_animHandlef);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationSetIterations__FG11_animHandleUs);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetIterations__FG11_animHandle);
+#endif
+int animationGetDirection(_animHandle h)
+{
+    if (h.ci && h.ctrl && h.ctrl->deltaTime < 0.0f)
+        return 0;
+    return 1;
+}
+float animationGetLastFrame(_animHandle h)
+{
+    if (h.ci)
+        return h.ci->character->animations[h.animIdx]->endTime;
+    return 0.0f;
+}
+int animationIsRunning(_animHandle h)
+{
+    if (h.ci && h.ctrl && h.ctrl->active)
+        return 1;
+    return 0;
+}
+void animationSetTotalRunFrames(_animHandle h, float frames)
+{
+    HierAnimation *anim;
+
+    if (h.ci && h.ctrl) {
+        anim = h.ci->character->animations[h.animIdx];
+        h.ctrl->deltaTime = (anim->endTime - anim->startTime) / frames;
+    }
+}
+float animationGetTotalRunFrames(_animHandle h)
+{
+    HierAnimation *anim;
+    float frames = 0.0f;
+
+    if (h.ci && h.ctrl) {
+        anim = h.ci->character->animations[h.animIdx];
+        frames = (anim->endTime - anim->startTime) / h.ctrl->deltaTime;
+    }
+    return frames;
+}
+float animationGetFrameAtPercent(_animHandle h, float percent)
+{
+    HierAnimation *anim;
+    float frame = -1.0f;
+
+    if (h.ci) {
+        anim = h.ci->character->animations[h.animIdx];
+        frame = (anim->endTime - anim->startTime) * percent;
+    }
+    return frame;
+}
+void animationSetIterations(_animHandle h, unsigned short n)
+{
+    if (h.ci && h.ctrl)
+        h.ctrl->iterations = n;
+}
+unsigned short animationGetIterations(_animHandle h)
+{
+    if (h.ci && h.ctrl)
+        return h.ctrl->iterations;
+    return 0;
+}
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationCheckDirty__FP17_animCharInstanceP14_animtransform);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationClearDirty);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetChannelIdx__FiP16AnimChannelIdMap);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationGetChannelVal__FiR11_animHandle);
+int animationGetChannelIdx(int id, AnimChannelIdMap *map)
+{
+    int lo, hi, mid;
+
+    if (map) {
+        lo = 0;
+        hi = map->nIds;
+        while (lo <= hi) {
+            mid = (lo + hi) / 2;
+            if (map->entries[mid].id < id)
+                lo = mid + 1;
+            else if (id < map->entries[mid].id)
+                hi = mid - 1;
+            else
+                return map->entries[mid].chanIdx;
+        }
+    }
+    return -1;
+}
+float *animationGetChannelVal(int id, _animHandle &h)
+{
+    _animCharInstance *ci = h.ci;
+    int idx;
+
+    if (ci == 0)
+        return 0;
+    idx = animationGetChannelIdx(id, ci->character->animChannelIdMap);
+    if (idx < 0)
+        return 0;
+    return &ci->animOutput.val[idx];
+}
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationUpdateHandle__FR11_animHandle);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationUpdateFromControlNode__FP16_animControlNodeP17_animCharInstance);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationUpdateActiveTree__FP9_hierheadP17_animCharInstance);
@@ -47,29 +529,196 @@ INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessTransitionBlend
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessStaticBlend__FP14_animBlendNodeP17_animCharInstance);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessOverrideBlend__FP14_animBlendNodeP17_animCharInstance);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessAdditiveBlend__FP14_animBlendNodeP17_animCharInstance);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessProceeduralBlend__FP14_animBlendNodeP17_animCharInstance);
+void animationProcessProceeduralBlend(AnimBlendNode *, _animCharInstance *)
+{
+}
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationEvaluateFromNode__FP14_animBlendNodeP17_animCharInstancePP21_animationOutputBlock);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationEvaluateToNode__FP14_animBlendNodeP17_animCharInstancePP21_animationOutputBlock);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationCollapseBlend__FP14_animBlendNodeP17_animCharInstance);
+void animationCollapseBlend(AnimBlendNode *node, _animCharInstance *ci)
+{
+    node->active = 0;
+    if (node->parent) {
+        node->parent->blendFrom = node->blendTo;
+        node->parent->fromTime.startField = node->toTime.startField;
+        node->parent->fromTime.startTime = node->toTime.startTime;
+        node->parent->fromTime.deltaTime = node->toTime.deltaTime;
+    } else {
+        ((AnimPlayer *)ci->activeTree)->mainTree = node->blendTo;
+    }
+    animationCleanUpTree(node->blendFrom, ci);
+}
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationCleanUpTree__FP9_hierheadP17_animCharInstance);
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationAddToActiveTree__FG11_animHandle);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationUpdate__FP10_animationP17_animCharInstance);
+void animationUpdate(HierAnimation *anim, _animCharInstance *ci)
+{
+    AnimControlNode *ctrl = &ci->animCtx[anim->animIdx];
+
+    ctrl->animOutput = ci->animOutput;
+    animationUpdateFromControlNode(ctrl, ci);
+}
+#ifdef NON_MATCHING
+/* 84% of words; i = 0 scheduled before the count test in retail */
+void animationManager(_animmgr *mgr)
+{
+    unsigned i;
+
+    for (i = 0; i < mgr->numCharInstances; i++) {
+        _animCharInstance *ci = mgr->charInstance[i];
+        if (!ci->bits.lazyEvaluate && ci->activeTree)
+            ((AnimPlayer *)ci->activeTree)->UpdateAnimations();
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationManager__FP8_animmgr);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationSetInstance__FP8_animmgri);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationRunGlobal__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationInitialize__FP10_animationP17_animCharInstancei);
+#endif
+void animationSetInstance(_animmgr *mgr, int instance)
+{
+    unsigned i;
+
+    for (i = 0; i < mgr->numCharInstances; i++)
+        mgr->charInstance[i]->head.id2 = instance;
+}
+void animationRunGlobal(void)
+{
+    int i;
+
+    for (i = 0; i < getNgpFilesLoaded(); i++) {
+        if (D_00735690[i])
+            animationManager(D_00735690[i]);
+    }
+}
+void animationInitialize(HierAnimation *anim, _animCharInstance *ci, int idx)
+{
+    AnimControlNode *ctrl;
+    _animHandle h;
+
+    anim->animIdx = idx;
+    ctrl = &ci->animCtx[idx];
+    ctrl->head.id1 = ctrl->anim->head.id1;
+    ctrl->head.id2 = ctrl->anim->head.id2;
+    if (ctrl->active) {
+        h.ci = ci;
+        h.unk8 = 0;
+        h.ctrl = ctrl;
+        h.animIdx = ctrl->anim->animIdx;
+        ctrl->startField = timerGetFieldCount();
+        ctrl->startTime = anim->startTime;
+        animationAddToActiveTree(h);
+    } else {
+        h.ci = ci;
+        h.unk8 = 0;
+        h.ctrl = ctrl;
+        h.animIdx = ctrl->anim->animIdx;
+        ctrl->startField = 0;
+        ctrl->startTime = anim->startTime;
+    }
+}
+#ifdef NON_MATCHING
+/* 81% of words; retail walks the free list with a decrementing pointer */
+void animationInitGlobal(void)
+{
+    int i;
+
+    D_007329F0.clear();
+    D_00732A08.reset();
+    for (i = 0; i < 14; i++)
+        D_00735690[i] = 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationInitGlobal__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationSetGlobal__FP9_hierheadi);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationInitTweakers__Fv);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationUpdateTweakers__FiPv);
-INCLUDE_ASM("asm/nonmatchings/common/animation", __10AnimPlayerP17_animCharInstance);
+#endif
+void animationSetGlobal(HierHead *head, int idx)
+{
+    unsigned i;
+    unsigned j;
+
+    D_00735690[idx] = (_animmgr *)head;
+    for (i = 0; i < D_00735690[idx]->numCharInstances; i++) {
+        _animCharInstance *ci = D_00735690[idx]->charInstance[i];
+        if (ci->activeTree == 0) {
+            char *mem = (char *)(((int)MemoryStack::global.low + 15) & ~15);
+            MemoryStack::global.low = mem + sizeof(AnimPlayer);
+            ci->activeTree = (HierHead *)new (mem) AnimPlayer(ci);
+        }
+        for (j = 0; j < ci->character->numAnims; j++)
+            animationInitialize(ci->character->animations[j], ci, j);
+    }
+}
+void animationInitTweakers(void)
+{
+}
+void animationUpdateTweakers(int, void *)
+{
+}
+AnimPlayer::AnimPlayer(_animCharInstance *ci)
+{
+    head.opcode = 0x24;
+    animCI = ci;
+    mainTree = 0;
+    mainTreePureOut = 0;
+    activeList = 0;
+    numNodes = 0;
+}
 INCLUDE_ASM("asm/nonmatchings/common/animation", UpdateAnimations__10AnimPlayer);
 INCLUDE_ASM("asm/nonmatchings/common/animation", AddBlendToActiveList__10AnimPlayerP14_animBlendNode);
-INCLUDE_ASM("asm/nonmatchings/common/animation", RemoveBlendFromActiveList__10AnimPlayerP14_animBlendNode);
-INCLUDE_ASM("asm/nonmatchings/common/animation", IsBlendInActiveList__10AnimPlayerP14_animBlendNode);
-INCLUDE_ASM("asm/nonmatchings/common/animation", GetMainTreeNode__10AnimPlayer);
-INCLUDE_ASM("asm/nonmatchings/common/animation", GetActiveList__10AnimPlayer);
-INCLUDE_ASM("asm/nonmatchings/common/animation", GetNumNodesInActiveList__10AnimPlayer);
+int AnimPlayer::RemoveBlendFromActiveList(AnimBlendNode *node)
+{
+    AnimBlendNode *n;
+
+    for (n = activeList; n; n = n->next) {
+        if (n->prev == 0 && n != activeList)
+            printf("STOP HERE(1)\n");
+        if (n == node) {
+            if (activeList == n)
+                activeList = n->next;
+            if (n->prev)
+                n->prev->next = n->next;
+            if (n->next)
+                n->next->prev = n->prev;
+            n->prev = 0;
+            n->next = 0;
+            numNodes--;
+            return 1;
+        }
+    }
+    return 0;
+}
+int AnimPlayer::IsBlendInActiveList(AnimBlendNode *node)
+{
+    AnimBlendNode *prev = 0;
+    AnimBlendNode *n = activeList;
+
+    while (n) {
+        if (n->prev == 0 && n != activeList) {
+            n->prev = prev;
+            printf("STOP HERE(2)\n");
+        }
+        if (n == node)
+            return 1;
+        if (n == n->next)
+            break;
+        prev = n;
+        n = n->next;
+    }
+    return 0;
+}
+/* retail rodata keeps two empty strings after the last literal of this TU */
+__asm__(".section .rodata
+	.word 0
+	.word 0
+	.text");
+HierHead *AnimPlayer::GetMainTreeNode(void)
+{
+    return mainTree;
+}
+AnimBlendNode *AnimPlayer::GetActiveList(void)
+{
+    return activeList;
+}
+int AnimPlayer::GetNumNodesInActiveList(void)
+{
+    return numNodes;
+}
 INCLUDE_ASM("asm/nonmatchings/common/animation", __static_initialization_and_destruction_0_001F1FC8);
 INCLUDE_ASM("asm/nonmatchings/common/animation", _GLOBAL_$I$animationInitModifierBlends__FP17_animCharInstance);
 INCLUDE_ASM("asm/nonmatchings/common/animation", _GLOBAL_$D$animationInitModifierBlends__FP17_animCharInstance);
