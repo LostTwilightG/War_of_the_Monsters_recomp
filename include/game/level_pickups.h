@@ -33,6 +33,7 @@ public:
     };
     static Info s_info[];
 
+    static void *getClosestThrownPickup(_fvector &p, float r);
     static void update(void);
     static void computeHighlight(Monster &m);
     static void initAfterDbLoad(void);
