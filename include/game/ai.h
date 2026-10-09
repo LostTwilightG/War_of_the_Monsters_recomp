@@ -3,7 +3,10 @@
 
 class Monster;
 class DbInteractive;
-class PowerUp;
+class PowerUp {
+public:
+    enum Type { TYPE_0, TYPE_1, TYPE_2, TYPE_3, TYPE_4 };
+};
 class Pickup;
 class _fvector;
 
@@ -47,6 +50,11 @@ public:
     int pinningAi(void);
     int getReflexDelay(void);
     int getButtonMashDelay(void);
+    void *getBestPickup(float &best, float range);
+    void *getBestHealthPowerup(float &best, float range);
+    void *getBestStaminaPowerup(float &best, float range);
+    void *getBestSpecialPowerup(float &best, float range);
+    void *getBestPowerupByType(PowerUp::Type t, float &best, float range);
     void creditRelevance(PowerUp *p, float amount);
     void creditRelevance(Pickup *p, float amount);
 
