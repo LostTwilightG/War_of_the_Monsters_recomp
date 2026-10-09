@@ -4,6 +4,7 @@
 extern "C" int printf(const char *, ...);
 
 struct DbInteractive;
+struct _fvector;
 
 class Interactives {
 public:
@@ -14,6 +15,7 @@ public:
     static int addInteractive(DbInteractive *p); /* returns the slot: callers store it as the object's hat id */
     static void setInteractive(int i, DbInteractive *p);
     static DbInteractive *getInteractive(int i);
+    static void dispatchHit(_fvector *dir, float dmg, int attackerId, int targetId);
 };
 
 #ifdef NON_MATCHING
@@ -53,7 +55,20 @@ DbInteractive *Interactives::getInteractive(int i)
 ", i, s_numInteractives);
     return s_dbInteractive[0];
 }
+#ifdef NON_MATCHING
+/* Delivers a hit to interactive `targetId` through its virtual takeHit(dir, dmg, attackerId). */
+void Interactives::dispatchHit(_fvector *dir, float dmg, int attackerId, int targetId)
+{
+    if (targetId > 0 && targetId < s_numInteractives) {
+        char *t = (char *)s_dbInteractive[targetId];
+        char *vt = *(char **)(t + 0x10);
+
+        ((void (*)(void *, _fvector *, int, float))*(void **)(vt + 0xC))(t + *(short *)(vt + 8), dir, attackerId, dmg);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", dispatchHit__12InteractivesP8_fvectorfii);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", create__8HitEvent);
 HitHistory::HitHistory()
 {
