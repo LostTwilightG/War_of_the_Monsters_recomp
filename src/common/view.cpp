@@ -12,20 +12,28 @@ struct _viewDef {
     float fovH;            /* 0x00 */
     unsigned short width;  /* 0x04 */
     unsigned short height; /* 0x06 */
-    int pad8[4];
+    short bufW;            /* 0x08: draw buffer size given to ieGsSetDefDBuffDc */
+    short bufH;            /* 0x0A */
+    unsigned short x;      /* 0x0C: top-left corner on screen */
+    unsigned short y;      /* 0x0E */
+    float screenParam[2];  /* 0x10: passed through to mathfViewScreenMatrix */
     int centerX;           /* 0x18 */
     int centerY;           /* 0x1C */
     float fovV;            /* 0x20 */
-    char pad24[0xC0 - 0x24];
+    char pad24[0x30 - 0x24];
+    float fovNorms[2][4][4]; /* 0x30: frustum side planes in view space (two sets of four) */
+    float fovDegrees;      /* 0xB0: horizontal field of view, set by viewSetFov */
+    char padB4[0xC0 - 0xB4];
 };
+typedef char _size__viewDef[sizeof(_viewDef) == 0xC0 ? 1 : -1];
 
 /* One view (player camera): its coordinate system and screen rectangle. */
 struct _viewInfo {
     CS *cs;        /* 0x00 */
     _viewDef *def; /* 0x04 */
-    int unk8;      /* 0x08 */
-    int unkC;      /* 0x0C */
-    int unk10;     /* 0x10 */
+    int viewport;  /* 0x08: _viewports value */
+    int prevViewport; /* 0x0C */
+    CS *ownCs;     /* 0x10: the view's own camera (cs can point at another view's) */
 };
 
 /* GS RGBAQ register value (color bytes, Q = 1.0 in the high word). */
@@ -36,11 +44,30 @@ union GsRgbaq {
 
 /* Per-view double-buffered draw state (mostly not decoded yet). */
 struct _viewDb {
-    char pad0[0x1B0];
+    char pad0[0xC0];
+    unsigned long scissor0;  /* 0x0C0: GS SCISSOR, buffer 0 */
+    char padC8[0x140 - 0xC8];
+    unsigned long scissor0b; /* 0x140: GS SCISSOR, buffer 0, second register set */
+    char pad148[0x1B0 - 0x148];
     GsRgbaq bgColor0; /* 0x1B0: clear color, buffer 0 */
-    char pad1[0x320 - 0x1B8];
+    char pad1B8[0x230 - 0x1B8];
+    unsigned long scissor1;  /* 0x230: GS SCISSOR, buffer 1 */
+    char pad238[0x2B0 - 0x238];
+    unsigned long scissor1b; /* 0x2B0: GS SCISSOR, buffer 1, second register set */
+    char pad2B8[0x320 - 0x2B8];
     GsRgbaq bgColor1; /* 0x320: clear color, buffer 1 */
     char pad2[0x360 - 0x328];
+};
+/* GS SCISSOR register for a viewport: x0, x1 (inclusive), y0, y1 in 16-bit fields. */
+#define VIEW_SCISSOR(d)                                                                                              \
+    ((unsigned long)(d)->x | ((unsigned long)((d)->x + (d)->width - 1) << 16) | ((unsigned long)(d)->y << 32) |    \
+     ((unsigned long)((d)->y + (d)->height - 1) << 48))
+
+/* GS helper class from the engine library (hardware side, kept as asm). */
+struct IncognitoEntertainmentGS {
+    struct ieGsDBuffDc;
+    static void ieGsInitAA(bool on);
+    static void ieGsSetDefDBuffDc(ieGsDBuffDc *dc, short interlace, short w, short h, short psm, short ztest, short zpsm);
 };
 /* bgColor1 seen from bgColor0, as retail addresses it */
 #define VIEW_BG_STRIDE ((0x320 - 0x1B0) / sizeof(GsRgbaq))
@@ -87,12 +114,84 @@ __asm__("#SNFIX_SMALL gUseUnifiedView");
 void todGetTOD(int *on, float *minutesPerSecond, _todInfo14 *out);
 void todSetTOD(int on, float minutesPerSecond, void *data, float version);
 void mathfRotMatrixRPH(float (*mat)[4], _fvector *rph);
+void mathfMulMatrix(float (*dst)[4], float (*a)[4], float (*b)[4]);
+void vu0MulMatrixTP3x3(float (*dst)[4], float (*a)[4], float (*b)[4]);
+void viewApplySwap(float (*dst)[4], float (*src)[4]);
+void viewStoreNorms1InVu0(void);
+void viewStoreNorms2InVu0(void);
+extern FMATRIX viewShadRecMat;
+int viewInFOV(int view, _fvector *a, _fvector *b);
+float fogGetFarClipRange(void);
+_lightenv *lightGetEnv(int i);
+extern "C" float atanf(float);
+void viewComputeNormal(_fvector *out, _fvector *p0, _fvector *p1, _fvector *p2);
+void mathfTransposeMatrix(float (*dst)[4], float (*src)[4]);
+void mathfViewScreenMatrix(float (*screen)[4], float (*clip)[4], float (*fov)[4], float scrz, float ax, float ay,
+                           float p0, float p1, float nearZ, float zMax, float f1, float f2, float cx, float cy);
+extern float viewDegrees;
+extern FMATRIX viewClipMats[5];
+extern FMATRIX viewFovMats[5];
+void viewGetBgColor(int &r, int &g, int &b, int &a);
+void viewSetBgColor(unsigned long r, unsigned long g, unsigned long b, unsigned long a);
 
-INCLUDE_ASM("asm/nonmatchings/common/view", viewCreate__F10_viewportsi);
+/* Puts a view on a screen layout: gives it a camera if it has none, sets up its double buffer and scissor, and
+ * applies the viewport's field of view. */
+void viewCreate(_viewports vp, int view)
+{
+    _viewInfo *info = &viewInfo[view];
+    _viewDef *def;
+    _viewDb *db;
+    int r, g, b, a;
+
+    info->prevViewport = info->viewport;
+    if (info->cs == 0)
+        info->cs = CsPool::csActivate();
+    info->viewport = vp;
+    info->ownCs = info->cs;
+    info->def = def = &viewDef[vp];
+    worldCtx[view].lightEnv = lightGetEnv(0);
+    db = &viewDb[view];
+    IncognitoEntertainmentGS::ieGsInitAA(false);
+    viewGetBgColor(r, g, b, a);
+    IncognitoEntertainmentGS::ieGsSetDefDBuffDc((IncognitoEntertainmentGS::ieGsDBuffDc *)db, vp != 4, def->bufW,
+                                                def->bufH, 2, 0x31, 1);
+    viewSetBgColor(r, g, b, a);
+    db->scissor0 = VIEW_SCISSOR(def);
+    db->scissor1 = VIEW_SCISSOR(def);
+    db->scissor0b = VIEW_SCISSOR(def);
+    db->scissor1b = VIEW_SCISSOR(def);
+    viewSetFov(view, def->fovH, def->fovV);
+}
 INCLUDE_ASM("asm/nonmatchings/common/view", viewUpdate__Fi);
 INCLUDE_ASM("asm/nonmatchings/common/view", viewInFOV__FiP8_fvectorT1);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewInFOV__FiP8_fvectorT1f);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewShadowUpdate__Fi);
+/* viewInFOV with the far plane pulled in so that a sphere of the given radius must fit before the fog's far clip. */
+int viewInFOV(int view, _fvector *a, _fvector *b, float radius)
+{
+    _worldctx *w = &worldCtx[view];
+    float farDist = w->fovNormsTP[1][3][2]; /* distance term of the far plane */
+    int in;
+
+    w->fovNormsTP[1][3][2] += fogGetFarClipRange() - radius;
+    in = viewInFOV(view, a, b);
+    w->fovNormsTP[1][3][2] = farDist;
+    return in;
+}
+/* Rebuilds a view's world-space matrices from its camera: the world-to-eye matrix, the frustum planes in world
+ * space (also loaded into VU0) and the world-to-screen matrices for the view and for the shadow pass. */
+void viewShadowUpdate(int view)
+{
+    _viewInfo *info = &viewInfo[view];
+    _worldctx *w = &worldCtx[view];
+    float (*camMat)[4] = info->cs->mat;
+
+    viewApplySwap(w->weMat, camMat);
+    vu0MulMatrixTP3x3(w->fovNorms[0], info->def->fovNorms[0], camMat);
+    viewStoreNorms1InVu0();
+    vu0MulMatrixTP3x3(w->fovNorms[1], info->def->fovNorms[1], camMat);
+    viewStoreNorms2InVu0();
+    mathfMulMatrix(worldToScreenMat[view], viewScreenMats[view], w->weMat);
+    mathfMulMatrix(viewShadWorldToScrMat, viewShadRecMat, w->weMat);
+}
 INCLUDE_ASM("asm/nonmatchings/common/view", viewStoreNorms1InVu0__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/view", viewStoreNorms2InVu0__Fv);
 FMATRIX *viewGetWorld2ScreenMat(int view)
@@ -254,7 +353,28 @@ void viewSetSkyNode(HierHead *node, int layer)
         }
     }
 }
-INCLUDE_ASM("asm/nonmatchings/common/view", viewSetVUPacketMat__FPA3_fN30i);
+/* Matrix slots inside the VU1 packets built at boot (row-major copies of the matrices, transposed for VU1). */
+extern float D_0025B1A8[4][4];
+extern float D_0025B1F0[4][4];
+extern float D_0025B298[4][4];
+extern float D_0025B798[4][4];
+extern float D_0025B7E0[4][4];
+#define VIEW_TRANSPOSE(d, s)                                                                                         \
+    (d)[0][0] = (s)[0][0], (d)[0][1] = (s)[1][0], (d)[0][2] = (s)[2][0], (d)[0][3] = (s)[3][0];                      \
+    (d)[1][0] = (s)[0][1], (d)[1][1] = (s)[1][1], (d)[1][2] = (s)[2][1], (d)[1][3] = (s)[3][1];                      \
+    (d)[2][0] = (s)[0][2], (d)[2][1] = (s)[1][2], (d)[2][2] = (s)[2][2], (d)[2][3] = (s)[3][2];                      \
+    (d)[3][0] = (s)[0][3], (d)[3][1] = (s)[1][3], (d)[3][2] = (s)[2][3], (d)[3][3] = (s)[3][3]
+
+/* Writes the camera matrices into the VU1 packets (a and b go to two packets each); the fourth matrix and the view
+ * index are unused. */
+void viewSetVUPacketMat(float (*a)[4], float (*b)[4], float (*c)[4], float (*)[4], int)
+{
+    VIEW_TRANSPOSE(D_0025B1A8, a);
+    VIEW_TRANSPOSE(D_0025B1F0, b);
+    VIEW_TRANSPOSE(D_0025B298, c);
+    VIEW_TRANSPOSE(D_0025B798, a);
+    VIEW_TRANSPOSE(D_0025B7E0, b);
+}
 /* Copies a matrix exchanging its second and third rows (the new second row negated). */
 void viewApplySwap(float (*dst)[4], float (*src)[4])
 {
@@ -357,8 +477,8 @@ void viewInit(void)
     for (i = 0; i < 5; i++) {
         viewInfo[i].cs = 0;
         viewInfo[i].def = 0;
-        viewInfo[i].unk8 = 0;
-        viewInfo[i].unkC = 0;
+        viewInfo[i].viewport = 0;
+        viewInfo[i].prevViewport = 0;
     }
     todInit();
     viewRearLargeActive = 0;
@@ -413,7 +533,104 @@ void viewGetFov(int view, float *h, float *v)
     *h = viewInfo[view].def->fovH;
     *v = m[1][1] / *h;
 }
+/* Sets a view's projection: dist is the eye-to-screen distance in pixels (fovH), aspect the vertical scale (fovV).
+ * Rebuilds the frustum side planes from the viewport size (stored transposed, as hierTraverseAsm reads them),
+ * the screen/clip/FOV matrices and, for the shadow viewport (6), the shadow projection. */
+#ifdef NON_MATCHING
+/* 36/245, same size: register allocation and scheduling */
+void viewSetFov(int view, float dist, float aspect)
+{
+    _viewInfo *info = &viewInfo[view];
+    _viewDef *def;
+    FVECTOR origin;
+    FVECTOR a;
+    FVECTOR b;
+    Matrix16 tmp;
+    float deg;
+
+    a.x = 0.0f;
+    a.y = 0.0f;
+    a.z = 200.0f;
+    a.w = 0.0f;
+    origin.x = 0.0f;
+    origin.y = 0.0f;
+    origin.z = 0.0f;
+    origin.w = 0.0f;
+    def = info->def;
+    def->fovH = dist;
+    if (info->viewport == 6)
+        dist = 1024.0f;
+
+    def->fovNorms[0][0][0] = 0.0f;
+    def->fovNorms[0][0][1] = 1.0f;
+    def->fovNorms[0][0][2] = 0.0f;
+    def->fovNorms[0][0][3] = 0.0f;
+    /* right and left planes */
+    b.x = def->width >> 1;
+    b.y = dist;
+    b.z = 0.0f;
+    viewComputeNormal((_fvector *)def->fovNorms[0][1], &origin, &a, &b);
+    b.x = -(def->width >> 1);
+    b.y = dist;
+    b.z = 0.0f;
+    viewComputeNormal((_fvector *)def->fovNorms[0][2], &origin, &b, &a);
+    /* top and bottom planes */
+    a.x = -(def->width >> 1);
+    a.y = 0.0f;
+    a.z = 0.0f;
+    b.x = 0.0f;
+    b.y = dist;
+    b.z = def->height;
+    viewComputeNormal((_fvector *)def->fovNorms[1][0], &origin, &a, &b);
+    a.x = -(def->width >> 1);
+    a.y = 0.0f;
+    a.z = 0.0f;
+    b.x = 0.0f;
+    b.y = dist;
+    b.z = -def->height;
+    viewComputeNormal((_fvector *)def->fovNorms[1][1], &origin, &b, &a);
+    def->fovNorms[1][2][0] = 0.0f;
+    def->fovNorms[1][2][1] = -1.0f;
+    def->fovNorms[1][2][2] = 0.0f;
+    def->fovNorms[1][2][3] = 0.0f;
+
+    if (info->viewport != 6) {
+        deg = atanf((def->width >> 1) / dist) * 57.29578f * 2.0f;
+        viewDegrees = deg;
+        def->fovDegrees = deg;
+        viewFovH = dist;
+    }
+    mathfViewScreenMatrix(viewScreenMats[view], viewClipMats[view], viewFovMats[view], def->fovH, 1.0f, aspect,
+                          def->screenParam[0], def->screenParam[1], 0.1f, 16777210.0f, 1.0f, 16384.0f,
+                          def->width >> 1, def->height + 16);
+
+    *(Matrix16 *)&tmp = *(Matrix16 *)def->fovNorms[0];
+    mathfTransposeMatrix(def->fovNorms[0], (float (*)[4])&tmp);
+    *(Matrix16 *)&tmp = *(Matrix16 *)def->fovNorms[1];
+    mathfTransposeMatrix(def->fovNorms[1], (float (*)[4])&tmp);
+
+    if (info->viewport == 6) {
+        viewShadRecMat[0][0] = def->fovH * (1.0f / 128.0f);
+        viewShadRecMat[0][1] = 0.0f;
+        viewShadRecMat[0][2] = 0.5f;
+        viewShadRecMat[0][3] = 0.0f;
+        viewShadRecMat[1][0] = 0.0f;
+        viewShadRecMat[1][1] = def->fovH * (1.0f / 128.0f);
+        viewShadRecMat[1][2] = 0.5f;
+        viewShadRecMat[1][3] = 0.0f;
+        viewShadRecMat[2][0] = 0.0f;
+        viewShadRecMat[2][1] = 0.0f;
+        viewShadRecMat[2][2] = 1.0f;
+        viewShadRecMat[2][3] = 0.0f;
+        viewShadRecMat[3][0] = 0.0f;
+        viewShadRecMat[3][1] = 0.0f;
+        viewShadRecMat[3][2] = 1.0f;
+        viewShadRecMat[3][3] = 0.0f;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/view", viewSetFov__Fiff);
+#endif
 INCLUDE_ASM("asm/nonmatchings/common/view", viewComputeNormal__FP8_fvectorN30);
 void viewToggleSplitScreen(bool, bool)
 {
@@ -432,7 +649,7 @@ void viewToggleSplitScreen(bool, bool)
 /* code identical; its switch jump table lands at a different .rodata offset than retail */
 int viewGetScreenDisplay(void)
 {
-    switch (viewInfo[0].unk8) {
+    switch (viewInfo[0].viewport) {
     case 0:
     case 3:
     case 4:
@@ -448,7 +665,31 @@ int viewGetScreenDisplay(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/common/view", viewGetScreenDisplay__Fv);
 #endif
+/* Grapple camera: view 0 shows view 2's camera on the unified layout, or goes back to its own camera and viewport. */
+#ifdef NON_MATCHING
+/* 88/103: scheduling only, the viewport load is hoisted above the cs store in the non-unified branch */
+void viewGrappleConfig(void)
+{
+    _viewDef *def;
+
+    if (gUseUnifiedView) {
+        def = &viewDef[5];
+        viewInfo[0].cs = viewInfo[2].cs;
+        viewInfo[0].def = def;
+    } else {
+        viewInfo[0].cs = viewInfo[0].ownCs;
+        viewInfo[0].def = &viewDef[viewInfo[0].viewport];
+        def = viewInfo[0].def;
+    }
+    viewSetFov(0, def->fovH, def->fovV);
+    viewDb[0].scissor0 = VIEW_SCISSOR(def);
+    viewDb[0].scissor1 = VIEW_SCISSOR(def);
+    viewDb[0].scissor0b = VIEW_SCISSOR(def);
+    viewDb[0].scissor1b = VIEW_SCISSOR(def);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/view", viewGrappleConfig__Fv);
+#endif
 _viewDef *viewGetDef(int view)
 {
     return viewInfo[view].def;
