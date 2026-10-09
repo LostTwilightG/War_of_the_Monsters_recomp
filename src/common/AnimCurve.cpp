@@ -1,7 +1,21 @@
 #include "common.h"
+#include "hieri_types.h"
 
-INCLUDE_ASM("asm/nonmatchings/common/AnimCurve", evalStatic__FP15AnimCurveHeaderfPUs);
-INCLUDE_ASM("asm/nonmatchings/common/AnimCurve", animCurveEvaluate__FP15AnimCurveHeaderfPUs);
+/* Evaluator signature: curve, time, cached key index. */
+typedef float (*AnimCurveEvalFn)(AnimCurveHeader *curve, float t, unsigned short *key);
+
+/* Evaluators by [curveType][dataType] (filled by the static initializer). */
+extern AnimCurveEvalFn D_007356C8[6][3];
+
+/* A static curve stores its single value right after the header. */
+float evalStatic(AnimCurveHeader *curve, float, unsigned short *)
+{
+    return *(float *)(curve + 1);
+}
+float animCurveEvaluate(AnimCurveHeader *curve, float t, unsigned short *key)
+{
+    return D_007356C8[curve->curveType][curve->dataType](curve, t, key);
+}
 INCLUDE_ASM("asm/nonmatchings/common/AnimCurve", binarySearch__H2Zt14AnimKeyStepped1ZfZf_Pt13AnimCurveData1ZX01fPUs_i);
 INCLUDE_ASM("asm/nonmatchings/common/AnimCurve", evaluateBetweenKeyframes__H1ZUc_Pt13AnimCurveData1Zt13AnimKeyLinear1ZX01fi_f);
 INCLUDE_ASM("asm/nonmatchings/common/AnimCurve", animCurveEval__H1Zt13AnimKeyLinear1ZUc_Pt13AnimCurveData1ZX01fPUs_f);
