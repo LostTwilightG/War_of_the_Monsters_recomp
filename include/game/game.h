@@ -30,6 +30,9 @@ class Monster {
 public:
     void enterNewState(MonsterState *state);
     void takeDamage(float dmg, bool b, Monster *src);
+    void takeHit(_fvector *dir, float dmg, int attackerId);
+    void knockBack(_fvector &dir, float a, float b);
+    void takeAdditiveRecoil(_fvector &dir, float f);
     void initAfterDbLoad(void);
     bool attacksEnabled(void) const;
     float getHeight(void) const;
