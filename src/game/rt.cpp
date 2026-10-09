@@ -99,7 +99,8 @@ extern int doTweaks;
 extern int craterTransitionInProgress;
 extern int g_noScripts;
 extern char gsPkt[];
-extern char shellObj[] SYM("shell");
+class Shell;
+extern Shell *shell;
 extern char bigShotInstance[] SYM("_12BigShotLevel$instance");
 extern char dodgeBallInstance[] SYM("_14DodgeBallLevel$instance");
 extern char debrisTaskManager[] SYM("_11TaskManager$debris");
@@ -276,7 +277,7 @@ int rtMain(bool first)
         sceGsSyncPath(0, 0);
         RtLoopView::end(0xFF202080, 1);
         levelObjectSoundUpdate((char *)game + 0x121570);
-        soundManagerUpdate(shellObj + 0x2C30);
+        soundManagerUpdate((char *)shell + 0x2C30);
         g_frame++;
         RtLoopView::start(0);
         timerEndOfRealTimeProcessing();
@@ -335,8 +336,8 @@ void rtPauseRT(unsigned frame)
             }
         }
     }
-    if (pressed != 0 && *(int *)(shellObj + 0x2BA4) == 0 && moviePlaying == 0 && GM(0x120458) == 0 && GM(0x120454) == 0) {
-        *(int *)(shellObj + 0x2BA4) = 1;
+    if (pressed != 0 && *(int *)((char *)shell + 0x2BA4) == 0 && moviePlaying == 0 && GM(0x120458) == 0 && GM(0x120454) == 0) {
+        *(int *)((char *)shell + 0x2BA4) = 1;
         rtReturnToShell(2, (int)((*(volatile unsigned long long *)0x12001000 >> 13) & 1));
     }
     if (unplugged != 0) {
