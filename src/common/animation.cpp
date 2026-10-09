@@ -52,6 +52,14 @@ public:
         numUsed = 0;
     }
 
+    /* Takes a free node (0 when all 128 are in use). */
+    AnimBlendNode *alloc(void)
+    {
+        if (numUsed < 128)
+            return &nodes[freeList[numUsed++]];
+        return 0;
+    }
+
     /* Gives a node back unless its index is already among the free ones. */
     void release(AnimBlendNode *node)
     {
@@ -95,6 +103,8 @@ void animationSetDirection(_animHandle h, bool forward);
 int animationGetDirection(_animHandle h);
 void animationSetIterations(_animHandle h, unsigned short n);
 void animationSetSpeed(_animHandle h, float speed);
+void animationSetToPercent(_animHandle h, float percent, int update);
+float animationGetCurrentPercent(_animHandle h);
 void animationManager(_animmgr *mgr);
 void animationUpdateActiveTree(HierHead *tree, _animCharInstance *ci);
 void animationProcessActiveTree(HierHead *tree, _animCharInstance *ci);
@@ -110,6 +120,8 @@ float mathfApproxCos2(float x);
 void boundEulerAngle(float *p);
 extern char D_006F3150[]; /* "Could not start a blend of type %d, ---Bad Character Instance(s)
 " */
+extern int okToBlend;
+__asm__("#SNFIX_SMALL okToBlend");
 extern int s_blendCurve;
 __asm__("#SNFIX_SMALL s_blendCurve");
 
@@ -122,7 +134,74 @@ void animationInitModifierBlends(_animCharInstance *ci)
     MemoryStack::global.low = mem + (unsigned short)(ci->character->numChannels * 4);
     player->mainTreePureOut = (float *)mem;
 }
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationTransitionInto__FR11_animHandlefii);
+void animationTransitionInto(_animHandle &h, float time, int reset, int type)
+{
+    AnimControlNode *target;
+    AnimPlayer *player;
+    HierHead *cur;
+    AnimBlendNode *node;
+
+    if (h.ci == 0 || h.ctrl == 0)
+        return;
+    target = &h.ci->animCtx[h.animIdx];
+    player = (AnimPlayer *)h.ci->activeTree;
+    cur = player->GetMainTreeNode();
+    if (type != BLEND_TRANSITION && type != BLEND_FREEZETRANS)
+        return;
+    if (cur == 0 || h.ci->bits.disableCI) {
+        animationStart(h, reset);
+        return;
+    }
+    if ((HierHead *)h.ctrl == cur && ((AnimControlNode *)cur)->active)
+        return;
+    node = D_00732A08.alloc();
+    if (node)
+        new (node) AnimBlendNode;
+    node->blendType = type;
+    node->head.opcode = 0x22;
+    if (reset)
+        animationSetToBeginning(h, 0);
+    if (type == BLEND_FREEZETRANS) {
+        node->blendValue = animationGetCurrentPercent(h);
+        animationSetToPercent(h, node->blendValue, 0);
+    }
+    animationResume(h);
+    if (cur->opcode == 0x21) {
+        AnimControlNode *ctrl = (AnimControlNode *)cur;
+
+        if (!ctrl->active) {
+            ctrl->active = 1;
+            ctrl->startField = timerGetFieldCount() - ctrl->startField;
+        }
+        node->fromTime.startField = ctrl->startField;
+        node->fromTime.startTime = ctrl->startTime;
+        node->fromTime.deltaTime = ctrl->deltaTime;
+    } else if (cur->opcode == 0x22) {
+        AnimBlendNode *blend = (AnimBlendNode *)cur;
+
+        blend->blendTime *= 0.4f;
+        blend->blendStartField = ((float)timerGetFieldCount() - blend->blendStartField) * -0.4f + (float)timerGetFieldCount();
+        blend->parent = node;
+        node->fromTime.startField = blend->toTime.startField;
+        node->fromTime.startTime = blend->toTime.startTime;
+        node->fromTime.deltaTime = blend->toTime.deltaTime;
+    }
+    node->blendFrom = cur;
+    node->blendTo = (HierHead *)target;
+    node->head.id1 = target->head.id1;
+    node->head.id2 = target->head.id2;
+    node->blendTime = time;
+    node->weight = 0.0f;
+    node->blendStartField = (float)timerGetFieldCount();
+    node->parent = 0;
+    node->active = 1;
+    node->toTime.startField = target->startField;
+    node->toTime.startTime = target->startTime;
+    node->toTime.deltaTime = target->deltaTime;
+    target->iterations = 0;
+    player->mainTree = (HierHead *)node;
+    okToBlend = 0;
+}
 int animationIsTransitioning(_animHandle &h)
 {
     if (h.ci) {
