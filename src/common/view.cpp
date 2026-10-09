@@ -66,6 +66,7 @@ extern int viewTODBgR, viewTODBgG, viewTODBgB, viewTODBgA;
 extern FMATRIX worldToScreenMat[5];
 extern FMATRIX viewScreenMats[5];
 extern _viewDef viewDef[];
+extern float D_0025B238[]; /* lighting block shared with tod: ambient color at [12..14] */
 extern FMATRIX viewShadWorldToScrMat;
 extern int viewRearLargeActive;
 extern int viewRearViewConfig;
@@ -254,7 +255,26 @@ void viewSetSkyNode(HierHead *node, int layer)
     }
 }
 INCLUDE_ASM("asm/nonmatchings/common/view", viewSetVUPacketMat__FPA3_fN30i);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewApplySwap__FPA3_fT0);
+/* Copies a matrix exchanging its second and third rows (the new second row negated). */
+void viewApplySwap(float (*dst)[4], float (*src)[4])
+{
+    dst[0][0] = src[0][0];
+    dst[0][1] = src[0][1];
+    dst[0][2] = src[0][2];
+    dst[0][3] = src[0][3];
+    dst[1][0] = -src[2][0];
+    dst[1][1] = -src[2][1];
+    dst[1][2] = -src[2][2];
+    dst[1][3] = -src[2][3];
+    dst[2][0] = src[1][0];
+    dst[2][1] = src[1][1];
+    dst[2][2] = src[1][2];
+    dst[2][3] = src[1][3];
+    dst[3][0] = src[3][0];
+    dst[3][1] = src[3][1];
+    dst[3][2] = src[3][2];
+    dst[3][3] = src[3][3];
+}
 /* Clear color; written into each view's GS RGBAQ (both buffers) unless time of day drives it. */
 void viewSetBgColor(unsigned long r, unsigned long g, unsigned long b, unsigned long a)
 {
@@ -355,7 +375,24 @@ void viewTweakSetFov(void)
     for (i = 0; i < viewNumViews; i++)
         viewSetFov(i, viewFovH, viewGetDef(i)->fovV);
 }
-INCLUDE_ASM("asm/nonmatchings/common/view", viewSetAmbient__Ffff);
+void viewSetAmbient(float r, float g, float b)
+{
+    float *light = D_0025B238;
+
+    viewAmbientRed = r;
+    viewAmbientGreen = g;
+    viewAmbientBlue = b;
+    viewAnimAmbientRed = r * 0.03125f;
+    viewAnimAmbientGreen = g * 0.03125f;
+    viewAnimAmbientBlue = b * 0.03125f;
+    light[12] = r;
+    light[13] = g;
+    light[14] = b;
+    if (r > 0.0f || g > 0.0f || b > 0.0f)
+        viewAmbientChanged = 1;
+    else
+        viewAmbientChanged = 0;
+}
 void viewGetAmbient(float *r, float *g, float *b)
 {
     *r = viewAmbientRed;
@@ -391,7 +428,26 @@ void viewToggleSplitScreen(bool, bool)
         }
     }
 }
+#ifdef NON_MATCHING
+/* code identical; its switch jump table lands at a different .rodata offset than retail */
+int viewGetScreenDisplay(void)
+{
+    switch (viewInfo[0].unk8) {
+    case 0:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+        return 0;
+    case 1:
+    case 2:
+        return 1;
+    }
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/view", viewGetScreenDisplay__Fv);
+#endif
 INCLUDE_ASM("asm/nonmatchings/common/view", viewGrappleConfig__Fv);
 _viewDef *viewGetDef(int view)
 {
