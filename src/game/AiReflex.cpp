@@ -1,4 +1,5 @@
 #include "common.h"
+#include "vecmath.h"
 
 #include "engine.h"
 #include "game/game.h"
@@ -1294,7 +1295,7 @@ float AiBlockReflex::getEntryRelevance(Ai &ai)
         float dx = a[0] - b[0];
         float dy = a[1] - b[1];
         float dz = a[2] - b[2];
-        float inv = 1.0f / sqrtf(dx * dx + dy * dy + dz * dz);
+        float inv = 1.0f / eeSqrtf(dx * dx + dy * dy + dz * dz);
         float *fwd = (float *)MP(MI(ai.monster, 0xC), 0x30);
 
         dx *= inv;
@@ -2433,7 +2434,7 @@ Monster *AiDetonateHead::getBestTarget(Ai &ai, float &best)
         float r;
         _fvector *a, *b, *c, *d;
 
-        if (m_range < sqrtf(dx * dx + dy * dy + dz * dz))
+        if (m_range < eeSqrtf(dx * dx + dy * dy + dz * dz))
             continue;
         {
             AiVEntry *e1 = AI_VENT(head, 0x10, 0x10);

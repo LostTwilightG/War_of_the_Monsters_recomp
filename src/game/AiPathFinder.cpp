@@ -1,4 +1,5 @@
 #include "common.h"
+#include "vecmath.h"
 #include "bidir_link.h"
 #include "memory_stack.h"
 
@@ -166,7 +167,7 @@ float AiPathFinder::computeCostEstimate(AiPath &path, AiPathNode &node, AiPath &
     float dy = a[1] - b[1];
     float dz = a[2] - b[2];
 
-    return sqrtf(dx * dx + dy * dy + dz * dz) * f1C;
+    return eeSqrtf(dx * dx + dy * dy + dz * dz) * f1C;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/game/AiPathFinder", computeCostEstimate__12AiPathFinderR6AiPathR10AiPathNodeT1);
@@ -187,7 +188,7 @@ float AiPathFinder::computeCostActual(AiPath &path, AiPathNode &node, AiPath &ot
         dx = n[0] - m[0];
         dy = n[1] - m[1];
         dz = n[2] - m[2];
-        cost = sqrtf(dx * dx + dy * dy + dz * dz);
+        cost = eeSqrtf(dx * dx + dy * dy + dz * dz);
     } else {
         float *a = PT(net, U16(&path, 0) * 0x30 + 0x10);
         float *b = PT(net, U16(&path, 2) * 0x30 + 0x10);
@@ -209,7 +210,7 @@ float AiPathFinder::computeCostActual(AiPath &path, AiPathNode &node, AiPath &ot
         float ey = t[1] - n[1];
         float ez = t[2] - n[2];
 
-        cost += sqrtf(ex * ex + ey * ey + ez * ez);
+        cost += eeSqrtf(ex * ex + ey * ey + ez * ez);
         if (ez > 0.0f) {
             ez = ez / cost;
             cost += ez * s_zWeight;

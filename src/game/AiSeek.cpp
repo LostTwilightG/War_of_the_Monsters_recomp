@@ -1,4 +1,5 @@
 #include "common.h"
+#include "vecmath.h"
 
 #include "engine.h"
 #include "game/game.h"
@@ -955,12 +956,12 @@ void AiDodgeThrow::updateAction(Ai &ai)
         v[2] = vel[2];
         v[3] = vel[3];
         v[2] = 0.0f;
-        inv = 1.0f / sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        inv = 1.0f / eeSqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
         v[0] = v[0] * inv;
         v[1] = v[1] * inv;
         v[2] = inv * v[2];
         mathfVectorCrossUp((_fvector *)m_dir, (_fvector *)v);
-        len = sqrtf(m_dir[0] * m_dir[0] + m_dir[1] * m_dir[1] + m_dir[2] * m_dir[2]);
+        len = eeSqrtf(m_dir[0] * m_dir[0] + m_dir[1] * m_dir[1] + m_dir[2] * m_dir[2]);
         m_dir[3] = len;
         vel = (float *)MP(ai.monster, 0x260);
         dot = vel[0] * m_dir[0] + vel[1] * m_dir[1] + vel[2] * m_dir[2];
@@ -1089,7 +1090,7 @@ void AiDodgeRam::enterAction(Ai &ai)
     ai.setFocus((DbInteractive *)m_target);
     m_timer = ai.getReflexDelay();
     mathfVectorCrossUp((_fvector *)m_dir, (_fvector *)MP(MI(m_target, 0xC), 0x30));
-    len = sqrtf(m_dir[0] * m_dir[0] + m_dir[1] * m_dir[1] + m_dir[2] * m_dir[2]);
+    len = eeSqrtf(m_dir[0] * m_dir[0] + m_dir[1] * m_dir[1] + m_dir[2] * m_dir[2]);
     m_dir[3] = len;
     vel = (float *)MP(ai.monster, 0x260);
     if (0.0f < vel[0] * m_dir[0] + vel[1] * m_dir[1] + vel[2] * m_dir[2])
@@ -1173,7 +1174,7 @@ void AiDodgeStomp::enterAction(Ai &ai)
     m_dir[3] = info[3];
     m_dir[2] = 0.0f;
     pos = (float *)MP(MI(ai.monster, 0xC), 0x10);
-    s = 300.0f / sqrtf(m_dir[0] * m_dir[0] + m_dir[1] * m_dir[1]);
+    s = 300.0f / eeSqrtf(m_dir[0] * m_dir[0] + m_dir[1] * m_dir[1]);
     m_dir[0] = pos[0] + m_dir[0] * s;
     m_dir[1] = pos[1] + m_dir[1] * s;
     m_dir[2] = pos[2] + m_dir[2] * s;

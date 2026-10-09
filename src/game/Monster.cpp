@@ -518,7 +518,7 @@ void Monster::takeHit(_fvector *dir, float dmg, int attackerId)
         src = (char *)Interactives::getInteractive(attackerId);
     {
         float x = d[0], y = d[1], z = d[2];
-        float len = sqrtf(x * x + y * y + z * z);
+        float len = eeSqrtf(x * x + y * y + z * z);
         float inv = 1.0f / len;
 
         d[3] = len;
