@@ -1,9 +1,17 @@
 #include "common.h"
+#include "game/game.h"
 
 class resetcom {
 public:
     void init(void);
+    void forceRead(void);
 };
+class charreset : public resetcom {
+public:
+    void setCharacter(Monster *m);
+};
+extern Monster *s_mon;
+__asm__("#SNFIX_SMALL s_mon");
 extern char monsterTweaksReset[] __asm__("D_00725240");
 class Monster;
 class MonsterTweaks {
@@ -17,7 +25,15 @@ void MonsterTweaks::init(void)
 {
     ((resetcom *)monsterTweaksReset)->init();
 }
-INCLUDE_ASM("asm/nonmatchings/game/MonsterTweaks", setActiveMonster__13MonsterTweaksP7Monsterb);
+/* Makes `m` the monster whose parameters are being tweaked: loads its character file (re-reading when asked) and recomputes its dynamics. */
+void MonsterTweaks::setActiveMonster(Monster *m, bool reread)
+{
+    s_mon = m;
+    ((charreset *)monsterTweaksReset)->setCharacter(m);
+    if (reread)
+        ((resetcom *)monsterTweaksReset)->forceRead();
+    s_mon->recomputeDynamics();
+}
 void MonsterTweaks::resetTweaks(void)
 {
 }
