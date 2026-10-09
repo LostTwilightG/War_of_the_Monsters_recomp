@@ -82,7 +82,7 @@ void StateClimb::handlePreemption(MonsterState *next)
     float *q = (float *)((char *)this + 0x90);
 
     *(float *)((char *)owner + 0x1B8) = 1.0f;
-    *(int *)((char *)owner + 0x280) = 1;
+    *(unsigned char *)((char *)owner + 0x280) = 1; /* retail: sb (a word store would zero owner+0x281..0x283) */
     q[0] = 0.0f;
     q[1] = 0.0f;
     q[2] = 0.0f;
