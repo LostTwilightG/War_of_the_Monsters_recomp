@@ -118,6 +118,7 @@ public:
     void updateArrive(void);
     void updateSeek(void);
     AiPath *getFleePath(_fvector &p);
+    void nextPathPoint(void);
 };
 
 AiNavigator::AiNavigator(Monster &m) : monster(&m), sensor(*this), pathFinder(*s_net, m)
@@ -273,7 +274,26 @@ float AiNavigator::strafeTo(_fvector &pos, float width, float tol)
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", strafeTo__11AiNavigatorR8_fvectorff);
 #endif
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", followPath__11AiNavigatorRQ211AiNavigator8PathInfoT1R8_fvector);
+typedef int u128 __attribute__((mode(TI)));
+#ifdef NON_MATCHING
+/* Advances along the planned path: the next path info becomes the current one, the monster's closest path follows, and the info after it is prepared. */
+void AiNavigator::nextPathPoint(void)
+{
+    unsigned cur = f21C;
+
+    if ((unsigned)f218 >= cur) {
+        *(u128 *)&pathInfo = *(u128 *)&nextPathInfo;
+        f21C = cur + 1;
+        *(u128 *)((char *)&pathInfo + 0x10) = *(u128 *)((char *)&nextPathInfo + 0x10);
+        *(AiPath **)((char *)monster + 0x1A10) = *(AiPath **)&pathInfo;
+        cur = f21C;
+        if (cur < (unsigned)f218)
+            nextPathInfo.init(*(AiPath **)((char *)this + 0x1A0 + cur * 4), *(AiPath **)&pathInfo, false);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiNavigator", nextPathPoint__11AiNavigator);
+#endif
 AiPath *AiNavigator::getFleePath(_fvector &p)
 {
     return (AiPath *)((char *)s_net + 0x3850);
