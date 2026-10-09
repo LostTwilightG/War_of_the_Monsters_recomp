@@ -406,10 +406,10 @@ game/AiSeek,updateAction__12AiDodgeStompR2Ai,0x113310,120,matched
 game/AiSeek,exitAction__12AiDodgeStompR2Ai,0x113388,68,matched
 game/AiSeek,__14AiDodgeSpecial,0x1133d0,88,asm
 game/AiSeek,getEntryRelevance__14AiDodgeSpecialR2Ai,0x113428,308,asm
-game/AiSeek,getExitRelevance__14AiDodgeSpecialR2Ai,0x113560,132,asm
+game/AiSeek,getExitRelevance__14AiDodgeSpecialR2Ai,0x113560,132,matched
 game/AiSeek,enterAction__14AiDodgeSpecialR2Ai,0x1135e8,68,asm
 game/AiSeek,updateFleeSpot__14AiDodgeSpecialR2Ai,0x113630,296,asm
-game/AiSeek,updateAction__14AiDodgeSpecialR2Ai,0x113758,156,asm
+game/AiSeek,updateAction__14AiDodgeSpecialR2Ai,0x113758,156,matched
 game/AiSeek,exitAction__14AiDodgeSpecialR2Ai,0x1137f8,68,asm
 game/AiSeek,__tf12AiSeekHealth,0x113840,80,asm
 game/AiSeek,__tf13AiSeekStamina,0x113890,80,asm

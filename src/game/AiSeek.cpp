@@ -43,6 +43,23 @@ public:
     void exitAction(Ai &ai);
 };
 
+/* Running from an opponent's special attack. */
+class AiDodgeSpecial : public AiActionTuple {
+public:
+    Monster *m_target; /* 0x48 */
+    char pad4C[4];
+    float m_dir[4];    /* 0x50: flee spot */
+    int m_timer;       /* 0x60 */
+    float m_range;     /* 0x64 */
+
+    float getEntryRelevance(Ai &ai);
+    float getExitRelevance(Ai &ai);
+    void enterAction(Ai &ai);
+    void updateFleeSpot(Ai &ai);
+    void updateAction(Ai &ai);
+    void exitAction(Ai &ai);
+};
+
 extern float stamMed __asm__("med.2444");
 __asm__("#SNFIX_SMALL med.2444");
 
@@ -996,10 +1013,26 @@ void AiDodgeStomp::exitAction(Ai &ai)
 }
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", __14AiDodgeSpecial);
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", getEntryRelevance__14AiDodgeSpecialR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiSeek", getExitRelevance__14AiDodgeSpecialR2Ai);
+float AiDodgeSpecial::getExitRelevance(Ai &ai)
+{
+    if (m_timer < 0 && MI(&ai, 0x98) == 0)
+        return 0.0f;
+    if (m_range < EnemyInfo::getInfo(*ai.monster, *m_target)->dist)
+        return 0.0f;
+    return VCALL_F(this, 8, ai);
+}
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", enterAction__14AiDodgeSpecialR2Ai);
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", updateFleeSpot__14AiDodgeSpecialR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiSeek", updateAction__14AiDodgeSpecialR2Ai);
+void AiDodgeSpecial::updateAction(Ai &ai)
+{
+    updateFleeSpot(ai);
+    if (EnemyInfo::getInfo(*ai.monster, *m_target)->dot > 0.0f)
+        ai.targetPin();
+    if (--m_timer == 0)
+        NAV(ai)->tag(*(_fvector *)m_dir, 50.0f);
+    else if (m_timer < 0)
+        ai.pad[6] = 0xFF;
+}
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", exitAction__14AiDodgeSpecialR2Ai);
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", _vt$14AiDodgeSpecial);
 INCLUDE_ASM("asm/nonmatchings/game/AiSeek", _vt$12AiDodgeStomp);
