@@ -12,6 +12,14 @@ public:
     void GetVel(_fvector &v);
 };
 extern _fvector D_00731340;
+/* Intrusive list node of LevelPickups' lists (the owner's data word, next, prev); the heads are LevelPickups' static sentinels. */
+struct ListNode {
+    void *data;
+    ListNode *next;
+    ListNode *prev;
+};
+extern ListNode inUseList __asm__("_12LevelPickups$s_inUseList");
+extern ListNode inFlightList __asm__("_12LevelPickups$s_inFlightList");
 struct DbInteractive;
 class Interactives {
 public:
@@ -142,7 +150,22 @@ INCLUDE_ASM("asm/nonmatchings/game/Pickup", hatCheck__12LevelPickupsP8_fvectorf)
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", turnOffForDelayedHat__12LevelPickupsP8_fvectorf);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", computeHighlight__12LevelPickupsR7Monster);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", enableHighlights__12LevelPickupsi);
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", impalePickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iterator);
+/* Moves the pickup's list node to the head of the in-use list. */
+void LevelPickups::impalePickup(PickupIter it)
+{
+    ListNode *n = (ListNode *)it.cur;
+
+    if (n->prev != 0)
+        n->prev->next = n->next;
+    if (n->next != 0)
+        n->next->prev = n->prev;
+    n->next = 0;
+    n->prev = &inUseList;
+    n->next = inUseList.next;
+    inUseList.next = n;
+    if (n->next != 0)
+        n->next->prev = n;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", grabPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iteratori);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", dropPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iterator);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", throwPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8IteratorR8_fvectorP13DbInteractiveT3);
@@ -151,7 +174,17 @@ INCLUDE_ASM("asm/nonmatchings/game/Pickup", deflectThrownPickup__12LevelPickupsG
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", grabThrownPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iteratori);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", prunePickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iterator);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", killPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iteratori);
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", inFlight__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iterator);
+bool LevelPickups::inFlight(PickupIter it)
+{
+    ListNode *n = inFlightList.next;
+
+    while (n != &inFlightList) {
+        if (n == (ListNode *)it.cur)
+            return true;
+        n = n->next;
+    }
+    return false;
+}
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", getClosestPickup__12LevelPickupsR8_fvectorT1);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", getClosestThrownPickup__12LevelPickupsR8_fvectorf);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", __static_initialization_and_destruction_0_00183128);

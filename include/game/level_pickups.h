@@ -20,6 +20,8 @@ public:
     static void dropPickup(PickupIter it);
     static void throwPickup(PickupIter it, _fvector &dir, DbInteractive *by, DbInteractive *target);
     static void killPickup(PickupIter it, int how);
+    static void impalePickup(PickupIter it);
+    static bool inFlight(PickupIter it);
     struct Info {
         float health;        /* 0x00: initial health of the pickup type */
         char pad4[0x2C];
