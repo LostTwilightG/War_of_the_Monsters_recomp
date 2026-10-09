@@ -25,7 +25,21 @@ public:
 class StateRamAttack : public MonsterState {
 public:
     void setMaxSpeedMPH(float mph);
+    void handlePreemption(MonsterState *next);
 };
+class StateDash : public MonsterState {
+public:
+    void handlePreemption(MonsterState *next);
+};
+class StateClimb : public MonsterState {
+public:
+    void handlePreemption(MonsterState *next);
+};
+class MonsterSound {
+public:
+    void terminateDashSound(void);
+};
+void particleKillFx(int &handle);
 #define SCFG(p, o) (*(float *)((char *)(p) + (o)))
 
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __13StateButtSlam);
@@ -42,7 +56,21 @@ INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionOK__10StateClimb);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionFeasible__10StateClimb);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionInto__10StateClimb);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", update__10StateClimb);
+#ifdef NON_MATCHING
+void StateClimb::handlePreemption(MonsterState *next)
+{
+    float *q = (float *)((char *)this + 0x90);
+
+    *(float *)((char *)owner + 0x1B8) = 1.0f;
+    *(int *)((char *)owner + 0x280) = 1;
+    q[0] = 0.0f;
+    q[1] = 0.0f;
+    q[2] = 0.0f;
+    q[3] = 1.0f;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", handlePreemption__10StateClimbP12MonsterState);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", enterSubState__10StateClimbQ210StateClimb8SubState);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", checkWallContact__10StateClimb);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getMinContact__10StateClimbP9_hdResultib);
@@ -52,7 +80,11 @@ INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionInto__9StateDash);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", update__9StateDash);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", enterSubState__9StateDashQ29StateDash8SubState);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", handleCollis__9StateDashR9_hdResult);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", handlePreemption__9StateDashP12MonsterState);
+void StateDash::handlePreemption(MonsterState *next)
+{
+    ((MonsterSound *)((char *)owner + 0x1A7C))->terminateDashSound();
+    *(int *)((char *)owner + 0x484) = 1;
+}
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionInto__11JumpFlyBase);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", update__11JumpFlyBase);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", handleStateTransitions__11JumpFlyBase);
@@ -175,7 +207,14 @@ INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionInto__14StateRamAt
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", update__14StateRamAttack);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", handleCollis__14StateRamAttackR9_hdResult);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", enterSubState__14StateRamAttackQ214StateRamAttack8SubState);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", handlePreemption__14StateRamAttackP12MonsterState);
+/* Another state takes over: the ram's three effects stop. */
+void StateRamAttack::handlePreemption(MonsterState *next)
+{
+    *(int *)((char *)owner + 0x484) = 1;
+    particleKillFx(*(int *)((char *)this + 0xB0));
+    particleKillFx(*(int *)((char *)this + 0xB4));
+    particleKillFx(*(int *)((char *)this + 0xB8));
+}
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", acceptHit__14StateRamAttackR8HitEvent);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __8StateRun);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", init__8StateRunP7Monster);
