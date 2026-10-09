@@ -12,6 +12,10 @@ Um **port nativo de PC fácil de modar**. O caminho que estamos validando (decid
 2. **Decompilação só do que importa para modar.** Lógica de jogo, IA, monstros, fases e formatos de arquivo viram C++ legível aqui (função `matched` ou `equivalent`) e entram como *hooks* no lugar da versão recompilada. Bater byte a byte é **opcional**: serve para manter a ROM retail reproduzível, mas não é exigido de cada função.
 3. **Renderização nativa.** Em vez de emular VU1/GS, cortamos na fronteira da engine (`hier`, `pkt`, `disp`, partículas; veja `config/hw_boundary.csv`) e desenhamos com a GPU do PC. Som, FMVs e entrada completa ficam para depois do primeiro port.
 
+Arquitetura, o que vai no repo e o que se gera localmente: [docs/PLANO.md](docs/PLANO.md).
+
+**Licença:** o código deste repositório é [GPL-3.0](LICENSE). Ela cobre apenas o que está aqui (decomp, ferramentas, camada nativa); não dá nenhum direito sobre o jogo, que continua pertencendo aos seus detentores.
+
 Estado: o jogo recompilado inicializa e chega ao laço de interface (`userintMain`) num runtime de teste; ainda **não** validamos imagem na tela (teste em Windows/MSVC em andamento). Veja [docs/PROXIMOS_PASSOS.md](docs/PROXIMOS_PASSOS.md) e [tools/recomp_oracle/README.md](tools/recomp_oracle/README.md).
 
 ## Setup (WSL/Ubuntu)
