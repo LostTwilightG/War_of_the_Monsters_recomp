@@ -107,3 +107,4 @@ common/input
 common/font
 common/resetcom
 common/animation
+common/AnimCurve

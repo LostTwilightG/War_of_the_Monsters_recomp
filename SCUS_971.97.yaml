@@ -199,7 +199,7 @@ segments:
       - [0x0EAA38, asm, lib989snd/snd]  # c, 132 funcs, name: manual
       - [0x0ED788, asm, common/MotionBlurAA]  # c++, 9 funcs, name: guess
       - [0x0EE0C8, cpp, common/animation]  # c++, 72 funcs, name: manual
-      - [0x0F2070, asm, common/AnimCurve]  # c++, 40 funcs, name: manual
+      - [0x0F2070, cpp, common/AnimCurve]  # c++, 40 funcs, name: manual
       - [0x0F6180, cpp, common/AnimQueue]  # c++, 8 funcs, name: guess
       - [0x0F6678, cpp, common/bound]  # c++, 3 funcs, name: guess
       - [0x0F67C0, cpp, common/chain]  # c++, 3 funcs, name: guess
@@ -591,7 +591,7 @@ segments:
       - [0x5F2E10, rodata, gcc/cp/tinfo2]
       - [0x5F2FB0, rodata, lib989snd/snd]
       - [0x5F3150, .rodata, common/animation]
-      - [0x5F32E0, rodata, common/AnimCurve]
+      - [0x5F32E0, .rodata, common/AnimCurve]
       - [0x5F3620, .rodata, common/AnimQueue]
       - [0x5F36A0, rodata, common/SoundBank]
       - [0x5F37D0, .rodata, common/CsPool]
