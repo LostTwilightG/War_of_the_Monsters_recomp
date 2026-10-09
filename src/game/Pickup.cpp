@@ -10,7 +10,14 @@ void mathfRotMatrixRPH(float (*m)[4], _fvector *rph);
 class Weapon {
 public:
     void GetVel(_fvector &v);
+    void KillWeapon(void);
 };
+class DodgeBallLevel {
+public:
+    void ResetCountdown(int n);
+};
+extern char dodgeBallInst[] __asm__("_14DodgeBallLevel$instance");
+void hdRemoveCsFromGrid(_cs *cs);
 extern _fvector D_00731340;
 /* Intrusive list node of LevelPickups' lists (the owner's data word, next, prev); the heads are LevelPickups' static sentinels. */
 struct ListNode {
@@ -20,6 +27,8 @@ struct ListNode {
 };
 extern ListNode inUseList __asm__("_12LevelPickups$s_inUseList");
 extern ListNode inFlightList __asm__("_12LevelPickups$s_inFlightList");
+extern ListNode activeList __asm__("_12LevelPickups$s_activeList");
+extern ListNode *highlightList[] __asm__("_12LevelPickups$s_highlightPickup");
 struct DbInteractive;
 class Interactives {
 public:
@@ -166,13 +175,108 @@ void LevelPickups::impalePickup(PickupIter it)
     if (n->next != 0)
         n->next->prev = n;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", grabPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iteratori);
-INCLUDE_ASM("asm/nonmatchings/game/Pickup", dropPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iterator);
+/* Moves the pickup's node to the in-use list and calls its grab(i). */
+void LevelPickups::grabPickup(PickupIter it, int i)
+{
+    ListNode *n = (ListNode *)it.cur;
+    char *p;
+    char *vt;
+
+    if (n->prev != 0)
+        n->prev->next = n->next;
+    if (n->next != 0)
+        n->next->prev = n->prev;
+    n->next = 0;
+    n->prev = &inUseList;
+    n->next = inUseList.next;
+    inUseList.next = n;
+    if (n->next != 0)
+        n->next->prev = n;
+    p = (char *)n->data;
+    vt = *(char **)(p + 0x10);
+    ((void (*)(void *, int))*(void **)(vt + 0x44))(p + *(short *)(vt + 0x40), i);
+}
+/* Moves the pickup's node to the active list and calls its drop(). */
+void LevelPickups::dropPickup(PickupIter it)
+{
+    ListNode *n = (ListNode *)it.cur;
+    char *p;
+    char *vt;
+
+    if (n->prev != 0)
+        n->prev->next = n->next;
+    if (n->next != 0)
+        n->next->prev = n->prev;
+    n->next = 0;
+    n->prev = &activeList;
+    n->next = activeList.next;
+    activeList.next = n;
+    if (n->next != 0)
+        n->next->prev = n;
+    p = (char *)n->data;
+    vt = *(char **)(p + 0x10);
+    ((void (*)(void *))*(void **)(vt + 0x4C))(p + *(short *)(vt + 0x48));
+}
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", throwPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8IteratorR8_fvectorP13DbInteractiveT3);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", throwRBPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8IteratorR8_fvectorP13DbInteractive);
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", deflectThrownPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8IteratorR8_fvectorP13DbInteractiveT3);
+#ifdef NON_MATCHING
+/* A thrown pickup is caught by slot `i`: back to the in-use list, held visual state, its weapon (if any, unless bit 1 of `bits`) is killed;
+   dodgeball restarts its countdown. */
+void LevelPickups::grabThrownPickup(PickupIter it, int i)
+{
+    ListNode *n = (ListNode *)it.cur;
+    Pickup *p;
+
+    if (n->prev != 0)
+        n->prev->next = n->next;
+    if (n->next != 0)
+        n->next->prev = n->prev;
+    n->next = 0;
+    n->prev = &inUseList;
+    n->next = inUseList.next;
+    inUseList.next = n;
+    if (n->next != 0)
+        n->next->prev = n;
+    ((Pickup *)n->data)->heldState = i;
+    ((Pickup *)n->data)->setVisualState(2);
+    p = (Pickup *)n->data;
+    if (!((p->bits >> 1) & 1)) {
+        if (p->weapIdx >= 0) {
+            ((Weapon *)((char *)game + 0x112490 + p->weapIdx * 0x170 + 0xC00))->KillWeapon();
+            ((Pickup *)n->data)->weapIdx = -1;
+        }
+    }
+    if (*(int *)((char *)game + 0x1203C8) == 7)
+        ((DodgeBallLevel *)dodgeBallInst)->ResetCountdown(7);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", grabThrownPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iteratori);
+#endif
+#ifdef NON_MATCHING
+/* Removes the pickup from the world: its cs leaves the collision grid and stops drawing, the node leaves its list, and no highlight slot keeps it. */
+void LevelPickups::prunePickup(PickupIter it)
+{
+    ListNode *n = (ListNode *)it.cur;
+    int k;
+
+    hdRemoveCsFromGrid(((Pickup *)n->data)->cs);
+    ((Pickup *)n->data)->cs->drawMe = 0;
+    ((Pickup *)n->data)->heldState = 0;
+    if (n->prev != 0)
+        n->prev->next = n->next;
+    if (n->next != 0)
+        n->next->prev = n->prev;
+    n->next = 0;
+    n->prev = 0;
+    for (k = 0; k < 16; k++) {
+        if (highlightList[k] == n)
+            highlightList[k] = 0;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", prunePickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iterator);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", killPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iteratori);
 bool LevelPickups::inFlight(PickupIter it)
 {

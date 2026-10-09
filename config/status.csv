@@ -1396,7 +1396,7 @@ game/Monster,dropPickup__7Monster,0x15e8d0,180,asm
 game/Monster,launchDefaultProjectile__7Monsteri,0x15e988,684,asm
 game/Monster,updateDefaultProjectile__7Monster,0x15ec38,628,asm
 game/Monster,updatePosition__7Monster,0x15eeb0,408,asm
-game/Monster,takeHit__7MonsterP8_fvectorfi,0x15f048,3576,asm
+game/Monster,takeHit__7MonsterP8_fvectorfi,0x15f048,3576,equivalent
 game/Monster,takeDamage__7MonsterfbP7Monster,0x15fe40,532,asm
 game/Monster,takeAdditiveRecoil__7MonsterR8_fvectorf,0x160058,368,asm
 game/Monster,knockBack__7MonsterR8_fvectorff,0x1601c8,628,asm

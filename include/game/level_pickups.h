@@ -22,6 +22,9 @@ public:
     static void killPickup(PickupIter it, int how);
     static void impalePickup(PickupIter it);
     static bool inFlight(PickupIter it);
+    static void grabPickup(PickupIter it, int i);
+    static void grabThrownPickup(PickupIter it, int i);
+    static void prunePickup(PickupIter it);
     struct Info {
         float health;        /* 0x00: initial health of the pickup type */
         char pad4[0x2C];
