@@ -8,15 +8,16 @@ struct _todInfo14 {
     float fogMinRange, fogMaxRange, fogMaxVal;     /* 0x10 */
     float fogFarClip;                              /* 0x1C */
     float fogRed, fogGreen, fogBlue;               /* 0x20 */
-    float unk2C[3];                                /* 0x2C */
-    float unk38;                                   /* 0x38 */
-    float dirHeading;                              /* 0x3C */
+    float bgRed, bgGreen, bgBlue;                  /* 0x2C: background (clear) color */
+    float dirHeading;                              /* 0x38: sun light direction */
+    float dirPitch;                                /* 0x3C */
     float dirRed, dirGreen, dirBlue;               /* 0x40 */
-    float unk4C;                                   /* 0x4C */
+    float backIntensity;                           /* 0x4C: back light, percent of the sun (-1: own color) */
     float backRed, backGreen, backBlue;            /* 0x50 */
     int sky;                                       /* 0x5C: sky set */
-    float unk60;                                   /* 0x60 */
-    float unk64[7];                                /* 0x64 */
+    float skyFogBurnThru;                          /* 0x60 */
+    float skyRedMod, skyGreenMod, skyBlueMod;      /* 0x64 */
+    float cloudRedMod, cloudGreenMod, cloudBlueMod, cloudAlphaMod; /* 0x70 */
 };
 
 /* Older key layouts accepted by todSetTOD. */
@@ -34,34 +35,35 @@ struct _todInfo11 {
     float fogMinRange;
     int sky;
     float unk24, unk28; /* not loaded */
-    float unk60;
-    float unk64[3];
+    float skyFogBurnThru;
+    float skyRedMod, skyGreenMod, skyBlueMod;
 };
 struct _todInfo12 {
     float time;
     float ambientRed, ambientGreen, ambientBlue;
     float fogMinRange, fogMaxRange, fogMaxVal, fogFarClip;
     float fogRed, fogGreen, fogBlue;
-    float unk38;
     float dirHeading;
+    float dirPitch;
     float dirRed, dirGreen, dirBlue;
     int sky;
     float unk44, unk48; /* not loaded */
-    float unk60;
-    float unk64[3];
+    float skyFogBurnThru;
+    float skyRedMod, skyGreenMod, skyBlueMod;
 };
 struct _todInfo13 {
     float time;
     float ambientRed, ambientGreen, ambientBlue;
     float fogMinRange, fogMaxRange, fogMaxVal, fogFarClip;
     float fogRed, fogGreen, fogBlue;
-    float unk38;
     float dirHeading;
+    float dirPitch;
     float dirRed, dirGreen, dirBlue;
-    float unk4C;
+    float backIntensity;
     int sky;
-    float unk60;
-    float unk64[7];
+    float skyFogBurnThru;
+    float skyRedMod, skyGreenMod, skyBlueMod;
+    float cloudRedMod, cloudGreenMod, cloudBlueMod, cloudAlphaMod;
 };
 typedef char _size__todInfo10[sizeof(_todInfo10) == 0x24 ? 1 : -1];
 typedef char _size__todInfo11[sizeof(_todInfo11) == 0x3C ? 1 : -1];
@@ -137,6 +139,56 @@ extern int s_todPlightsEnabled[];
 int todActive(void);
 float todCalculateValue(int i, float lo, float hi);
 
+/* todUpdate's function statics: the clock (starting at 6:00) and its init flag. */
+extern float todStartTime __asm__("startTOD.144");
+extern int todClockInit __asm__("_$tmp_0.146");
+extern float todClock __asm__("D_006F8DE8");
+__asm__("#SNFIX_SMALL startTOD.144");
+__asm__("#SNFIX_SMALL _$tmp_0.146");
+__asm__("#SNFIX_SMALL D_006F8DE8");
+extern float D_0025B238[]; /* ambient color at [12..14] (lighting block of another TU) */
+
+extern float todDirHeading;
+extern float todDirPitch;
+extern float todDirRed;
+extern float todDirGreen;
+extern float todDirBlue;
+extern float todBackHeading;
+extern float todBackPitch;
+extern float todBackIntensity;
+extern float todBackRed;
+extern float todBackGreen;
+extern float todBackBlue;
+extern float todFogMinRange;
+extern float todFogMaxRange;
+extern float todFogMaxVal;
+extern float todFogFarClip;
+extern int todFogRed;
+extern int todFogGreen;
+extern int todFogBlue;
+extern int todBackgroundRed;
+extern int todBackgroundGreen;
+extern int todBackgroundBlue;
+extern float todSkyRedMod;
+extern float todSkyGreenMod;
+extern float todSkyBlueMod;
+extern float todSkyFogBurnThru;
+extern float todCloudRedMod;
+extern float todCloudGreenMod;
+extern float todCloudBlueMod;
+extern float todCloudAlphaMod;
+
+void todBoundAngle(float *angle);
+void todSetSkyObjects(int which, float alpha, float zBufferFudge, float fogBurnThru, float red, float green, float blue);
+void fogSetChanged(void);
+void fogSetTODFogParms(float minRange, float maxRange, float maxVal, float farClip, int red, int green, int blue);
+void plightUpdateParaLights(void);
+void plightSetTODParaLight(int which, float red, float green, float blue, float heading, float pitch);
+void viewSetSkyNode(HierHead *node, int layer);
+void viewSetTODBgColor(unsigned long red, unsigned long green, unsigned long blue, unsigned long alpha);
+void mathfHPtoVector(_fvector *v, float heading, float pitch);
+void mathfRotationFromVector(_fvector *rot, _fvector *v);
+
 void todBoundAngle(float *angle)
 {
     while (*angle >= 180.0f)
@@ -175,25 +227,25 @@ void todInit(void)
         todInfo[i].fogRed = todCalculateValue(i, 20.0f, 50.0f);
         todInfo[i].fogGreen = todCalculateValue(i, 20.0f, 50.0f);
         todInfo[i].fogBlue = todCalculateValue(i, 20.0f, 50.0f);
-        todInfo[i].unk2C[0] = todCalculateValue(i, 20.0f, 90.0f);
-        todInfo[i].unk2C[1] = todCalculateValue(i, 20.0f, 90.0f);
-        todInfo[i].unk2C[2] = todCalculateValue(i, 20.0f, 90.0f);
-        todInfo[i].unk38 = 0.0f;
+        todInfo[i].bgRed = todCalculateValue(i, 20.0f, 90.0f);
+        todInfo[i].bgGreen = todCalculateValue(i, 20.0f, 90.0f);
+        todInfo[i].bgBlue = todCalculateValue(i, 20.0f, 90.0f);
+        todInfo[i].dirHeading = 0.0f;
         todInfo[i].dirRed = todCalculateValue(i, 70.0f, 70.0f);
         todInfo[i].dirGreen = todCalculateValue(i, 70.0f, 200.0f);
         todInfo[i].dirBlue = todCalculateValue(i, 70.0f, 200.0f);
-        todInfo[i].unk4C = 20.0f;
+        todInfo[i].backIntensity = 20.0f;
         todInfo[i].backRed = 128.0f;
         todInfo[i].backGreen = 128.0f;
         todInfo[i].backBlue = 128.0f;
-        todInfo[i].unk60 = 0.0f;
-        todInfo[i].unk64[0] = 1.0f;
-        todInfo[i].unk64[1] = 1.0f;
-        todInfo[i].unk64[2] = 1.0f;
-        todInfo[i].unk64[3] = 1.0f;
-        todInfo[i].unk64[4] = 1.0f;
-        todInfo[i].unk64[5] = 1.0f;
-        todInfo[i].unk64[6] = 1.0f;
+        todInfo[i].skyFogBurnThru = 0.0f;
+        todInfo[i].skyRedMod = 1.0f;
+        todInfo[i].skyGreenMod = 1.0f;
+        todInfo[i].skyBlueMod = 1.0f;
+        todInfo[i].cloudRedMod = 1.0f;
+        todInfo[i].cloudGreenMod = 1.0f;
+        todInfo[i].cloudBlueMod = 1.0f;
+        todInfo[i].cloudAlphaMod = 1.0f;
     }
     todInfo[0].time = 0.0f;
     todInfo[1].time = 2.0f;
@@ -219,23 +271,211 @@ void todInit(void)
     todInfo[9].sky = 1;
     todInfo[10].sky = 1;
     todInfo[11].sky = 2;
-    todInfo[0].dirHeading = 270.0f;
-    todInfo[1].dirHeading = 300.0f;
-    todInfo[2].dirHeading = 330.0f;
-    todInfo[3].dirHeading = 0.0f;
-    todInfo[4].dirHeading = 30.0f;
-    todInfo[5].dirHeading = 60.0f;
-    todInfo[6].dirHeading = 90.0f;
-    todInfo[7].dirHeading = 120.0f;
-    todInfo[8].dirHeading = 150.0f;
-    todInfo[9].dirHeading = 180.0f;
-    todInfo[10].dirHeading = 210.0f;
-    todInfo[11].dirHeading = 240.0f;
+    todInfo[0].dirPitch = 270.0f;
+    todInfo[1].dirPitch = 300.0f;
+    todInfo[2].dirPitch = 330.0f;
+    todInfo[3].dirPitch = 0.0f;
+    todInfo[4].dirPitch = 30.0f;
+    todInfo[5].dirPitch = 60.0f;
+    todInfo[6].dirPitch = 90.0f;
+    todInfo[7].dirPitch = 120.0f;
+    todInfo[8].dirPitch = 150.0f;
+    todInfo[9].dirPitch = 180.0f;
+    todInfo[10].dirPitch = 210.0f;
+    todInfo[11].dirPitch = 240.0f;
 }
 void todInitStats(void)
 {
 }
-INCLUDE_ASM("asm/nonmatchings/common/tod", todUpdate__Fi);
+/* Advances the clock and blends the two keys around it into the ambient/sun/back lights, fog, clear color and
+ * sky objects. Players other than the first (which > 0) only refresh their parallel lights. */
+void todUpdate(int which)
+{
+    int cur;
+    int next;
+    float nextTime;
+    float f;
+    float a;
+    float b;
+    float d;
+    _fvector dir;
+    _fvector rot;
+    int on;
+    float *light;
+    float none;
+
+    if (!todClockInit) {
+        todClockInit = 1;
+        todClock = todStartTime + 0.0f;
+    }
+    light = D_0025B238;
+    if (todSetTimeOfDay) {
+        if (!todTimeOfDayOn)
+            todTimeOfDayOn = 1;
+    } else if (todTimeOfDayOn) {
+        todTimeOfDayOn = 0;
+        fogSetChanged();
+        plightUpdateParaLights();
+        todSetSkyObjects(0, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+        viewSetSkyNode(todSky[0].hier, 0);
+        viewSetSkyNode(0, 1);
+        if (todSky[4].hier)
+            todSetSkyObjects(4, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+    }
+    if (!todTimeOfDayOn)
+        return;
+
+    todClock += todTimeOfDayMinutesPerSecond / 60.0f / 60.0f;
+    if (todClock > 24.0f)
+        todClock -= 24.0f;
+    todTimeOfDay = todClock;
+    cur = (int)(todClock * 0.5f);
+    next = cur + 1;
+    if (next >= 12)
+        next = 0;
+    if (next == 0)
+        nextTime = 24.0f;
+    else
+        nextTime = todInfo[next].time;
+    f = (todClock - todInfo[cur].time) / (nextTime - todInfo[cur].time);
+
+    light[12] = todAmbientRed = todInfo[cur].ambientRed + f * (todInfo[next].ambientRed - todInfo[cur].ambientRed);
+    light[13] = todAmbientGreen = todInfo[cur].ambientGreen + f * (todInfo[next].ambientGreen - todInfo[cur].ambientGreen);
+    light[14] = todAmbientBlue = todInfo[cur].ambientBlue + f * (todInfo[next].ambientBlue - todInfo[cur].ambientBlue);
+
+    none = -1.0f;
+    a = todInfo[cur].dirHeading;
+    b = todInfo[next].dirHeading;
+    todBoundAngle(&a);
+    todBoundAngle(&b);
+    d = b - a;
+    todBoundAngle(&d);
+    todDirHeading = a + f * d;
+    a = todInfo[cur].dirPitch;
+    b = todInfo[next].dirPitch;
+    todBoundAngle(&a);
+    todBoundAngle(&b);
+    d = b - a;
+    todBoundAngle(&d);
+    todDirPitch = a + f * d;
+
+    /* the back light points the opposite way */
+    mathfHPtoVector(&dir, todDirHeading, todDirPitch);
+    dir.x = -dir.x;
+    dir.y = -dir.y;
+    dir.z = -dir.z;
+    mathfRotationFromVector(&rot, &dir);
+    todBackIntensity = (todInfo[cur].backIntensity + f * (todInfo[next].backIntensity - todInfo[cur].backIntensity)) / 100.0f;
+    todDirRed = todInfo[cur].dirRed + f * (todInfo[next].dirRed - todInfo[cur].dirRed);
+    todDirGreen = todInfo[cur].dirGreen + f * (todInfo[next].dirGreen - todInfo[cur].dirGreen);
+    todDirBlue = todInfo[cur].dirBlue + f * (todInfo[next].dirBlue - todInfo[cur].dirBlue);
+    todBackHeading = rot.z * 57.29578f;
+    todBackPitch = rot.x * 57.29578f;
+    plightSetTODParaLight(0, todDirRed, todDirGreen, todDirBlue, todDirHeading, todDirPitch);
+
+    if (todInfo[cur].backIntensity != none && todInfo[next].backIntensity != none) {
+        todBackRed = todDirRed * todBackIntensity;
+        todBackGreen = todDirGreen * todBackIntensity;
+        todBackBlue = todDirBlue * todBackIntensity;
+    } else if (todInfo[cur].backIntensity != -1.0f && todInfo[next].backIntensity == -1.0f) {
+        float k = todInfo[cur].backIntensity / 100.0f;
+
+        todDirRed = todInfo[cur].dirRed * k;
+        todDirGreen = todInfo[cur].dirGreen * k;
+        todDirBlue = todInfo[cur].dirBlue * k;
+        todBackRed = todDirRed + f * (todInfo[next].backRed - todDirRed);
+        todBackGreen = todDirGreen + f * (todInfo[next].backGreen - todDirGreen);
+        todBackBlue = todDirBlue + f * (todInfo[next].backBlue - todDirBlue);
+    } else if (todInfo[cur].backIntensity == -1.0f && todInfo[next].backIntensity != -1.0f) {
+        float k = todInfo[next].backIntensity / 100.0f;
+
+        todDirRed = todInfo[next].dirRed * k;
+        todDirGreen = todInfo[next].dirGreen * k;
+        todDirBlue = todInfo[next].dirBlue * k;
+        todBackRed = todInfo[cur].backRed + f * (todDirRed - todInfo[cur].backRed);
+        todBackGreen = todInfo[cur].backGreen + f * (todDirGreen - todInfo[cur].backGreen);
+        todBackBlue = todInfo[cur].backBlue + f * (todDirBlue - todInfo[cur].backBlue);
+    } else {
+        todBackRed = todInfo[cur].backRed + f * (todInfo[next].backRed - todInfo[cur].backRed);
+        todBackGreen = todInfo[cur].backGreen + f * (todInfo[next].backGreen - todInfo[cur].backGreen);
+        todBackBlue = todInfo[cur].backBlue + f * (todInfo[next].backBlue - todInfo[cur].backBlue);
+    }
+    plightSetTODParaLight(1, todBackRed, todBackGreen, todBackBlue, todBackHeading, todBackPitch);
+    plightSetTODParaLight(2, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+
+    on = todTimeOfDayOn;
+    todTimeOfDayOn = s_todPlightsEnabled[which];
+    s_todPlightsEnabled[which] = 1;
+    plightUpdateParaLights();
+    todTimeOfDayOn = on;
+    if (which > 0)
+        return;
+
+    todFogMinRange = todInfo[cur].fogMinRange + f * (todInfo[next].fogMinRange - todInfo[cur].fogMinRange);
+    todFogMaxRange = todInfo[cur].fogMaxRange + f * (todInfo[next].fogMaxRange - todInfo[cur].fogMaxRange);
+    todFogMaxVal = todInfo[cur].fogMaxVal + f * (todInfo[next].fogMaxVal - todInfo[cur].fogMaxVal);
+    todFogFarClip = todInfo[cur].fogFarClip + f * (todInfo[next].fogFarClip - todInfo[cur].fogFarClip);
+    todFogRed = (int)(todInfo[cur].fogRed + f * (todInfo[next].fogRed - todInfo[cur].fogRed));
+    todFogGreen = (int)(todInfo[cur].fogGreen + f * (todInfo[next].fogGreen - todInfo[cur].fogGreen));
+    todFogBlue = (int)(todInfo[cur].fogBlue + f * (todInfo[next].fogBlue - todInfo[cur].fogBlue));
+    fogSetTODFogParms(todFogMinRange, todFogMaxRange, todFogMaxVal, todFogFarClip, todFogRed, todFogGreen, todFogBlue);
+    todBackgroundRed = (int)(todInfo[cur].bgRed + f * (todInfo[next].bgRed - todInfo[cur].bgRed));
+    todBackgroundGreen = (int)(todInfo[cur].bgGreen + f * (todInfo[next].bgGreen - todInfo[cur].bgGreen));
+    todBackgroundBlue = (int)(todInfo[cur].bgBlue + f * (todInfo[next].bgBlue - todInfo[cur].bgBlue));
+    viewSetTODBgColor(todBackgroundRed, todBackgroundGreen, todBackgroundBlue, 0);
+
+    if (todSkySetFound == 1) {
+        int curSky;
+        int nextSky;
+
+        todSkyRedMod = todInfo[cur].skyRedMod + f * (todInfo[next].skyRedMod - todInfo[cur].skyRedMod);
+        todSkyGreenMod = todInfo[cur].skyGreenMod + f * (todInfo[next].skyGreenMod - todInfo[cur].skyGreenMod);
+        todSkyBlueMod = todInfo[cur].skyBlueMod + f * (todInfo[next].skyBlueMod - todInfo[cur].skyBlueMod);
+        todSkyFogBurnThru = todInfo[cur].skyFogBurnThru + f * (todInfo[next].skyFogBurnThru - todInfo[cur].skyFogBurnThru);
+        todCloudRedMod = todInfo[cur].cloudRedMod + f * (todInfo[next].cloudRedMod - todInfo[cur].cloudRedMod);
+        todCloudGreenMod = todInfo[cur].cloudGreenMod + f * (todInfo[next].cloudGreenMod - todInfo[cur].cloudGreenMod);
+        todCloudBlueMod = todInfo[cur].cloudBlueMod + f * (todInfo[next].cloudBlueMod - todInfo[cur].cloudBlueMod);
+        todCloudAlphaMod = todInfo[cur].cloudAlphaMod + f * (todInfo[next].cloudAlphaMod - todInfo[cur].cloudAlphaMod);
+        todSetSkyObjects(4, todCloudAlphaMod, 0.0f, 1.0f, todCloudRedMod, todCloudGreenMod, todCloudBlueMod);
+        curSky = todInfo[cur].sky;
+        nextSky = todInfo[next].sky;
+        if (curSky == nextSky) {
+            todSetSkyObjects(nextSky, 1.0f, 0.0f, todSkyFogBurnThru, todSkyRedMod, todSkyGreenMod, todSkyBlueMod);
+            if (todSky[nextSky].hier) {
+                viewSetSkyNode(todSky[nextSky].hier, 0);
+                viewSetSkyNode(0, 1);
+            }
+        } else {
+            /* cross-fade the two sky sets */
+            float fadeOut = 1.0f - f;
+            float fadeIn;
+
+            if (fadeOut < 0.0f)
+                fadeOut = 0.0f;
+            fadeIn = f;
+            if (fadeIn > 1.0f)
+                fadeIn = 1.0f;
+            if (todSky[curSky].hier) {
+                todSetSkyObjects(curSky, fadeOut, 2.98e-7f, todSkyFogBurnThru, todSkyRedMod, todSkyGreenMod, todSkyBlueMod);
+                viewSetSkyNode(todSky[curSky].hier, 0);
+            }
+            if (todSky[nextSky].hier) {
+                todSetSkyObjects(nextSky, fadeIn, 0.0f, todSkyFogBurnThru, todSkyRedMod, todSkyGreenMod, todSkyBlueMod);
+                viewSetSkyNode(todSky[nextSky].hier, 1);
+            }
+        }
+    } else if (todNumSkys > 0) {
+        int i;
+
+        for (i = 0; i < 10; i++) {
+            if (todSky[i].hier) {
+                viewSetSkyNode(todSky[i].hier, 0);
+                viewSetSkyNode(0, 1);
+                i = 10;
+            }
+        }
+    }
+}
 int todActive(void)
 {
     return todTimeOfDayOn;
@@ -260,27 +500,27 @@ void todGetTOD(int *on, float *minutesPerSecond, _todInfo14 *out)
         out->fogRed = todInfo[i].fogRed;
         out->fogGreen = todInfo[i].fogGreen;
         out->fogBlue = todInfo[i].fogBlue;
-        out->unk2C[0] = todInfo[i].unk2C[0];
-        out->unk2C[1] = todInfo[i].unk2C[1];
-        out->unk2C[2] = todInfo[i].unk2C[2];
-        out->unk38 = todInfo[i].unk38;
+        out->bgRed = todInfo[i].bgRed;
+        out->bgGreen = todInfo[i].bgGreen;
+        out->bgBlue = todInfo[i].bgBlue;
         out->dirHeading = todInfo[i].dirHeading;
+        out->dirPitch = todInfo[i].dirPitch;
         out->dirRed = todInfo[i].dirRed;
         out->dirGreen = todInfo[i].dirGreen;
         out->dirBlue = todInfo[i].dirBlue;
-        out->unk4C = todInfo[i].unk4C;
+        out->backIntensity = todInfo[i].backIntensity;
         out->backRed = todInfo[i].backRed;
         out->backGreen = todInfo[i].backGreen;
         out->backBlue = todInfo[i].backBlue;
         out->sky = todInfo[i].sky;
-        out->unk60 = todInfo[i].unk60;
-        out->unk64[0] = todInfo[i].unk64[0];
-        out->unk64[1] = todInfo[i].unk64[1];
-        out->unk64[2] = todInfo[i].unk64[2];
-        out->unk64[3] = todInfo[i].unk64[3];
-        out->unk64[4] = todInfo[i].unk64[4];
-        out->unk64[5] = todInfo[i].unk64[5];
-        out->unk64[6] = todInfo[i].unk64[6];
+        out->skyFogBurnThru = todInfo[i].skyFogBurnThru;
+        out->skyRedMod = todInfo[i].skyRedMod;
+        out->skyGreenMod = todInfo[i].skyGreenMod;
+        out->skyBlueMod = todInfo[i].skyBlueMod;
+        out->cloudRedMod = todInfo[i].cloudRedMod;
+        out->cloudGreenMod = todInfo[i].cloudGreenMod;
+        out->cloudBlueMod = todInfo[i].cloudBlueMod;
+        out->cloudAlphaMod = todInfo[i].cloudAlphaMod;
     }
 }
 #else
@@ -327,10 +567,10 @@ void todSetTOD(int on, float minutesPerSecond, void *data, float version)
             todInfo[i].fogBlue = src->fogBlue;
             todInfo[i].fogMinRange = src->fogMinRange;
             todInfo[i].sky = src->sky;
-            todInfo[i].unk60 = src->unk60;
-            todInfo[i].unk64[0] = src->unk64[0];
-            todInfo[i].unk64[1] = src->unk64[1];
-            todInfo[i].unk64[2] = src->unk64[2];
+            todInfo[i].skyFogBurnThru = src->skyFogBurnThru;
+            todInfo[i].skyRedMod = src->skyRedMod;
+            todInfo[i].skyGreenMod = src->skyGreenMod;
+            todInfo[i].skyBlueMod = src->skyBlueMod;
         }
     }
     if (version == 1.2f) {
@@ -347,16 +587,16 @@ void todSetTOD(int on, float minutesPerSecond, void *data, float version)
             todInfo[i].fogRed = src->fogRed;
             todInfo[i].fogGreen = src->fogGreen;
             todInfo[i].fogBlue = src->fogBlue;
-            todInfo[i].unk38 = src->unk38;
             todInfo[i].dirHeading = src->dirHeading;
+            todInfo[i].dirPitch = src->dirPitch;
             todInfo[i].dirRed = src->dirRed;
             todInfo[i].dirGreen = src->dirGreen;
             todInfo[i].dirBlue = src->dirBlue;
             todInfo[i].sky = src->sky;
-            todInfo[i].unk60 = src->unk60;
-            todInfo[i].unk64[0] = src->unk64[0];
-            todInfo[i].unk64[1] = src->unk64[1];
-            todInfo[i].unk64[2] = src->unk64[2];
+            todInfo[i].skyFogBurnThru = src->skyFogBurnThru;
+            todInfo[i].skyRedMod = src->skyRedMod;
+            todInfo[i].skyGreenMod = src->skyGreenMod;
+            todInfo[i].skyBlueMod = src->skyBlueMod;
         }
     }
     if (version == 1.3f) {
@@ -373,21 +613,21 @@ void todSetTOD(int on, float minutesPerSecond, void *data, float version)
             todInfo[i].fogRed = src->fogRed;
             todInfo[i].fogGreen = src->fogGreen;
             todInfo[i].fogBlue = src->fogBlue;
-            todInfo[i].unk38 = src->unk38;
             todInfo[i].dirHeading = src->dirHeading;
+            todInfo[i].dirPitch = src->dirPitch;
             todInfo[i].dirRed = src->dirRed;
             todInfo[i].dirGreen = src->dirGreen;
             todInfo[i].dirBlue = src->dirBlue;
-            todInfo[i].unk4C = src->unk4C;
+            todInfo[i].backIntensity = src->backIntensity;
             todInfo[i].sky = src->sky;
-            todInfo[i].unk60 = src->unk60;
-            todInfo[i].unk64[0] = src->unk64[0];
-            todInfo[i].unk64[1] = src->unk64[1];
-            todInfo[i].unk64[2] = src->unk64[2];
-            todInfo[i].unk64[3] = src->unk64[3];
-            todInfo[i].unk64[4] = src->unk64[4];
-            todInfo[i].unk64[5] = src->unk64[5];
-            todInfo[i].unk64[6] = src->unk64[6];
+            todInfo[i].skyFogBurnThru = src->skyFogBurnThru;
+            todInfo[i].skyRedMod = src->skyRedMod;
+            todInfo[i].skyGreenMod = src->skyGreenMod;
+            todInfo[i].skyBlueMod = src->skyBlueMod;
+            todInfo[i].cloudRedMod = src->cloudRedMod;
+            todInfo[i].cloudGreenMod = src->cloudGreenMod;
+            todInfo[i].cloudBlueMod = src->cloudBlueMod;
+            todInfo[i].cloudAlphaMod = src->cloudAlphaMod;
         }
     }
     if (version == 1.4f) {
@@ -404,27 +644,27 @@ void todSetTOD(int on, float minutesPerSecond, void *data, float version)
             todInfo[i].fogRed = src->fogRed;
             todInfo[i].fogGreen = src->fogGreen;
             todInfo[i].fogBlue = src->fogBlue;
-            todInfo[i].unk2C[0] = src->unk2C[0];
-            todInfo[i].unk2C[1] = src->unk2C[1];
-            todInfo[i].unk2C[2] = src->unk2C[2];
-            todInfo[i].unk38 = src->unk38;
+            todInfo[i].bgRed = src->bgRed;
+            todInfo[i].bgGreen = src->bgGreen;
+            todInfo[i].bgBlue = src->bgBlue;
             todInfo[i].dirHeading = src->dirHeading;
+            todInfo[i].dirPitch = src->dirPitch;
             todInfo[i].dirRed = src->dirRed;
             todInfo[i].dirGreen = src->dirGreen;
             todInfo[i].dirBlue = src->dirBlue;
-            todInfo[i].unk4C = src->unk4C;
+            todInfo[i].backIntensity = src->backIntensity;
             todInfo[i].backRed = src->backRed;
             todInfo[i].backGreen = src->backGreen;
             todInfo[i].backBlue = src->backBlue;
             todInfo[i].sky = src->sky;
-            todInfo[i].unk60 = src->unk60;
-            todInfo[i].unk64[0] = src->unk64[0];
-            todInfo[i].unk64[1] = src->unk64[1];
-            todInfo[i].unk64[2] = src->unk64[2];
-            todInfo[i].unk64[3] = src->unk64[3];
-            todInfo[i].unk64[4] = src->unk64[4];
-            todInfo[i].unk64[5] = src->unk64[5];
-            todInfo[i].unk64[6] = src->unk64[6];
+            todInfo[i].skyFogBurnThru = src->skyFogBurnThru;
+            todInfo[i].skyRedMod = src->skyRedMod;
+            todInfo[i].skyGreenMod = src->skyGreenMod;
+            todInfo[i].skyBlueMod = src->skyBlueMod;
+            todInfo[i].cloudRedMod = src->cloudRedMod;
+            todInfo[i].cloudGreenMod = src->cloudGreenMod;
+            todInfo[i].cloudBlueMod = src->cloudBlueMod;
+            todInfo[i].cloudAlphaMod = src->cloudAlphaMod;
         }
     }
 }
