@@ -26,3 +26,6 @@ startup_command.bat
 tools/pcsx2_auto/*.png
 tools/pcsx2_auto/*.bin
 .claude/worktrees/
+
+# saida do PS2Recomp (codigo do jogo traduzido): nunca versionar
+/recomp/

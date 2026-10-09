@@ -16,8 +16,11 @@ Estado verificado em 2026-10-09; o que ainda não foi feito está marcado.
 ## O que vai no repo e o que se gera
 - **No repo:** a decomp legível, os headers de tipos, `tools/`, a camada nativa, os hooks, a documentação.
 - **Nunca no repo (regra 1 do `CLAUDE.md`):** o executável, a ISO, o assembly e **o C++ gerado pelo PS2Recomp** (é código do jogo). Cada pessoa o gera a partir da sua ISO.
-- **Hoje** isso é manual: recompilador e analisador do PS2Recomp, o runtime com o C++ gerado copiado para `src/runner` (WSL em `~/wotm-recomp`; Windows/MSVC em `wotm-recomp-win`).
-  *Falta:* um script único que faça isso a partir da ISO. Os patches locais que usamos (ISO por variável de ambiente, hooks, contadores, entrada por roteiro) ainda não estão versionados.
+- **Layout:** o PS2Recomp é um **submódulo** (`third_party/PS2Recomp`, branch `wotm` do fork `yanm1103/PS2Recomp`, com os nossos patches e a correção do `sqrt`). Clone com `git clone --recurse-submodules`.
+  O código gerado fica em `recomp/` (no `.gitignore`): `recomp/retail/` (ELF retail) e `recomp/nm/` (ELF com as equivalentes). O runtime lê essa pasta com `-DPS2X_GENERATED_DIR=<repo>/recomp/retail`,
+  sem copiar nada para dentro do submódulo.
+- **Ainda manual:** gerar `recomp/` (analisador + `ps2_recomp` sobre o ELF) e compilar o runtime (MSVC no Windows). *Falta:* um script único que faça isso a partir da ISO.
+  Os hooks específicos do jogo (`PS2X_SKIP_MOVIES`, `PS2X_NO_VU1`) e a travessia de cena (`wotm_scene.inc`) ainda estão no fork; o plano é movê-los para um módulo do jogo neste repo.
 - O recompilador precisa da correção de `SQRT.S`/`RSQRT.S` (PR https://github.com/ran-j/PS2Recomp/pull/277); sem ela, 108 + 76 funções do jogo calculam errado.
 
 ## Direitos autorais e licença
