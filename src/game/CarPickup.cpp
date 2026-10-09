@@ -2,6 +2,7 @@
 #include "game/pickup.h"
 #include "hieri_types.h"
 #include "engine.h"
+#include "game/vehicle_navigator.h"
 
 /* CarPickup is a virtual class (vtable, ctor and __tf stay as asm). The members below are written without the
    `virtual` keyword so that this file does not emit a second vtable; fields are reached by raw offset. */
@@ -18,6 +19,7 @@ public:
     void grab(int i);
     void drop(void);
     char *getVehicle(void);
+    void regen(void);
 };
 
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", _vt$9CarPickup);
@@ -48,7 +50,13 @@ void CarPickup::drop(void)
     hdReparentCsGrid(cs);
 }
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", update__9CarPickup);
-INCLUDE_ASM("asm/nonmatchings/game/CarPickup", regen__9CarPickup);
+void CarPickup::regen(void)
+{
+    Pickup::regen();
+    cs->testCollision = 1;
+    ((VehicleNavigator *)((char *)this + 0x1D0))->init();
+    *(int *)((char *)this + 0x260) = 1;
+}
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", updateInputs__9CarPickupR7GamePad);
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", func_001228C8);
 INCLUDE_ASM("asm/nonmatchings/game/CarPickup", func_001228D8);

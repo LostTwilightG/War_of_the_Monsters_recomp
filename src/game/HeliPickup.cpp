@@ -15,6 +15,7 @@ public:
     void drop(void);
     void grab(int i);
     void enterState(State s);
+    void regen(void);
 };
 
 INCLUDE_ASM("asm/nonmatchings/game/HeliPickup", __10HeliPickupb);
@@ -35,7 +36,16 @@ void HeliPickup::drop(void)
 }
 INCLUDE_ASM("asm/nonmatchings/game/HeliPickup", kill__10HeliPickup);
 INCLUDE_ASM("asm/nonmatchings/game/HeliPickup", update__10HeliPickup);
-INCLUDE_ASM("asm/nonmatchings/game/HeliPickup", regen__10HeliPickup);
+void HeliPickup::regen(void)
+{
+    Pickup::regen();
+    cs->testCollision = 1;
+    *(int *)((char *)this + 0x178) = 0;
+    *(int *)((char *)this + 0x184) = 0;
+    *(int *)((char *)this + 0x17C) = 0;
+    fx = -1;
+    enterState(STATE_0);
+}
 INCLUDE_ASM("asm/nonmatchings/game/HeliPickup", updateAttackBehavior__10HeliPickupR7GamePad);
 INCLUDE_ASM("asm/nonmatchings/game/HeliPickup", enterState__10HeliPickupQ210HeliPickup5State);
 INCLUDE_ASM("asm/nonmatchings/game/HeliPickup", _vt$10HeliPickup);
