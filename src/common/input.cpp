@@ -8,7 +8,20 @@ struct InputPadData {
     unsigned char status;
     unsigned char type;
     short buttons; /* active low */
-    unsigned char analog[28];
+    unsigned char sticks[4];    /* right x, right y, left x, left y */
+    unsigned char pressure[12]; /* right, left, up, down, triangle, circle, cross, square, L1, R1, L2, R2 */
+    unsigned char unused[12];
+};
+
+/* one vibration motor request: [0] small motor, [1] big motor */
+struct ActuatorMotor {
+    int time;            /* 0x00 */
+    unsigned char level; /* 0x04 */
+    int unk8;            /* 0x08 */
+    int stopped;         /* 0x0C */
+};
+struct ActuatorData {
+    ActuatorMotor motor[2];
 };
 
 extern int inputMode __asm__("D_006F8D8C");
@@ -22,6 +35,7 @@ extern int inputAnyLatched[INPUT_MAX_PADS] __asm__("D_00779F00"); /* inputGetAny
 extern int inputPadPort[INPUT_MAX_PADS] __asm__("D_00779E20");
 extern int inputPadSlot[INPUT_MAX_PADS] __asm__("D_00779E40");
 extern unsigned char inputActData[INPUT_MAX_PADS][6] __asm__("D_0077A130"); /* scePadSetActDirect data: [0] small motor, [1] big */
+extern ActuatorData inputActState[INPUT_MAX_PADS] __asm__("D_0077A160"); /* current request per pad */
 
 extern "C" {
 void *memset(void *dst, int c, unsigned int n);
@@ -30,6 +44,8 @@ int scePadSetActDirect(int port, int slot, const unsigned char *data);
 int inputGetPadButtons(int pad);
 int inputGetPadAnalog(int pad);
 int inputFixAnalogValue(int axis, int pad);
+int inputGetShellAnalogInput(int dir, int pad);
+int inputGetAnalogButton(int button, int pad);
 extern int inputConfigButtons[INPUT_MAX_PADS][INPUT_CONFIG_BUTTONS] __asm__("D_00779F20");
 extern int inputButtonsMapped[INPUT_MAX_PADS] __asm__("D_0077A040");
 extern int inputPlayerPad[INPUT_MAX_PADS] __asm__("D_0077A060");
@@ -49,7 +65,20 @@ void inputClearInputs(int pad)
 }
 INCLUDE_ASM("asm/nonmatchings/common/input", inputUpdate__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/input", inputUpdateState__Fii);
-INCLUDE_ASM("asm/nonmatchings/common/input", inputSetActuator__FiP12ActuatorData);
+void inputSetActuator(int pad, ActuatorData *a)
+{
+    if (!inputActuatorOn[pad])
+        return;
+    if (a->motor[0].level && a->motor[0].time)
+        inputActState[pad].motor[0] = a->motor[0];
+    if (a->motor[1].level >= inputActState[pad].motor[1].level && a->motor[1].time)
+        inputActState[pad].motor[1] = a->motor[1];
+    if (inputActState[pad].motor[0].stopped && inputActState[pad].motor[1].stopped)
+        return;
+    inputActData[pad][0] = inputActState[pad].motor[0].stopped ? 0 : inputActState[pad].motor[0].level;
+    inputActData[pad][1] = inputActState[pad].motor[1].stopped ? 0 : inputActState[pad].motor[1].level;
+    scePadSetActDirect(inputPadPort[pad], inputPadSlot[pad], inputActData[pad]);
+}
 void inputStopActuator(int pad, unsigned char motor)
 {
     if (motor == 2) {
@@ -168,8 +197,143 @@ int inputGetAnyInput(int pad)
     inputAnyLatched[pad] = 1;
     return 1;
 }
+#ifdef NON_MATCHING
+/* 52/140 words, same size: two instructions scheduled differently (the result register zeroing and the remap loop setup) */
+int inputGetInput(int mask, int pad)
+{
+    int r;
+    int i, searching, any;
+
+    if (inputCtlAvailable[pad]) {
+        if (pad < 0) {
+            /* any of the first two controllers */
+            any = 0;
+            if (inputGetInput(mask, 0) || inputGetInput(mask, 1))
+                any = 1;
+            r = any;
+        } else {
+            if (inputMode == 0) {
+                /* menus: the left stick works as the d-pad, once per press */
+                if (!inputAnyLatched[pad] && inputGetShellAnalogInput(mask, pad)) {
+                    inputAnyLatched[pad] = 1;
+                    return 1;
+                }
+            } else if (inputButtonsMapped[pad]) {
+                /* the eight action buttons go through the controller configuration */
+                r = -1;
+                switch (mask) {
+                case 0x100:
+                    r = 0;
+                    break;
+                case 0x200:
+                    r = 1;
+                    break;
+                case 0x400:
+                    r = 2;
+                    break;
+                case 0x800:
+                    r = 3;
+                    break;
+                case 0x1000:
+                    r = 4;
+                    break;
+                case 0x2000:
+                    r = 5;
+                    break;
+                case 0x4000:
+                    r = 6;
+                    break;
+                case 0x8000:
+                    r = 7;
+                    break;
+                }
+                if (r >= 0) {
+                    searching = 1;
+                    for (i = 0; i < 8 && searching; i++) {
+                        if (inputConfigButtons[pad][i] == r) {
+                            mask = 1 << i;
+                            searching = 0;
+                        }
+                    }
+                }
+            }
+            if (inputGetPadButtons(pad) & mask) {
+                if (inputMode == 0) {
+                    if (!inputAnyLatched[pad]) {
+                        r = 1;
+                        inputAnyLatched[pad] = r;
+                    } else
+                        r = 0;
+                } else {
+                    r = inputGetAnalogButton(mask, pad);
+                    if (!r)
+                        r = 1;
+                }
+            } else
+                r = 0;
+        }
+    } else
+        r = 0;
+    return r;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/input", inputGetInput__Fii);
-INCLUDE_ASM("asm/nonmatchings/common/input", inputGetAnalogButton__Fii);
+#endif
+int inputGetAnalogButton(int button, int pad)
+{
+    int v = 0;
+    int i;
+
+    if (inputCtlAvailable[pad]) {
+        switch (button) {
+        case 0x400: /* L1 */
+            i = 8;
+            break;
+        case 0x100: /* L2 */
+            i = 10;
+            break;
+        case 0x800: /* R1 */
+            i = 9;
+            break;
+        case 0x200: /* R2 */
+            i = 11;
+            break;
+        case 0x4000: /* cross */
+            i = 6;
+            break;
+        case 0x8000: /* square */
+            i = 7;
+            break;
+        case 0x2000: /* circle */
+            i = 5;
+            break;
+        case 0x1000: /* triangle */
+            i = 4;
+            break;
+        case 0x80: /* left */
+            i = 1;
+            break;
+        case 0x20: /* right */
+            i = 0;
+            break;
+        case 0x10: /* up */
+            i = 2;
+            break;
+        case 0x40: /* down */
+            i = 3;
+            break;
+        default:
+            i = -1;
+            break;
+        }
+        if (i >= 0) {
+            v = inputPadData[pad].pressure[i];
+            if (__builtin_fabsf((float)v) < 2.0f)
+                v = 0;
+        }
+    }
+    return v;
+}
 int inputGetCtlPadAnalogAxis(int axis, int pad)
 {
     int v = 0;
@@ -177,16 +341,16 @@ int inputGetCtlPadAnalogAxis(int axis, int pad)
     if (inputCtlAvailable[pad]) {
         switch (axis) {
         case 0:
-            v = inputPadData[pad].analog[0];
+            v = inputPadData[pad].sticks[0];
             break;
         case 1:
-            v = inputPadData[pad].analog[1];
+            v = inputPadData[pad].sticks[1];
             break;
         case 2:
-            v = inputPadData[pad].analog[2];
+            v = inputPadData[pad].sticks[2];
             break;
         case 3:
-            v = inputPadData[pad].analog[3];
+            v = inputPadData[pad].sticks[3];
             break;
         }
     }
