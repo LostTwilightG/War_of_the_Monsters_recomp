@@ -9,6 +9,84 @@
 
 #include "game/level_pickups.h"
 
+/* EnemyInfo helpers living in other TUs (this = an EnemyInfo::Info record). */
+int infoInFov(EnemyInfo::Info *info, float cosAngle) __asm__("inFov__9EnemyInfof");
+int infoInLos(EnemyInfo::Info *info) __asm__("inLos__9EnemyInfo");
+
+/* Charging at an opponent in a straight line. */
+class AiRamAttack : public AiActionTuple {
+public:
+    Monster *m_target; /* 0x48 */
+    int m_timer;       /* 0x4C */
+    float m_minRange;  /* 0x50: 300.0 */
+    float m_maxRange;  /* 0x54: 600.0 */
+    float m_lateral;   /* 0x58: 50.0, how far off the charge line the target may be */
+
+    float getEntryRelevance(Ai &ai);
+    Monster *getBestTarget(Ai &ai, float &best);
+    float getExitRelevance(Ai &ai);
+    void enterAction(Ai &ai);
+    void updateAction(Ai &ai);
+    void exitAction(Ai &ai);
+};
+/* Crowd control (the area attack that pushes opponents away). */
+class AiCrowdControl : public AiActionTuple {
+public:
+    Monster *m_target; /* 0x48 */
+    int m_timer;       /* 0x4C */
+    float m_range;     /* 0x50: 600.0 */
+
+    float getEntryRelevance(Ai &ai);
+    Monster *getBestTarget(Ai &ai, float &best);
+    float getExitRelevance(Ai &ai);
+    void enterAction(Ai &ai);
+    void updateAction(Ai &ai);
+    void exitAction(Ai &ai);
+};
+/* The monster's special attack. */
+class AiSpecialAttack : public AiActionTuple {
+public:
+    Monster *m_target; /* 0x48 */
+    int m_timer;       /* 0x4C */
+    int m_start;       /* 0x50: field the attack began at, -1 before */
+    float m_minRange;  /* 0x54: 250.0 */
+    float m_maxRange;  /* 0x58: 1000.0 */
+    int m_duration;    /* 0x5C: fields the button is held (150) */
+    int m_needLos;     /* 0x60 */
+
+    float getEntryRelevance(Ai &ai);
+    Monster *getBestTarget(Ai &ai, float &best);
+    float getExitRelevance(Ai &ai);
+    void enterAction(Ai &ai);
+    void updateAction(Ai &ai);
+    void exitAction(Ai &ai);
+};
+
+/* Taunting a far-away opponent that can see us. */
+class AiTaunt : public AiActionTuple {
+public:
+    int m_timer;        /* 0x48 */
+    Monster *m_target;  /* 0x4C */
+    float m_range;      /* 0x50: 400.0 */
+
+    float getEntryRelevance(Ai &ai);
+    float getExitRelevance(Ai &ai);
+    void enterAction(Ai &ai);
+    void updateAction(Ai &ai);
+    void exitAction(Ai &ai);
+};
+/* Running to put out a fire on the monster. */
+class AiPutOutFire : public AiActionTuple {
+public:
+    int m_timer;       /* 0x48 */
+    float m_prevBurn;  /* 0x4C: burn counter of the previous evaluation */
+
+    float getEntryRelevance(Ai &ai);
+    float getExitRelevance(Ai &ai);
+    void enterAction(Ai &ai);
+    void updateAction(Ai &ai);
+};
+
 class StateButtSlam {
 public:
     int transitionFeasible(void);
@@ -71,6 +149,7 @@ public:
 class AiPadClips {
 public:
     static int getThrow(void) __asm__("getThrow__10AiPadClipsv");
+    static int getDash(void) __asm__("getDash__10AiPadClipsv");
 };
 extern float GET_UP_ATTACK_RANGE;
 __asm__("#SNFIX_SMALL GET_UP_ATTACK_RANGE");
@@ -1603,26 +1682,417 @@ void AiStompReflex::exitAction(Ai &ai)
     ai.setFocus(0);
 }
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", __11AiRamAttack);
+#ifdef NON_MATCHING
+/* untuned: 29/40 words, size 0x9c vs 0xa0 */
+float AiRamAttack::getEntryRelevance(Ai &ai)
+{
+    float best;
+    StaminaMeter *sm;
+    float st;
+
+    if (!ai.monster->m_attacksEnabled || MB(ai.monster, 0x280) || *(unsigned char *)MP(MI(ai.monster, 0xC), 0xE) == 0)
+        return 0.0f;
+    m_target = getBestTarget(ai, best);
+    sm = &ai.monster->m_stamina;
+    st = sm->cur;
+    st = st / sm->getMaxLevel();
+    return best * (st * st);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getEntryRelevance__11AiRamAttackR2Ai);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 15/188 words, size 0x2f0 vs 0x2c4 */
+Monster *AiRamAttack::getBestTarget(Ai &ai, float &best)
+{
+    Monster *bestM = 0;
+    Monster **p = (Monster **)((char *)&ai + 4);
+
+    best = 0.0f;
+    for (; *p; p++) {
+        Monster *o = *p;
+        EnemyInfo::Info *info;
+        float d, lat, w;
+        float *v, *fwd;
+        int ok;
+
+        if (STATE_ID(o) == 0x1B)
+            continue;
+        if (o->m_state == (int *)MI(o, 0x7978)) {
+            if (*(unsigned char *)MP(ai.monster, 0x18) != 6)
+                continue;
+        }
+        info = EnemyInfo::getInfo(*ai.monster, *o);
+        d = info->dist2D;
+        if (m_maxRange < d)
+            continue;
+        if (d < m_minRange)
+            continue;
+        ok = 0;
+        if (infoInFov(info, 0.0f))
+            ok = infoInLos(info) != 0;
+        if (!ok)
+            continue;
+        {
+            float dy = MF(info, 8);
+
+            if (dy < 0.0f ? -dy > 50.0f : dy > 50.0f)
+                continue;
+        }
+        if (!o->m_unk49)
+            continue;
+        if (o->m_state[1] & 0x10)
+            continue;
+        if (MATCH_MODE < 2) {
+            if (MI(EnemyInfo::getInfo(*o, *ai.monster), 0x24) == 0)
+                continue;
+        }
+        v = (float *)MP(o, 0x260);
+        fwd = (float *)MP(MI(ai.monster, 0xC), 0x20);
+        lat = fwd[0] * v[0] + fwd[1] * v[1] + fwd[2] * v[2];
+        lat = lat < 0.0f ? -lat : lat;
+        if (m_lateral < lat)
+            continue;
+        w = 1.0f;
+        if (o->m_playerNum == 2)
+            w = (o->m_health / ((HealthMeter *)((char *)o + 0x448))->getMaxLevel()) * 0.5f;
+        if (!o->m_attacksEnabled)
+            w = w + w;
+        {
+            float t = (d - m_minRange) / (m_maxRange - m_minRange);
+
+            w = w * ((1.0f - t * t) * 0.5f + 0.5f);
+        }
+        w = w * (1.0f - lat / m_lateral);
+        w = w * ai.getCommonGroundProbability(*o);
+        if (best < w) {
+            best = w;
+            bestM = o;
+        }
+    }
+    return bestM;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getBestTarget__11AiRamAttackR2AiRf);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 4/75 words, size 0x12c vs 0x124 */
+float AiRamAttack::getExitRelevance(Ai &ai)
+{
+    EnemyInfo::Info *info;
+    int ok;
+    int id;
+
+    if (MI(&ai, 0x4C) != 1) {
+        id = STATE_ID(ai.monster);
+        if (id != 0x28 && id != 0x27)
+            return 0.0f;
+    }
+    info = EnemyInfo::getInfo(*ai.monster, *m_target);
+    ok = 0;
+    if (infoInFov(info, 0.0f))
+        ok = infoInLos(info) != 0;
+    if (!ok)
+        return 0.0f;
+    if (!s_attackOtherAi && ai.pinningAi())
+        return 0.0f;
+    id = STATE_ID(ai.monster);
+    if ((id == 0x27 && *(unsigned char *)MP(ai.monster, 0x7ACC)) || id == 0x28)
+        m_bias = 10.0f;
+    else
+        m_bias = 1.5f;
+    return FMAX(1.0f, m_entryRel);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getExitRelevance__11AiRamAttackR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", enterAction__11AiRamAttackR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", updateAction__11AiRamAttackR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", exitAction__11AiRamAttackR2Ai);
+#endif
+void AiRamAttack::enterAction(Ai &ai)
+{
+    int d = ai.getReflexDelay() - getFieldsSinceEval();
+
+    m_timer = d > -1 ? d : 0;
+    ai.setFocus((DbInteractive *)m_target);
+    NAV(ai)->target(*(_fvector *)MP(MI(m_target, 0xC), 0x10), 0.1f);
+    ((GamePadClipPlayer *)((char *)&ai + 0x48))->clip = AiPadClips::getDash();
+    ((GamePadClipPlayer *)((char *)&ai + 0x48))->rewind();
+}
+void AiRamAttack::updateAction(Ai &ai)
+{
+    if (MF(EnemyInfo::getInfo(*ai.monster, *m_target), 0x14) > 0.7f)
+        ai.targetPin();
+    if (--m_timer > 0)
+        return;
+    if (((GamePadClipPlayer *)((char *)&ai + 0x48))->update(*(GamePad *)ai.pad))
+        return;
+    if (EnemyInfo::getInfo(*ai.monster, *m_target)->dist2D < 300.0f) {
+        if (STATE_ID(ai.monster) == 0x27 && *(unsigned char *)MP(ai.monster, 0x7ACC) == 1)
+            ai.pad[8] = 0xFF;
+    }
+    ai.pad[0xE] = 0xFF;
+}
+void AiRamAttack::exitAction(Ai &ai)
+{
+    ai.setFocus(0);
+}
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", __14AiCrowdControl);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getEntryRelevance__14AiCrowdControlR2Ai);
+float AiCrowdControl::getEntryRelevance(Ai &ai)
+{
+    float best;
+
+    if (ai.monster->m_attacksEnabled && ai.monster->isSpecialAvailable()) {
+        m_target = getBestTarget(ai, best);
+        return best;
+    }
+    return 0.0f;
+}
+#ifdef NON_MATCHING
+/* untuned: 4/116 words, size 0x1c4 vs 0x1d0 */
+Monster *AiCrowdControl::getBestTarget(Ai &ai, float &best)
+{
+    Monster *bestM = 0;
+    Monster **p = (Monster **)((char *)&ai + 4);
+    float radius;
+    char *base = MP(ai.monster, 0xF3F0);
+
+    best = 0.0f;
+    radius = MF(base + (MI(base, 0x3C) - 1) * 4, 0x28C);
+    for (; *p; p++) {
+        Monster *o = *p;
+        EnemyInfo::Info *info = EnemyInfo::getInfo(*ai.monster, *o);
+        float w, d;
+
+        if (m_range < info->dist)
+            continue;
+        if (25.0f < MF(info, 8))
+            continue;
+        if (!o->m_unk49)
+            continue;
+        if (o->m_state[1] & 0x10)
+            continue;
+        if (MATCH_MODE < 2) {
+            if (MI(EnemyInfo::getInfo(*o, *ai.monster), 0x24) == 0)
+                continue;
+        }
+        d = info->dist / radius;
+        w = 1.0f - d * d;
+        if (o->m_playerNum == 2)
+            w = w * ((o->m_health / ((HealthMeter *)((char *)o + 0x448))->getMaxLevel()) * 0.5f);
+        if (!o->m_attacksEnabled)
+            w = w + w;
+        if (best < w) {
+            best = w;
+            bestM = o;
+        }
+    }
+    return bestM;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getBestTarget__14AiCrowdControlR2AiRf);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 9/12 words, size 0x30 vs 0x30 */
+float AiCrowdControl::getExitRelevance(Ai &ai)
+{
+    if (m_timer > 0)
+        return FMAX(1.0f, m_entryRel);
+    return 0.0f;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getExitRelevance__14AiCrowdControlR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", enterAction__14AiCrowdControlR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", updateAction__14AiCrowdControlR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", exitAction__14AiCrowdControlR2Ai);
+#endif
+void AiCrowdControl::enterAction(Ai &ai)
+{
+    int d;
+
+    ai.setFocus((DbInteractive *)m_target);
+    d = ai.getReflexDelay() - getFieldsSinceEval();
+    m_timer = d > -1 ? d : 0;
+}
+void AiCrowdControl::updateAction(Ai &ai)
+{
+    if (--m_timer > 0)
+        return;
+    ai.crowdControl();
+}
+void AiCrowdControl::exitAction(Ai &ai)
+{
+    ai.setFocus(0);
+}
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", __15AiSpecialAttack);
+#ifdef NON_MATCHING
+/* untuned: 24/43 words, size 0xa8 vs 0xac */
+float AiSpecialAttack::getEntryRelevance(Ai &ai)
+{
+    float best;
+
+    if (!ai.monster->isSpecialAvailable())
+        return 0.0f;
+    if (!ai.monster->m_attacksEnabled)
+        return 0.0f;
+    if (ai.monster->isHoldingLarge())
+        return 0.0f;
+    if (ai.monster->m_state[1] & 4)
+        return 0.0f;
+    if (MB(ai.monster, 0x280))
+        return 0.0f;
+    if (STATE_ID(ai.monster) == 0x1F)
+        return 0.0f;
+    m_target = getBestTarget(ai, best);
+    return best;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getEntryRelevance__15AiSpecialAttackR2Ai);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 15/140 words, size 0x218 vs 0x230 */
+Monster *AiSpecialAttack::getBestTarget(Ai &ai, float &best)
+{
+    Monster *bestM = 0;
+    Monster **p = (Monster **)((char *)&ai + 4);
+
+    best = 0.0f;
+    for (; *p; p++) {
+        Monster *o = *p;
+        EnemyInfo::Info *info = EnemyInfo::getInfo(*ai.monster, *o);
+        float w;
+
+        if (m_maxRange < info->dist)
+            continue;
+        if (info->dist < m_minRange)
+            continue;
+        if (m_needLos) {
+            if (!info->los)
+                continue;
+        }
+        if (!o->m_unk49)
+            continue;
+        if (MB(o, 0xEF)) {
+            int ok = 0;
+
+            if (infoInFov(info, 0.92f))
+                ok = infoInLos(info) != 0;
+            if (!ok)
+                continue;
+            if (!(info->dist < 500.0f))
+                continue;
+        }
+        if (MATCH_MODE < 2) {
+            if (MI(EnemyInfo::getInfo(*o, *ai.monster), 0x24) == 0)
+                continue;
+        }
+        w = ai.getFovRelevance(info->dot, -1.0f);
+        {
+            float t = (info->dist - m_minRange) / (m_maxRange - m_minRange);
+
+            w = w * (1.0f - t * t);
+        }
+        if (o->m_playerNum == 2)
+            w = w * ((o->m_health / ((HealthMeter *)((char *)o + 0x448))->getMaxLevel()) * 0.5f);
+        if (!o->m_attacksEnabled)
+            w = w + w;
+        if (best < w) {
+            best = w;
+            bestM = o;
+        }
+    }
+    return bestM;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getBestTarget__15AiSpecialAttackR2AiRf);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 5/122 words, size 0x1e8 vs 0x1ac */
+float AiSpecialAttack::getExitRelevance(Ai &ai)
+{
+    EnemyInfo::Info *info;
+
+    if (m_timer > 0)
+        return FMAX(1.0f, m_entryRel);
+    if (ai.monster->m_state == (int *)MI(ai.monster, 0x7980))
+        return FMAX(1.0f, m_entryRel);
+    info = EnemyInfo::getInfo(*ai.monster, *m_target);
+    if (MI(ai.monster, 0x6C3C) != 0 && info->dot > 0.0f) {
+        if (ai.monster->m_typeBits == 0x40) {
+            AiVEntry *e = AI_VENT(ai.monster, 0x10, 0x10);
+            float *a = ((float *(*)(void *))e->fn)((char *)ai.monster + e->delta);
+            float *b = (float *)MP(MI(ai.monster, 0x6BF8), 0x10);
+            float dx = a[0] - b[0];
+            float dy = a[1] - b[1];
+            float dz = a[2] - b[2];
+
+            if (1000.0f * 1000.0f < dx * dx + dy * dy + dz * dz)
+                ai.block();
+        }
+        return 0.0f;
+    }
+    if (!ai.monster->isSpecialAvailable())
+        return 0.0f;
+    if (MI(&ai, 0x9C) == 2)
+        return 0.0f;
+    if (m_start > 0) {
+        if (m_duration < timerGetFieldCount() - m_start)
+            return 0.0f;
+    }
+    if (!s_attackOtherAi && ai.pinningAi())
+        return 0.0f;
+    if (m_needLos == 0 || info->los != 0)
+        return FMAX(1.0f, m_entryRel);
+    return 0.0f;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getExitRelevance__15AiSpecialAttackR2Ai);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 29/38 words, size 0x98 vs 0x98 */
+void AiSpecialAttack::enterAction(Ai &ai)
+{
+    int d = ai.getReflexDelay() - getFieldsSinceEval();
+
+    m_maxFields = m_duration + 180;
+    m_start = -1;
+    m_timer = d > -1 ? d : 0;
+    ai.setFocus((DbInteractive *)m_target);
+    NAV(ai)->target(*(_fvector *)MP(MI(m_target, 0xC), 0x10), 0.3f);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", enterAction__15AiSpecialAttackR2Ai);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 52/61 words, size 0xf4 vs 0xf4 */
+void AiSpecialAttack::updateAction(Ai &ai)
+{
+    Monster *m;
+    int pressed;
+
+    if (MI(&ai, 0x9C) != 1)
+        return;
+    if (MF(EnemyInfo::getInfo(*ai.monster, *m_target), 0x14) > 0.7f)
+        ai.targetPin();
+    if (--m_timer >= 0)
+        return;
+    m = ai.monster;
+    if (MI(m, 0x6C38) == 0)
+        pressed = (*(PadFlags *)MP(m, 0x5040))[0]->f32 != 0;
+    else
+        pressed = MI(m, 0x6C34) != 0;
+    if (!pressed)
+        return;
+    if (m_start < 0)
+        m_start = timerGetFieldCount();
+    if (timerGetFieldCount() - m_start < m_duration)
+        ai.specialAttack();
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", updateAction__15AiSpecialAttackR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", exitAction__15AiSpecialAttackR2Ai);
+#endif
+void AiSpecialAttack::exitAction(Ai &ai)
+{
+    AiNavigator *nav = NAV(ai);
+
+    if (nav->status)
+        nav->disable(AiNavigator::STATUS_3, AiNavigator::HINT_0);
+    ai.setFocus(0);
+}
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", __14AiDetonateHead);
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getEntryRelevance__14AiDetonateHeadR2Ai);
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getBestTarget__14AiDetonateHeadR2AiRf);
@@ -1631,16 +2101,131 @@ INCLUDE_ASM("asm/nonmatchings/game/AiReflex", enterAction__14AiDetonateHeadR2Ai)
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", updateAction__14AiDetonateHeadR2Ai);
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", exitAction__14AiDetonateHeadR2Ai);
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", __7AiTaunt);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getEntryRelevance__7AiTauntR2Ai);
+float AiTaunt::getEntryRelevance(Ai &ai)
+{
+    EnemyInfo::Info *info;
+
+    if (!MB(ai.monster, 0xF4))
+        return 0.0f;
+    if (ai.monster->m_state[1] & 4)
+        return 0.0f;
+    m_target = ai.monster->getClosestMonsterWithLos(5000.0f);
+    if (!m_target)
+        return 0.0f;
+    info = EnemyInfo::getInfo(*m_target, *ai.monster);
+    if (!(m_range < info->dist))
+        return 0.0f;
+    if (MI(info, 0x24) != 0)
+        return 1.0f;
+    return 0.0f;
+}
+#ifdef NON_MATCHING
+/* untuned: 6/20 words, size 0x50 vs 0x4c */
+float AiTaunt::getExitRelevance(Ai &ai)
+{
+    if (m_timer >= 0 || STATE_ID(ai.monster) == 0x2A)
+        return FMAX(1.0f, m_entryRel);
+    return 0.0f;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getExitRelevance__7AiTauntR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", enterAction__7AiTauntR2Ai);
+#endif
+void AiTaunt::enterAction(Ai &ai)
+{
+    int d;
+
+    ai.setFocus((DbInteractive *)m_target);
+    NAV(ai)->target(*(_fvector *)MP(MI(m_target, 0xC), 0x10), 0.3f);
+    d = ai.getReflexDelay() - getFieldsSinceEval();
+    m_timer = d > -1 ? d : 0;
+}
+#ifdef NON_MATCHING
+/* untuned: 35/44 words, size 0xb0 vs 0xb0 */
+void AiTaunt::updateAction(Ai &ai)
+{
+    Monster *m;
+    int pressed;
+
+    if (MF(EnemyInfo::getInfo(*ai.monster, *m_target), 0x14) > 0.7f)
+        ai.targetPin();
+    m = ai.monster;
+    if (MI(m, 0x6C38) == 0)
+        pressed = (*(PadFlags *)MP(m, 0x5040))[0]->f32 != 0;
+    else
+        pressed = MI(m, 0x6C34) != 0;
+    if (pressed) {
+        if (--m_timer <= 0)
+            ai.taunt();
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", updateAction__7AiTauntR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", exitAction__7AiTauntR2Ai);
+#endif
+void AiTaunt::exitAction(Ai &ai)
+{
+    AiNavigator *nav;
+
+    ai.setFocus(0);
+    nav = NAV(ai);
+    if (nav->status)
+        nav->disable(AiNavigator::STATUS_3, AiNavigator::HINT_0);
+}
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", __12AiPutOutFire);
+#ifdef NON_MATCHING
+/* untuned: 1/69 words, size 0xfc vs 0x114 */
+float AiPutOutFire::getEntryRelevance(Ai &ai)
+{
+    float rel = 0.0f;
+    float burn = MF(ai.monster, 0x6CB8);
+
+    if (0.0f < burn) {
+        if (m_prevBurn - burn < 20.0f) {
+            if (ai.monster->m_attacksEnabled) {
+                if (MF(ai.monster, 0x470) > 100.0f) {
+                    float h;
+
+                    rel = burn * 0.5f / 300.0f + 0.5f;
+                    h = MF(ai.monster, 0x44C);
+                    h = h / ((HealthMeter *)MP(ai.monster, 0x448))->getMaxLevel();
+                    rel = rel * ((1.0f - h * h) * 0.5f + 0.5f);
+                }
+            }
+        }
+    }
+    m_prevBurn = MF(ai.monster, 0x6CB8);
+    return rel;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getEntryRelevance__12AiPutOutFireR2Ai);
+#endif
+#ifdef NON_MATCHING
+/* untuned: 1/28 words, size 0x64 vs 0x70 */
+float AiPutOutFire::getExitRelevance(Ai &ai)
+{
+    if (0.0f < MF(ai.monster, 0x6CB8)) {
+        if (MI(&ai, 0x4C) == 1 || STATE_ID(ai.monster) == 0x27)
+            return FMAX(1.0f, m_entryRel);
+    }
+    return 0.0f;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/AiReflex", getExitRelevance__12AiPutOutFireR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", enterAction__12AiPutOutFireR2Ai);
-INCLUDE_ASM("asm/nonmatchings/game/AiReflex", updateAction__12AiPutOutFireR2Ai);
+#endif
+void AiPutOutFire::enterAction(Ai &ai)
+{
+    int d = ai.getReflexDelay() - getFieldsSinceEval();
+
+    m_timer = d > -1 ? d : 0;
+    ((GamePadClipPlayer *)((char *)&ai + 0x48))->clip = AiPadClips::getDash();
+    ((GamePadClipPlayer *)((char *)&ai + 0x48))->rewind();
+}
+void AiPutOutFire::updateAction(Ai &ai)
+{
+    if (--m_timer > 0)
+        return;
+    if (!((GamePadClipPlayer *)((char *)&ai + 0x48))->update(*(GamePad *)ai.pad))
+        ai.pad[0xE] = 0xFF;
+}
 void exitAction__12AiPutOutFireR2Ai(void *self) __asm__("exitAction__12AiPutOutFireR2Ai");
 void exitAction__12AiPutOutFireR2Ai(void *self)
 {

@@ -40,6 +40,7 @@ public:
 
     void setFocus(DbInteractive *d);
     float getGroundHeight(void);
+    float getCommonGroundProbability(Monster &m);
     float getFovRelevance(float a, float b);
     float getPowerUpGrabRange(void);
     int overPit(Monster &m);
