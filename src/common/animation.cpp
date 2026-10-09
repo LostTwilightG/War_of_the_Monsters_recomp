@@ -63,15 +63,16 @@ public:
     /* Gives a node back unless its index is already among the free ones. */
     void release(AnimBlendNode *node)
     {
+        unsigned char n;
         unsigned char idx;
         unsigned char *p;
-        unsigned char n;
 
         if (numUsed == 0)
             return;
-        idx = (unsigned)(node - nodes);
+        idx = node - nodes;
+        n = 128 - numUsed;
         p = &freeList[numUsed];
-        for (n = 128 - numUsed; n; n--, p++)
+        for (; n; n--, p++)
             if (*p == idx)
                 return;
         freeList[--numUsed] = idx;
@@ -118,6 +119,7 @@ void animationEvaluateFromNode(AnimBlendNode *node, _animCharInstance *ci, Anima
 void animationEvaluateToNode(AnimBlendNode *node, _animCharInstance *ci, AnimationOutputBlock **out);
 float mathfApproxCos2(float x);
 void boundEulerAngle(float *p);
+void animationCollapseBlend(AnimBlendNode *node, _animCharInstance *ci);
 extern char D_006F3150[]; /* "Could not start a blend of type %d, ---Bad Character Instance(s)
 " */
 extern int okToBlend;
@@ -866,7 +868,100 @@ void animationProcessActiveTree(HierHead *tree, _animCharInstance *ci)
         break;
     }
 }
+#ifdef NON_MATCHING
+/* 284/300: the angle temporaries sit 8 bytes higher in the frame; the pool index is divided with sra instead of srl (see AnimBlendPool::release) */
+void animationProcessTransitionBlend(AnimBlendNode *node, _animCharInstance *ci)
+{
+    AnimationOutputBlock *out[2];
+    float v[3];
+    float t;
+
+    t = ((float)timerGetFieldCount() - node->blendStartField) * 16.66667f;
+    out[0] = 0;
+    out[1] = 0;
+    if (t < node->blendTime) {
+        HierAnimCharacter *chr;
+        unsigned char *angular;
+        int i;
+
+        animationEvaluateFromNode(node, ci, &out[0]);
+        animationEvaluateToNode(node, ci, &out[1]);
+        {
+            float r = t / node->blendTime;
+            float f;
+
+            switch (s_blendCurve) {
+            case 0:
+            default:
+                f = r;
+                break;
+            case 1:
+                f = (mathfApproxCos2(r + -1.0f) + 1.0f) * 0.5f;
+                break;
+            case 2:
+                f = r * r;
+                break;
+            case 3:
+                f = r * (2.0f - r);
+                break;
+            }
+            node->weight = f;
+        }
+        chr = ci->character;
+        if (chr->numChannels <= 16)
+            angular = chr->angularChannelBits.bytes;
+        else
+            angular = (unsigned char *)chr + chr->angularChannelBits.offset;
+        for (i = 0; i < chr->numChannels; i++) {
+            int fromDirty = out[0] ? (out[0]->dirty[i / 8] >> (i % 8)) & 1 : 0;
+            int toDirty = out[1] ? (out[1]->dirty[i / 8] >> (i % 8)) & 1 : 0;
+
+            if (fromDirty) {
+                if (toDirty) {
+                    v[0] = out[0]->val[i];
+                    v[1] = out[1]->val[i];
+                    if ((angular[i / 8] >> (i % 8)) & 1) {
+                        boundEulerAngle(&v[0]);
+                        boundEulerAngle(&v[1]);
+                    }
+                    v[2] = v[1] - v[0];
+                    if ((angular[i / 8] >> (i % 8)) & 1)
+                        boundEulerAngle(&v[2]);
+                    node->animOutput.val[i] = v[0] + v[2] * node->weight;
+                    node->animOutput.dirty[i / 8] |= 1 << (i % 8);
+                } else {
+                    if ((angular[i / 8] >> (i % 8)) & 1)
+                        boundEulerAngle(&out[0]->val[i]);
+                    node->animOutput.val[i] = out[0]->val[i];
+                    node->animOutput.dirty[i / 8] |= 1 << (i % 8);
+                }
+            } else if (toDirty) {
+                if ((angular[i / 8] >> (i % 8)) & 1)
+                    boundEulerAngle(&out[1]->val[i]);
+                node->animOutput.val[i] = out[1]->val[i];
+                node->animOutput.dirty[i / 8] |= 1 << (i % 8);
+            } else {
+                node->animOutput.dirty[i / 8] &= ~(1 << (i % 8));
+            }
+        }
+    } else {
+        animationCollapseBlend(node, ci);
+        out[1] = &node->animOutput;
+        animationEvaluateToNode(node, ci, &out[1]);
+        if (node->blendType == BLEND_FREEZETRANS) {
+            AnimControlNode *ctrl = (AnimControlNode *)node->blendTo;
+
+            ctrl->deltaTime = node->toTime.deltaTime;
+            ctrl->startField = timerGetFieldCount();
+            ctrl->active = 1;
+        }
+        D_00732A08.release(node);
+        okToBlend = 1;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessTransitionBlend__FP14_animBlendNodeP17_animCharInstance);
+#endif
 #ifdef NON_MATCHING
 /* 169/185: the dirty-word counter (words - 1) is kept in a different register/slot */
 void animationProcessStaticBlend(AnimBlendNode *node, _animCharInstance *ci)
@@ -1258,7 +1353,7 @@ void animationCollapseBlend(AnimBlendNode *node, _animCharInstance *ci)
     animationCleanUpTree(node->blendFrom, ci);
 }
 #ifdef NON_MATCHING
-/* 72% of words; blend-node release loop: retail tests numUsed before the index and addresses the free list off the pool base */
+/* 67/68: the pool index (node - nodes) is divided with sra; retail has srl (see AnimBlendPool::release) */
 void animationCleanUpTree(HierHead *tree, _animCharInstance *ci)
 {
     if (tree == 0 || ci == 0)
