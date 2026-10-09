@@ -5,6 +5,7 @@
 class PickupSound {
 public:
     void terminateTurretSound(void);
+    void terminatePickupSound(void);
     void updatePickupSound(void);
 };
 

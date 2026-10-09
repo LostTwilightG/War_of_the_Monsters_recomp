@@ -17,6 +17,8 @@ public:
     void drop(void);
     void grab(int i);
     void enterState(State s);
+    bool update(void);
+    void updateBehavior(void);
 };
 
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", __12TurretPickup);
@@ -33,7 +35,11 @@ void TurretPickup::drop(void)
     hdReparentCsGrid(cs);
 }
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", kill__12TurretPickup);
-INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", update__12TurretPickup);
+bool TurretPickup::update(void)
+{
+    updateBehavior();
+    return health > 0.0f;
+}
 INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", fire__12TurretPickupR8_fvector);
 void TurretPickup::grab(int i)
 {
