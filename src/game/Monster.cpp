@@ -1846,7 +1846,11 @@ void Monster::setPadEnabled(bool v)
 {
     m_unkF9 = v;
 }
-INCLUDE_ASM("asm/nonmatchings/game/Monster", setPickup__7MonsterGQ2t10LinkedList1ZP6Pickup8Iterator);
+void setPickup__7MonsterGQ2t10LinkedList1ZP6Pickup8Iterator(void *self, int v) __asm__("setPickup__7MonsterGQ2t10LinkedList1ZP6Pickup8Iterator");
+void setPickup__7MonsterGQ2t10LinkedList1ZP6Pickup8Iterator(void *self, int v)
+{
+    *(int *)((char *)self + 0x68A4) = v;
+}
 void Monster::setGrapplee(Monster * v)
 {
     m_target = v;

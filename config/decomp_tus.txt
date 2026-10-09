@@ -104,3 +104,4 @@ game/ui
 game/screen
 game/rt
 game/MovementStates
+game/MonsterStates

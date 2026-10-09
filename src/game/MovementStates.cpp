@@ -308,29 +308,89 @@ INCLUDE_ASM("asm/nonmatchings/game/MovementStates", _vt$10StateClimb);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", _vt$13StateButtSlam);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __tf13StateButtSlam);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __tf10StateClimb);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getSubState__10StateClimb);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getClimbMotion__10StateClimb);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getHuckVelocity__10StateClimb);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getContactNormal__10StateClimb);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getContactInteractive__10StateClimb);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getContactFlags__10StateClimb);
+int getSubState__10StateClimb(void *self) __asm__("getSubState__10StateClimb");
+int getSubState__10StateClimb(void *self)
+{
+    return *(int *)((char *)self + 0x7C);
+}
+void * getClimbMotion__10StateClimb(void *self) __asm__("getClimbMotion__10StateClimb");
+void * getClimbMotion__10StateClimb(void *self)
+{
+    return (char *)self + 0x90;
+}
+void * getHuckVelocity__10StateClimb(void *self) __asm__("getHuckVelocity__10StateClimb");
+void * getHuckVelocity__10StateClimb(void *self)
+{
+    return (char *)self + 0x60;
+}
+void * getContactNormal__10StateClimb(void *self) __asm__("getContactNormal__10StateClimb");
+void * getContactNormal__10StateClimb(void *self)
+{
+    return (char *)self + 0xB0;
+}
+int getContactInteractive__10StateClimb(void *self) __asm__("getContactInteractive__10StateClimb");
+int getContactInteractive__10StateClimb(void *self)
+{
+    return *(int *)((char *)self + 0xC0);
+}
+int getContactFlags__10StateClimb(void *self) __asm__("getContactFlags__10StateClimb");
+int getContactFlags__10StateClimb(void *self)
+{
+    return *(int *)((char *)self + 0xA0);
+}
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __tf9StateDash);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getSubState__9StateDash);
+unsigned char getSubState__9StateDash(void *self) __asm__("getSubState__9StateDash");
+unsigned char getSubState__9StateDash(void *self)
+{
+    return *(unsigned char *)((char *)self + 0x3C);
+}
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __tf11JumpFlyBase);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __11JumpFlyBaseQ212MonsterState2IdQ212MonsterState4Caps);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", setFootPref__11JumpFlyBaseQ211JumpFlyBase8FootPref);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getSubState__11JumpFlyBase);
+void setFootPref__11JumpFlyBaseQ211JumpFlyBase8FootPref(void *self, int v) __asm__("setFootPref__11JumpFlyBaseQ211JumpFlyBase8FootPref");
+void setFootPref__11JumpFlyBaseQ211JumpFlyBase8FootPref(void *self, int v)
+{
+    *(int *)((char *)self + 0x1C) = v;
+}
+unsigned char getSubState__11JumpFlyBase(void *self) __asm__("getSubState__11JumpFlyBase");
+unsigned char getSubState__11JumpFlyBase(void *self)
+{
+    return *(unsigned char *)((char *)self + 0x18);
+}
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getApexHeight__11JumpFlyBase);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getHeightGain__11JumpFlyBase);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", D_006ED800);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __tf8StateFly);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getSubState__8StateFly);
+unsigned char getSubState__8StateFly(void *self) __asm__("getSubState__8StateFly");
+unsigned char getSubState__8StateFly(void *self)
+{
+    return *(unsigned char *)((char *)self + 0x18);
+}
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __tf9StateJump);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __tf14StateRamAttack);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", setRamDuration__14StateRamAttackf);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", setAirDeccel__14StateRamAttackf);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", setAcceleration__14StateRamAttackf);
+void setRamDuration__14StateRamAttackf(void *self, float v) __asm__("setRamDuration__14StateRamAttackf");
+void setRamDuration__14StateRamAttackf(void *self, float v)
+{
+    *(float *)((char *)self + 0x38) = v;
+}
+void setAirDeccel__14StateRamAttackf(void *self, float v) __asm__("setAirDeccel__14StateRamAttackf");
+void setAirDeccel__14StateRamAttackf(void *self, float v)
+{
+    *(float *)((char *)self + 0x2C) = v;
+}
+void setAcceleration__14StateRamAttackf(void *self, float v) __asm__("setAcceleration__14StateRamAttackf");
+void setAcceleration__14StateRamAttackf(void *self, float v)
+{
+    *(float *)((char *)self + 0x24) = v;
+}
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __tf8StateRun);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", setLandMomentum__8StateRunf);
-INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getAnimIndex__8StateRun);
+void setLandMomentum__8StateRunf(void *self, float v) __asm__("setLandMomentum__8StateRunf");
+void setLandMomentum__8StateRunf(void *self, float v)
+{
+    *(float *)((char *)self + 0xDC) = v;
+}
+int getAnimIndex__8StateRun(void *self) __asm__("getAnimIndex__8StateRun");
+int getAnimIndex__8StateRun(void *self)
+{
+    return *(int *)((char *)self + 0x60);
+}
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", func_00176DA0);
