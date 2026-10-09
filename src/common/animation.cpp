@@ -705,7 +705,91 @@ void animationProcessActiveTree(HierHead *tree, _animCharInstance *ci)
     }
 }
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessTransitionBlend__FP14_animBlendNodeP17_animCharInstance);
+#ifdef NON_MATCHING
+/* 169/185: the dirty-word counter (words - 1) is kept in a different register/slot */
+void animationProcessStaticBlend(AnimBlendNode *node, _animCharInstance *ci)
+{
+    AnimationOutputBlock *from;
+    AnimationOutputBlock *to;
+    float d;
+    float t;
+    float w;
+
+    t = ((float)timerGetFieldCount() - node->blendStartField) * 16.66667f;
+    from = 0;
+    to = 0;
+    if (t < node->blendTime) {
+        float r = t / node->blendTime;
+        float f;
+
+        switch (s_blendCurve) {
+        case 0:
+        default:
+            f = r;
+            break;
+        case 1:
+            f = (mathfApproxCos2(r + -1.0f) + 1.0f) * 0.5f;
+            break;
+        case 2:
+            f = r * r;
+            break;
+        case 3:
+            f = r * (2.0f - r);
+            break;
+        }
+        w = f * node->weight;
+    } else {
+        w = node->weight;
+    }
+    if (w < 1e-10f)
+        return;
+    animationEvaluateFromNode(node, ci, &from);
+    animationEvaluateToNode(node, ci, &to);
+    {
+        HierAnimCharacter *chr = ci->character;
+        unsigned char *angular;
+        int count;
+        int idx;
+        int words;
+
+        unsigned long *mask;
+
+        if (chr->numChannels <= 16)
+            angular = chr->angularChannelBits.bytes;
+        else
+            angular = (unsigned char *)chr + chr->angularChannelBits.offset;
+        count = chr->numChannels;
+        idx = 0;
+        mask = (unsigned long *)to->dirty;
+        words = (count >> 6) + 1;
+        for (; words; words--) {
+            unsigned long bits = ((Packed64 *)mask++)->v;
+            int n = words > 1 ? 64 : count & 0x3F;
+
+            for (; n; n--, idx++) {
+                int b = bits & 1;
+
+                if (b) {
+                    float from = node->animOutput.val[idx];
+
+                    d = to->val[idx];
+
+                    if ((angular[idx / 8] >> (idx % 8)) & 1)
+                        boundEulerAngle(&d);
+                    d -= from;
+                    if ((angular[idx / 8] >> (idx % 8)) & 1)
+                        boundEulerAngle(&d);
+                    node->animOutput.val[idx] = from + d * w;
+                    node->animOutput.dirty[idx / 8] |= 1 << (idx % 8);
+                }
+                bits >>= 1;
+            }
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/common/animation", animationProcessStaticBlend__FP14_animBlendNodeP17_animCharInstance);
+#endif
 #ifdef NON_MATCHING
 /* 123/134: idx=0 and the word counter land in different registers */
 void animationProcessOverrideBlend(AnimBlendNode *node, _animCharInstance *ci)
