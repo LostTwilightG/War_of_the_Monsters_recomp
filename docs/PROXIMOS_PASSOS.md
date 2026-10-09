@@ -167,3 +167,8 @@ Agora em C++ (equivalentes, validados no halfcpp: boot -> menu -> fase com jogad
 - `rtMain(first)` (equivalente) Ã© o laÃ§o por quadro: `startFrame` â†’ input â†’ por view: `CullView`, double buffer GS, `viewUpdate`, HUD, `hier(view,0)`, `TheGame::Update` (sÃ³ view 0), `animationRunGlobal`, `Update2` (view 1 ou Ãºnica), partÃ­culas, `TaskManager(debris)`, `hier(view,1)`, DMA; no fim do quadro `updateLevelObjectSoundManager`, `updateSoundManager`, `g_frame++` e o pacing de tempo. Retorna o cÃ³digo dado a `rtReturnToShell` (2 = pausa/diÃ¡logo, 3 = sair, 5 = encerrar sessÃ£o, 0/1/4 = fim de fase).
 - `rtPauseRT` (START ou controle desconectado â†’ `rtReturnToShell(2, bit do campo GS)`) estÃ¡ equivalente; `play.ps1 halfcpp -pause` aperta START no jogo e fotografa o diÃ¡logo (CONTINUE/RESTART/â€¦/QUIT).
 - NÃºmeros dos cÃ³digos de retorno vÃªm de `Shell::EvaluateGameStatus` e dos `Evaluate*Status` (histÃ³ria, desafio, FFA com/sem IA, endurance, bigshot, crush, dodgeball escritos; falta `EvaluateMultiPlayerBattleStatusNoAI`).
+
+### Observações de jogo ainda sem causa (2026-10-08, `halfcpp` com `takeHit` equivalente)
+- A IA às vezes repete a mesma ação sem parar (pode ser comportamento do jogo original).
+- Dois casos de "teleporte" depois de um golpe forte que arremessa o monstro (um no jogador, um na IA): o último `HitEvent` era tipo 3 / subtipo 30, tratado só com dano (igual ao retail); a causa pode ser o knockback/física fora da `takeHit`. Não confirmado; comparar com `bis_notakehit` (`jogar.bat bis_notakehit`) se voltar a incomodar.
+- Decisão do projeto: primeiro ter código suficiente (equivalente) para um port reproduzir o jogo; acertar byte a byte e corrigir esses detalhes vem depois.
