@@ -14,7 +14,7 @@ public:
 };
 class DodgeBallLevel {
 public:
-    void ResetCountdown(int n);
+    void ResetCountdown(void);
 };
 extern char dodgeBallInst[] __asm__("_14DodgeBallLevel$instance");
 void hdRemoveCsFromGrid(_cs *cs);
@@ -248,7 +248,7 @@ void LevelPickups::grabThrownPickup(PickupIter it, int i)
         }
     }
     if (*(int *)((char *)game + 0x1203C8) == 7)
-        ((DodgeBallLevel *)dodgeBallInst)->ResetCountdown(7);
+        ((DodgeBallLevel *)dodgeBallInst)->ResetCountdown();
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Pickup", grabThrownPickup__12LevelPickupsGQ2t10LinkedList1ZP6Pickup8Iteratori);

@@ -10,6 +10,7 @@ public:
 };
 class StateFly : public JumpFlyBase {
 public:
+    int transitionOK(void);
     char *getRelevantConfig(void);
     float getJumpHeightGain(void);
     float getFlapHeightGain(void);
@@ -18,6 +19,7 @@ public:
 };
 class StateJump : public JumpFlyBase {
 public:
+    int transitionOK(void);
     char *getRelevantConfig(void);
     float getJumpHeightGain(void);
     int transitionFeasible(void);
@@ -29,10 +31,12 @@ public:
 };
 class StateDash : public MonsterState {
 public:
+    int transitionOK(void);
     void handlePreemption(MonsterState *next);
 };
 class StateClimb : public MonsterState {
 public:
+    int transitionOK(void);
     void handlePreemption(MonsterState *next);
 };
 class MonsterSound {
@@ -40,6 +44,9 @@ public:
     void terminateDashSound(void);
 };
 void particleKillFx(int &handle);
+/* Virtual transitionFeasible(): vtable slot {delta @0x28, function @0x2C}. */
+#define VFEASIBLE(st) (((int (*)(void *))*(void **)((char *)(st)->vptr + 0x2C))((char *)(st) + *(short *)((char *)(st)->vptr + 0x28)))
+#define PAD(m, n) ((char *)(*(PadFlags *)((char *)(m) + 0x5040))[n])
 #define SCFG(p, o) (*(float *)((char *)(p) + (o)))
 
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __13StateButtSlam);
@@ -52,7 +59,20 @@ INCLUDE_ASM("asm/nonmatchings/game/MovementStates", acceptHit__13StateButtSlamR8
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", handlePreemption__13StateButtSlamP12MonsterState);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __10StateClimb);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", init__10StateClimbP7Monster);
+#ifdef NON_MATCHING
+/* Climbing starts on a fresh press of the climb button (pad field 0x2E set now, clear one frame ago). */
+int StateClimb::transitionOK(void)
+{
+    if (*(unsigned short *)(PAD(owner, 0) + 0x2E) != 0) {
+        if (*(unsigned short *)(PAD(owner, 1) + 0x2E) != 0)
+            return 0;
+        return VFEASIBLE(this) != 0;
+    }
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionOK__10StateClimb);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionFeasible__10StateClimb);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionInto__10StateClimb);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", update__10StateClimb);
@@ -75,7 +95,27 @@ INCLUDE_ASM("asm/nonmatchings/game/MovementStates", enterSubState__10StateClimbQ
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", checkWallContact__10StateClimb);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getMinContact__10StateClimbP9_hdResultib);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", __9StateDash);
+#ifdef NON_MATCHING
+/* Dashing needs the dash ability (0x2D80), the dash button held, enough stamina (this+0x24 <= owner+0x470) and nothing heavy in hand. */
+int StateDash::transitionOK(void)
+{
+    char *m = (char *)owner;
+
+    if (*(int *)(m + 0x2D80) == 0)
+        return 0;
+    if (*(short *)(PAD(m, 0) + 0x3E) == 0)
+        return 0;
+    if (!(*(float *)((char *)this + 0x24) <= *(float *)(m + 0x470)))
+        return 0;
+    if (*(int *)(m + 0x68B4) != 0)
+        return 0;
+    if (*(int *)(m + 0x68A4) == 0 || ((**(Pickup ***)(m + 0x68A4))->bits >> 1 & 1) == 0)
+        return 1;
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionOK__9StateDash);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionInto__9StateDash);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", update__9StateDash);
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", enterSubState__9StateDashQ29StateDash8SubState);
@@ -134,7 +174,21 @@ char *StateFly::getRelevantConfig(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getRelevantConfig__8StateFly);
 #endif
+#ifdef NON_MATCHING
+/* Flying needs the monster able to fly (flags at 0x1ED0, 0x2400, 0x2410) and either no fly press / not feasible but enough stamina state (0x288 >= 6). */
+int StateFly::transitionOK(void)
+{
+    char *m = (char *)owner;
+
+    if (*(int *)(m + 0x1ED0) == 0 || *(int *)(m + 0x2400) == 0 || *(int *)(m + 0x2410) == 0)
+        return 0;
+    if (*(unsigned short *)(PAD(m, 0) + 0x2A) == 0 || VFEASIBLE(this) == 0)
+        return *(int *)(m + 0x288) >= 6;
+    return 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionOK__8StateFly);
+#endif
 #ifdef NON_MATCHING
 /* Jumping/flying is only possible while the pad entry one frame back has its field 0x2A at 0. */
 int StateFly::transitionFeasible(void)
@@ -181,7 +235,22 @@ char *StateJump::getRelevantConfig(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", getRelevantConfig__9StateJump);
 #endif
+#ifdef NON_MATCHING
+int StateJump::transitionOK(void)
+{
+    char *m = (char *)owner;
+
+    if (*(int *)(m + 0x14) == 0x1A0 && *(int *)(m + 0x68B4) != 0)
+        return 0;
+    if (*(int *)(m + 0x1ED0) == 0)
+        return 0;
+    if (*(unsigned short *)(PAD(m, 0) + 0x2A) == 0 || VFEASIBLE(this) == 0)
+        return *(int *)(m + 0x288) >= 6;
+    return 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/MovementStates", transitionOK__9StateJump);
+#endif
 #ifdef NON_MATCHING
 /* Jumping/flying is only possible while the pad entry one frame back has its field 0x2A at 0. */
 int StateJump::transitionFeasible(void)
