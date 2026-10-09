@@ -106,3 +106,4 @@ game/rt
 common/input
 common/font
 common/resetcom
+common/animation
