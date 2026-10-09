@@ -30,7 +30,7 @@ public:
 struct _animHandle {
     _animCharInstance *ci; /* 0x0 */
     AnimControlNode *ctrl; /* 0x4 */
-    int unk8;              /* 0x8 */
+    AnimProcNode *proc;    /* 0x8: procedural node (animationAddProcBlend) */
     short animIdx;         /* 0xC */
 };
 
@@ -108,6 +108,8 @@ void animationEvaluateFromNode(AnimBlendNode *node, _animCharInstance *ci, Anima
 void animationEvaluateToNode(AnimBlendNode *node, _animCharInstance *ci, AnimationOutputBlock **out);
 float mathfApproxCos2(float x);
 void boundEulerAngle(float *p);
+extern char D_006F3150[]; /* "Could not start a blend of type %d, ---Bad Character Instance(s)
+" */
 extern int s_blendCurve;
 __asm__("#SNFIX_SMALL s_blendCurve");
 
@@ -147,9 +149,90 @@ int animationIsTargetAnim(_animHandle &h)
     }
     return 0;
 }
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationAddBlend__FG11_animHandleP14_animBlendNodeiffsi);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationRemoveBlend__FG11_animHandleP14_animBlendNodef);
-INCLUDE_ASM("asm/nonmatchings/common/animation", animationAddProcBlend__FG11_animHandleP14_animBlendNodeifs);
+AnimBlendNode *animationAddBlend(_animHandle h, AnimBlendNode *node, int type, float weight, float time, short priority, int reset)
+{
+    AnimControlNode *ctrl;
+    AnimPlayer *player;
+
+    if (h.ci == 0) {
+        printf(D_006F3150, type);
+        return 0;
+    }
+    ctrl = h.ctrl;
+    if (ctrl == 0)
+        return 0;
+    player = (AnimPlayer *)h.ci->activeTree;
+    if (player->IsBlendInActiveList(node))
+        player->RemoveBlendFromActiveList(node);
+    if (reset)
+        animationSetToBeginning(h, 0);
+    animationResume(h);
+    node->blendType = type;
+    node->head.opcode = 0x22;
+    node->blendFrom = 0;
+    node->blendTo = (HierHead *)ctrl;
+    node->head.id1 = ctrl->head.id1;
+    node->head.id2 = ctrl->head.id2;
+    node->weight = weight;
+    node->blendTime = time;
+    node->blendStartField = (float)timerGetFieldCount();
+    node->priority = priority;
+    node->parent = 0;
+    node->active = 1;
+    node->next = 0;
+    node->prev = 0;
+    node->toTime.startField = ctrl->startField;
+    node->toTime.startTime = ctrl->startTime;
+    node->toTime.deltaTime = ctrl->deltaTime;
+    ctrl->iterations = 0;
+    player->AddBlendToActiveList(node);
+    return node;
+}
+void animationRemoveBlend(_animHandle h, AnimBlendNode *node, float)
+{
+    if (h.ci) {
+        AnimPlayer *player = (AnimPlayer *)h.ci->activeTree;
+
+        if (player && player->IsBlendInActiveList(node))
+            player->RemoveBlendFromActiveList(node);
+        node->active = 0;
+    }
+}
+AnimBlendNode *animationAddProcBlend(_animHandle h, AnimBlendNode *node, int type, float weight, short priority)
+{
+    AnimProcNode *proc;
+    AnimPlayer *player;
+
+    if (h.ci == 0) {
+        printf(D_006F3150, type);
+        return 0;
+    }
+    proc = h.proc;
+    if (proc == 0)
+        return 0;
+    player = (AnimPlayer *)h.ci->activeTree;
+    if (player->IsBlendInActiveList(node))
+        player->RemoveBlendFromActiveList(node);
+    node->blendType = type;
+    node->head.opcode = 0x22;
+    node->blendFrom = 0;
+    node->blendTo = (HierHead *)proc;
+    node->head.id1 = proc->head.id1;
+    node->head.id2 = proc->head.id2;
+    node->weight = weight;
+    node->blendTime = 0.0f;
+    node->blendStartField = (float)timerGetFieldCount();
+    node->priority = priority;
+    node->parent = 0;
+    node->next = 0;
+    node->prev = 0;
+    node->toTime.startField = 0;
+    node->toTime.startTime = 0.0f;
+    node->toTime.deltaTime = 0.0f;
+    node->active = 1;
+    player->AddBlendToActiveList(node);
+    return node;
+}
 #ifdef NON_MATCHING
 /* 28% of words; inner loop reloads ci->character each pass in retail (ours hoists it and strength-reduces animations[k]) */
 void animationGetHandle(_animHandle *h, unsigned id1, unsigned id2, unsigned animId)
@@ -636,7 +719,7 @@ void animationUpdateFromControlNode(AnimControlNode *ctrl, _animCharInstance *ci
     int idx;
 
     h.ci = ci;
-    h.unk8 = 0;
+    h.proc = 0;
     h.ctrl = ctrl;
     anim = ctrl->anim;
     chan = anim->channels;
@@ -896,7 +979,7 @@ void animationProcessAdditiveBlend(AnimBlendNode *node, _animCharInstance *ci)
         int count;
         float at;
 
-        h.unk8 = 0;
+        h.proc = 0;
         h.ci = ci;
         h.ctrl = ctrl;
         h.animIdx = anim->animIdx;
@@ -930,7 +1013,7 @@ void animationEvaluateFromNode(AnimBlendNode *node, _animCharInstance *ci, Anima
     unsigned char *p;
     int n;
 
-    h.unk8 = 0;
+    h.proc = 0;
     if (from == 0)
         return;
     if (from->opcode == 0x21) {
@@ -1003,7 +1086,7 @@ void animationEvaluateToNode(AnimBlendNode *node, _animCharInstance *ci, Animati
     unsigned char *p;
     int n;
 
-    h.unk8 = 0;
+    h.proc = 0;
     if (to == 0)
         return;
     if (to->opcode == 0x21) {
@@ -1105,7 +1188,7 @@ void animationCleanUpTree(HierHead *tree, _animCharInstance *ci)
     case 0x21: {
         _animHandle h;
         h.ci = ci;
-        h.unk8 = 0;
+        h.proc = 0;
         h.ctrl = (AnimControlNode *)tree;
         h.animIdx = ((AnimControlNode *)tree)->anim->animIdx;
         animationPause(h);
@@ -1135,7 +1218,7 @@ void animationAddToActiveTree(_animHandle h)
         if (tree->opcode == 0x21) {
             _animHandle old;
             old.ci = ci;
-            old.unk8 = 0;
+            old.proc = 0;
             old.ctrl = (AnimControlNode *)tree;
             old.animIdx = ((AnimControlNode *)tree)->anim->animIdx;
             animationPause(old);
@@ -1194,7 +1277,7 @@ void animationInitialize(HierAnimation *anim, _animCharInstance *ci, int idx)
     ctrl->head.id2 = ctrl->anim->head.id2;
     if (ctrl->active) {
         h.ci = ci;
-        h.unk8 = 0;
+        h.proc = 0;
         h.ctrl = ctrl;
         h.animIdx = ctrl->anim->animIdx;
         ctrl->startField = timerGetFieldCount();
@@ -1202,7 +1285,7 @@ void animationInitialize(HierAnimation *anim, _animCharInstance *ci, int idx)
         animationAddToActiveTree(h);
     } else {
         h.ci = ci;
-        h.unk8 = 0;
+        h.proc = 0;
         h.ctrl = ctrl;
         h.animIdx = ctrl->anim->animIdx;
         ctrl->startField = 0;
