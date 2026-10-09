@@ -173,10 +173,13 @@ def work(item):
     if re.search(r"GuestBranchKind::(DirectCall|IndirectCall)", rt_) or re.search(r"GuestBranchKind::(DirectCall|IndirectCall)", nm_):
         return (tu, fn, "nao_folha", "")
     ret_sym = os.path.basename(rf[0])[:-4]; nm_sym = os.path.basename(nf[0])[:-4]
+    # a versao NM que coube no endereco do retail tem o mesmo simbolo: renomear so no lado NM
+    nm_def = f"-D{nm_sym}={nm_sym}_nm" if nm_sym == ret_sym else ""
+    if nm_def: nm_sym += "_nm"
     open(f"{d}/h.cpp", "w").write(TEMPLATE)
     cmds = [
         f"g++ {FL} -I{W}/output_fix -c {rf[0]} -o {d}/r.o",
-        f"g++ {FL} -I{W}/output_nm_all -c {nf[0]} -o {d}/n.o",
+        f"g++ {FL} -I{W}/output_nm_all {nm_def} -c {nf[0]} -o {d}/n.o",
         f"g++ {FL} -I{W}/output_fix -DRET_SYM={ret_sym} -DNM_SYM={nm_sym} '-DARGSPEC=\"{spec}\"' '-DIMGPATH=\"{W}/game.elf\"' -c {d}/h.cpp -o {d}/h.o",
         f"g++ -o {d}/o {d}/h.o {d}/r.o {d}/n.o {LINK} 2>&1 | grep -v 'warning: relocation' | head -3",
     ]

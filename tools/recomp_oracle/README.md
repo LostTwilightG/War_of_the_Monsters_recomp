@@ -51,6 +51,6 @@ Ver `docs/PROXIMOS_PASSOS.md` (armadilha do `sqrtf`; usar `eeSqrtf` de `include/
 ## Achados (2026-10-09)
 - `AiPathFinder::computeCostEstimate` e mais 10 usos de `sqrtf`: `sqrt.s` codificado na forma MIPS32 → no EE lia `$f0`. Corrigido (`eeSqrtf`). 0/300 → 300/300.
 - `StateClimb::handlePreemption`: gravava 4 bytes onde o retail grava 1 (`sb`). Corrigido. 0/200 → 200/200.
-- Das 22 funções do lote que rodaram (200 estados cada): 16 só `exact`; 2 só `approx` (`AiNavigator::orientTo`, `strafeTo`); 3 mistas sem `diff`
+- Das 24 funções do lote que rodaram (200 estados cada): 18 só `exact`; 2 só `approx` (`AiNavigator::orientTo`, `strafeTo`); 3 mistas sem `diff`
   (`Ai::creditRelevance(Pickup)`, `AiPathNet::getClosestNode`, `PathNet::getClosestNode`); 1 só `retonly` (`HeliVehicle::updateElevator`, `void`). Nenhuma `diff`.
-  Não rodaram: `Ai::getFovRelevance`, `AiActionTuple::updateIValueMod` (erro de build do harness) e `Monster::getClosestMonster` (estouro de tempo).
+  Não rodou: `Monster::getClosestMonster` (estouro de tempo com dado aleatório). As outras 35 candidatas têm chamadas (não-folha) e 1 assinatura não suportada.
