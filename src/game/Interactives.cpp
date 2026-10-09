@@ -5,6 +5,10 @@ extern "C" int printf(const char *, ...);
 
 struct DbInteractive;
 struct _fvector;
+class HurtHistory {
+public:
+    float creditHit(int id, float amount);
+};
 
 class Interactives {
 public:
@@ -85,8 +89,62 @@ void HitHistory::reset(void)
 #else
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", reset__10HitHistory);
 #endif
+#ifdef NON_MATCHING
+/* Registers a hit on interactive `id`; 1 = first time this swing hits it, 0 = already hit, table full, or (when `b`) a monster whose attacks are off.
+   id 0 is a miss: counted in f4. The ids hit so far are a table of 16 at +8. */
+int HitHistory::newHit(int id, bool b)
+{
+    int i;
+    int *ids = (int *)((char *)this + 8);
+
+    if (id == 0) {
+        f4++;
+        return 0;
+    }
+    if (b) {
+        char *it = (char *)Interactives::getInteractive(id);
+
+        if (*(int *)it == 1 && *(signed char *)(it + 0x49) == 0)
+            return 0;
+    }
+    for (i = 0; i < f0; i++) {
+        if (ids[i] == id)
+            return 0;
+    }
+    if (f0 >= 16)
+        return 0;
+    ids[f0] = id;
+    f0++;
+    return 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", newHit__10HitHistoryib);
+#endif
+#ifdef NON_MATCHING
+/* Damage taken per attacker: 16 entries of (id, total) with the count at +0x80; returns the new total (0 when the table is full). */
+float HurtHistory::creditHit(int id, float amount)
+{
+    int *count = (int *)((char *)this + 0x80);
+    int i;
+
+    for (i = 0; i < *count; i++) {
+        if (*(int *)((char *)this + i * 8) == id) {
+            float *total = (float *)((char *)this + 4 + i * 8);
+
+            *total = *total + amount;
+            return *total;
+        }
+    }
+    if (*count >= 16)
+        return 0.0f;
+    i = (*count)++;
+    *(int *)((char *)this + i * 8) = id;
+    *(float *)((char *)this + i * 8 + 4) = amount;
+    return amount;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Interactives", creditHit__11HurtHistoryif);
+#endif
 /* retail rodata keeps an empty string plus alignment after the last literal of this TU */
 __asm__(".section .rodata
 	.word 0
