@@ -202,6 +202,8 @@ def pad_short_loops(lines):
         if lm:
             labels[lm.group(1)] = count
         m = INSN.match(line) if not stripped.startswith('.') and not lm else None
+        if not m and stripped == 'nop':  # operand-less nops (hazard nops added above) are part of the loop too
+            count += 1
         if m:
             op, args = m.group(2), m.group(3)
             target = args.split(',')[-1].strip() if args else ''
