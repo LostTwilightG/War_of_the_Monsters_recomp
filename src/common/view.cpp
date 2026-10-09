@@ -1,18 +1,43 @@
 #include "common.h"
 #include "hieri_types.h"
+#include "cs_pool.h"
 
 struct _todInfo14;
 
-/* One view (player camera): its coordinate system. */
-struct _viewInfo {
-    CS *cs;      /* 0x00 */
-    int pad[4];
+/* Screen rectangle of a view. */
+struct _viewDef {
+    int pad0;
+    unsigned short width;  /* 0x04 */
+    unsigned short height; /* 0x06 */
+    int pad8[4];
+    int centerX;           /* 0x18 */
+    int centerY;           /* 0x1C */
 };
 
-/* Per-view double-buffered draw state (0x360 bytes, not decoded yet). */
-struct _viewDb {
-    char data[0x360];
+/* One view (player camera): its coordinate system and screen rectangle. */
+struct _viewInfo {
+    CS *cs;        /* 0x00 */
+    _viewDef *def; /* 0x04 */
+    int pad[3];
 };
+
+/* GS RGBAQ register value (color bytes, Q = 1.0 in the high word). */
+union GsRgbaq {
+    unsigned long rgbaq;
+    unsigned char c[8];
+};
+
+/* Per-view double-buffered draw state (mostly not decoded yet). */
+struct _viewDb {
+    char pad0[0x1B0];
+    GsRgbaq bgColor0; /* 0x1B0: clear color, buffer 0 */
+    char pad1[0x320 - 0x1B8];
+    GsRgbaq bgColor1; /* 0x320: clear color, buffer 1 */
+    char pad2[0x360 - 0x328];
+};
+/* bgColor1 seen from bgColor0, as retail addresses it */
+#define VIEW_BG_STRIDE ((0x320 - 0x1B0) / sizeof(GsRgbaq))
+typedef char _size__viewDb[sizeof(_viewDb) == 0x360 ? 1 : -1];
 
 /* A 4x4 matrix copied as one 16-byte aligned block. */
 struct Matrix16 {
@@ -25,6 +50,16 @@ extern _viewDb viewDb[5];
 extern int viewNumViews;
 extern int viewCurView;
 extern int gUseUnifiedView;
+extern float s_viewAmbientVolBlend[4];
+extern float s_viewAmbientVolRed[4];
+extern float s_viewAmbientVolGreen[4];
+extern float s_viewAmbientVolBlue[4];
+extern int viewBgR, viewBgG, viewBgB, viewBgA;
+extern int viewTODBgR, viewTODBgG, viewTODBgB, viewTODBgA;
+extern FMATRIX worldToScreenMat[5];
+extern FMATRIX viewScreenMats[5];
+int todActive(void);
+void todSetSkyEntry(HierHead *node);
 __asm__("#SNFIX_SMALL viewCurView");
 __asm__("#SNFIX_SMALL gUseUnifiedView");
 
@@ -111,7 +146,13 @@ void viewSetWorldEpNode(HierHead *ep)
     for (i = 4; i >= 0; i--)
         worldCtx[i].ep = ep;
 }
-INCLUDE_ASM("asm/nonmatchings/common/view", viewSetAmbientVol__Fiffff);
+void viewSetAmbientVol(int vol, float blend, float red, float green, float blue)
+{
+    s_viewAmbientVolBlend[vol] = blend;
+    s_viewAmbientVolRed[vol] = red;
+    s_viewAmbientVolGreen[vol] = green;
+    s_viewAmbientVolBlue[vol] = blue;
+}
 FVECTOR *viewGetWeTrans(int view)
 {
     return &worldCtx[view].eo;
@@ -120,18 +161,116 @@ FMATRIX *viewGetWeMat(int view)
 {
     return &worldCtx[view].weMat;
 }
-INCLUDE_ASM("asm/nonmatchings/common/view", viewSetSkyEntry__FP9_hierheadi);
+/* Sky groups with id 0 go in the sky slot (and clear the second one), id 4 is the cloud layer. */
+void viewSetSkyEntry(HierHead *node, int view)
+{
+    _worldctx *w = &worldCtx[view];
+
+    if (!w->skyCs)
+        w->skyCs = CsPool::csActivate();
+    if (!w->skyCs2)
+        w->skyCs2 = CsPool::csActivate();
+    if (!w->skyClouds)
+        w->skyClouds = CsPool::csActivate();
+    if (node->id2 == 0) {
+        w->skyCs->epNode = node;
+        w->skyCs2->epNode = 0;
+    }
+    if (node->id2 == 4)
+        w->skyClouds->epNode = node;
+    if (view == 0)
+        todSetSkyEntry(node);
+}
 CS *viewGetSky(int view)
 {
     return worldCtx[view].skyCs;
 }
-INCLUDE_ASM("asm/nonmatchings/common/view", viewSetSkyTrans__FP8_fvectori);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewSetSkyNode__FP9_hierheadi);
+void viewSetSkyTrans(_fvector *trans, int view)
+{
+    _worldctx *w = &worldCtx[view];
+
+    if (w->skyCs) {
+        w->skyCs->trans.x = trans->x;
+        w->skyCs->trans.y = trans->y;
+        w->skyCs->trans.z = trans->z;
+    }
+    if (w->skyCs2) {
+        w->skyCs2->trans.x = trans->x;
+        w->skyCs2->trans.y = trans->y;
+        w->skyCs2->trans.z = trans->z;
+    }
+    if (w->skyClouds) {
+        w->skyClouds->trans.x = trans->x;
+        w->skyClouds->trans.y = trans->y;
+        w->skyClouds->trans.z = trans->z;
+    }
+}
+/* layer 0: sky, 1: second sky (TOD cross-fade), 2: clouds; set for every view. */
+void viewSetSkyNode(HierHead *node, int layer)
+{
+    int i;
+
+    if (layer == 0) {
+        for (i = 0; i < 5; i++) {
+            if (worldCtx[i].skyCs)
+                worldCtx[i].skyCs->epNode = node;
+        }
+    } else if (layer == 1) {
+        for (i = 0; i < 5; i++) {
+            if (worldCtx[i].skyCs2)
+                worldCtx[i].skyCs2->epNode = node;
+        }
+    } else if (layer == 2) {
+        for (i = 0; i < 5; i++) {
+            if (worldCtx[i].skyClouds)
+                worldCtx[i].skyClouds->epNode = node;
+        }
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/common/view", viewSetVUPacketMat__FPA3_fN30i);
 INCLUDE_ASM("asm/nonmatchings/common/view", viewApplySwap__FPA3_fT0);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewSetBgColor__FUlUlUlUl);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewSetTODBgColor__FUlUlUlUl);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetBgColor__FRiN30);
+/* Clear color; written into each view's GS RGBAQ (both buffers) unless time of day drives it. */
+void viewSetBgColor(unsigned long r, unsigned long g, unsigned long b, unsigned long a)
+{
+    int i;
+
+    if (!todActive()) {
+        for (i = 0; i < viewNumViews; i++) {
+            GsRgbaq *bg = &viewDb[i].bgColor0;
+
+            bg[0].rgbaq = r | g << 8 | b << 16 | a << 24 | 0x3F80000000000000UL;
+            bg[VIEW_BG_STRIDE].rgbaq = r | g << 8 | b << 16 | a << 24 | 0x3F80000000000000UL;
+        }
+    }
+    viewBgR = r;
+    viewBgG = g;
+    viewBgB = b;
+    viewBgA = a;
+}
+void viewSetTODBgColor(unsigned long r, unsigned long g, unsigned long b, unsigned long a)
+{
+    int i;
+
+    if (todActive()) {
+        for (i = 0; i < viewNumViews; i++) {
+            GsRgbaq *bg = &viewDb[i].bgColor0;
+
+            bg[0].rgbaq = r | g << 8 | b << 16 | a << 24 | 0x3F80000000000000UL;
+            bg[VIEW_BG_STRIDE].rgbaq = r | g << 8 | b << 16 | a << 24 | 0x3F80000000000000UL;
+        }
+    }
+    viewTODBgR = r;
+    viewTODBgG = g;
+    viewTODBgB = b;
+    viewTODBgA = a;
+}
+void viewGetBgColor(int &r, int &g, int &b, int &a)
+{
+    r = viewDb[0].bgColor0.c[0];
+    g = viewDb[0].bgColor0.c[1];
+    b = viewDb[0].bgColor0.c[2];
+    a = viewDb[0].bgColor0.c[3];
+}
 _viewDb *viewGetDb(int view)
 {
     return &viewDb[view];
@@ -144,10 +283,27 @@ void viewSetNumViews(int n)
 {
     viewNumViews = n;
 }
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetCenter__FiPiT1);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetWH__FiPiT1);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetWorldToScreenMat__Fi);
-INCLUDE_ASM("asm/nonmatchings/common/view", viewGetZBuffParams__FiPfT1);
+void viewGetCenter(int view, int *x, int *y)
+{
+    *x = viewInfo[view].def->centerX;
+    *y = viewInfo[view].def->centerY;
+}
+void viewGetWH(int view, int *w, int *h)
+{
+    *w = viewInfo[view].def->width;
+    *h = viewInfo[view].def->height;
+}
+FMATRIX *viewGetWorldToScreenMat(int view)
+{
+    return &worldToScreenMat[view];
+}
+void viewGetZBuffParams(int view, float *a, float *b)
+{
+    float (*m)[4] = viewScreenMats[view];
+
+    *a = m[2][2];
+    *b = m[2][3];
+}
 INCLUDE_ASM("asm/nonmatchings/common/view", viewInit__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/view", viewTweakInit__Fv);
 INCLUDE_ASM("asm/nonmatchings/common/view", viewTweakSetFov__Fv);
