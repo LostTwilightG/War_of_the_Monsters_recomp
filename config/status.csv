@@ -805,7 +805,7 @@ game/HeliPickup,initAfterDbLoad__10HeliPickup,0x13e9c8,172,asm
 game/HeliPickup,takeHit__10HeliPickupP8_fvectorfi,0x13ea78,296,asm
 game/HeliPickup,grab__10HeliPickupi,0x13eba0,56,matched
 game/HeliPickup,drop__10HeliPickup,0x13ebd8,60,matched
-game/HeliPickup,kill__10HeliPickup,0x13ec18,168,asm
+game/HeliPickup,kill__10HeliPickup,0x13ec18,168,matched
 game/HeliPickup,update__10HeliPickup,0x13ecc0,288,asm
 game/HeliPickup,regen__10HeliPickup,0x13ede0,80,matched
 game/HeliPickup,updateAttackBehavior__10HeliPickupR7GamePad,0x13ee30,1464,asm
@@ -1086,7 +1086,7 @@ game/MissileTruckPickup,initAfterDbLoad__18MissileTruckPickup,0x14db10,204,asm
 game/MissileTruckPickup,setTrans__18MissileTruckPickupR8_fvector,0x14dbe0,72,matched
 game/MissileTruckPickup,takeHit__18MissileTruckPickupP8_fvectorfi,0x14dc28,80,matched
 game/MissileTruckPickup,drop__18MissileTruckPickup,0x14dc78,60,matched
-game/MissileTruckPickup,kill__18MissileTruckPickup,0x14dcb8,124,asm
+game/MissileTruckPickup,kill__18MissileTruckPickup,0x14dcb8,124,matched
 game/MissileTruckPickup,fire__18MissileTruckPickupR7GamePad,0x14dd38,116,asm
 game/MissileTruckPickup,update__18MissileTruckPickup,0x14ddb0,316,asm
 game/MissileTruckPickup,updateLeadBehavior__18MissileTruckPickupR7GamePad,0x14def0,196,asm
@@ -2867,7 +2867,7 @@ game/TankPickup,initAfterDbLoad__10TankPickup,0x1cf960,204,asm
 game/TankPickup,setTrans__10TankPickupR8_fvector,0x1cfa30,72,matched
 game/TankPickup,takeHit__10TankPickupP8_fvectorfi,0x1cfa78,80,matched
 game/TankPickup,drop__10TankPickup,0x1cfac8,60,matched
-game/TankPickup,kill__10TankPickup,0x1cfb08,132,asm
+game/TankPickup,kill__10TankPickup,0x1cfb08,132,matched
 game/TankPickup,fire__10TankPickupR7GamePad,0x1cfb90,116,asm
 game/TankPickup,update__10TankPickup,0x1cfc08,356,asm
 game/TankPickup,updateLeadBehavior__10TankPickupR7GamePad,0x1cfd70,196,asm
@@ -2884,7 +2884,7 @@ game/TurretPickup,__12TurretPickup,0x1d05c8,52,asm
 game/TurretPickup,initAfterDbLoad__12TurretPickup,0x1d0600,256,asm
 game/TurretPickup,takeHit__12TurretPickupP8_fvectorfi,0x1d0700,16,matched
 game/TurretPickup,drop__12TurretPickup,0x1d0710,60,matched
-game/TurretPickup,kill__12TurretPickup,0x1d0750,160,asm
+game/TurretPickup,kill__12TurretPickup,0x1d0750,160,matched
 game/TurretPickup,update__12TurretPickup,0x1d07f0,68,matched
 game/TurretPickup,fire__12TurretPickupR8_fvector,0x1d0838,120,asm
 game/TurretPickup,grab__12TurretPickupi,0x1d08b0,56,matched
@@ -3005,10 +3005,10 @@ game/UfoPickup,initAfterDbLoad__9UfoPickup,0x1d85a8,492,asm
 game/UfoPickup,takeHit__9UfoPickupP8_fvectorfi,0x1d8798,268,asm
 game/UfoPickup,grab__9UfoPickupi,0x1d88a8,48,matched
 game/UfoPickup,drop__9UfoPickup,0x1d88d8,60,matched
-game/UfoPickup,kill__9UfoPickup,0x1d8918,188,asm
+game/UfoPickup,kill__9UfoPickup,0x1d8918,188,matched
 game/UfoPickup,update__9UfoPickup,0x1d89d8,632,asm
 game/UfoPickup,fire__9UfoPickupR8_fvector,0x1d8c50,184,asm
-game/UfoPickup,regen__9UfoPickup,0x1d8d08,120,asm
+game/UfoPickup,regen__9UfoPickup,0x1d8d08,120,matched
 game/UfoPickup,updateAttackBehavior__9UfoPickup,0x1d8d80,1132,asm
 game/UfoPickup,enterState__9UfoPickupQ29UfoPickup5State,0x1d91f0,344,asm
 game/UfoPickup,__tf9UfoPickup,0x1d9380,80,asm
