@@ -62,6 +62,12 @@ Variáveis novas: `PS2X_NO_VIF1` (ignora a execução do DMA do VIF1/VU1 mas sin
 
 **Próximos passos (nativo):** (1) o nativo precisa do nome da fase para achar o `.RTX` (hoje `--rtx` explícito; sai de `Shell`/`m_levelId` + `LEVELS.TXT`); (2) incluir `wotm_native.hpp` no `wotm_scene.inc` do runtime (desenhar ao vivo, hoje só o visualizador usa); (3) personagens (CHAR_INSTANCE/ANIM_XFORM, esqueleto e `animMatrixPtr`), (4) estados de `DESTRUCTIBLE`/`INTERACTIVE`/`SWITCH` e `LOD` por distância, (5) partículas, HUD e fonte.
 
+## Desenho nativo ao vivo (2026-10-10)
+`PS2X_SCENE=1` (com `PS2X_NO_VU1=1 PS2X_NO_VIF1=1 PS2X_NO_GS=1 PS2X_SKIP_CMOVIE=1`) faz o runtime desenhar a fase direto da RAM com `native/wotm_native.hpp`, num render texture 4:3 mostrado por cima do quadro do GS (`wotm_live.inc` -> `wotmDrawNative`). Ele detecta a troca de fase (assinatura da imagem em 0xA00000 + `tempVramTexAddr`) e escolhe sozinho o `LVL/*.RTX` que cobre as paletas dos objetos texturizados. Sem fase carregada (menus) o quadro do GS segue como antes.
+- Rodar: `powershell -ExecutionPolicy Bypass -File C:/Users/TwistZero/wotm-recomp-win/run_live.ps1` (roteiro de pad automático até a fase, ~50 s; `-Auto 0` para jogar com o teclado; `-Stats 1` loga `[native]`). Build: `configure.bat` passa `-DWOTM_NATIVE_DIR=<WoTM>/native` e `build.bat` compila; **o ninja não rastreia os `.inc`**: depois de mudar `wotm_scene.inc`/`wotm_live.inc` faça `touch ps2xRuntime/src/lib/ps2_runtime.cpp`, senão "no work to do".
+- **Sem VU1 ninguém conclui o pacote**: o jogo espera `objsInPacket | objsInAlphaPacket` (0x6F87A0/A4) zerarem, em `rtWaitForVu1` (hookado) e num laço **embutido em `particleDraw`** (0x21B8A0) que o hook não cobre; com isso o jogo congelava antes de `rtMain` (`g_frame` em 0x6F7E38 ficava 0). A apresentação (60 Hz) zera esses dois contadores quando `PS2X_NO_VU1` está ligado.
+- O que aparece: mundo, céu, os `CS` ativos e os elementos de HUD (nós da hierarquia). **Falta**: personagens animados (esqueleto/`ANIM_XFORM`), estados de destrutíveis, LOD por distância, partículas, e o HUD/fonte como 2D de verdade.
+
 ## Onde estamos
 - `sh tools/wsl/gate.sh` diz `ROM OK` (build + SHA1). Último estado medido (`python3 tools/progress.py`): `game` ~170 de 3181 funções
   decompiladas (idênticas + equivalentes), ~14 KB de 930 KB; `common` 192 de 1144. Convenções em `docs/ANALYSIS.md` ("Convenções de status das funções").
