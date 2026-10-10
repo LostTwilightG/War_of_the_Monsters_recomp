@@ -16,6 +16,71 @@ camada legível que substitui, por *hook*, só as funções que importam para mo
   `ft`; 108 + 76 funções do jogo afetadas); (3) oracle para funções com chamadas (hoje só folhas: 24 de 60 candidatas rodaram); (4) cobertura com gameplay.
 - O que foi medido e como reproduzir está em `tools/recomp_oracle/README.md` e na seção "Recompilação estática" de `docs/ANALYSIS.md`.
 
+## Runtime recompilado: estado e como retomar (2026-10-10)
+**Resumo:** o jogo recompilado roda no Windows (MSVC) em tempo real (vsync 60/s, EE ~294M ciclos/s) com um combo de variáveis de teste, e um roteiro de pad leva do boot até uma fase, onde a
+travessia nativa lê a hierarquia (`world`, 483 nós / 29 objetos). Ainda não há 3D nem texturas na tela: o VU1 e o GS emulados estão desligados de propósito e o desenho é papel da camada nativa.
+
+**Onde está o código (fora do repo, por ser derivado do jogo / do PS2Recomp):**
+- Clone de teste `C:\Users\TwistZero\wotm-recomp-win` (build MSVC em `build\`, `build.bat` recompila só o runner; o link LTCG leva ~10 min; `run.ps1` executa e captura).
+- Mudanças de runtime (`PS2X_NO_VIF1`, `SKIP_CMOVIE`, `PEEK`, `PROF`, `STATS`, diagnósticos do escalonador) já estão versionadas na branch `wotm` do fork (`yanm1103/PS2Recomp`, submódulo `third_party/PS2Recomp`) no commit `a6b9af2`, **só local: falta o push no fork (decisão do dono)**. O `wotm_runtime_diagnostics.patch` e o `wotm_scene.inc` do clone de teste ficam como cópia de segurança (o patch é contra o upstream `2c5fbb9`, não aplica na branch `wotm`). O código gerado (`register_functions.cpp` etc.) nunca vai ao repo.
+
+**Combo que funciona** (`PS2X_*` lidas pelo runner; `run.ps1` já põe `SKIP_MOVIES`, `STATS`, `NO_VU1`, `CD_IMAGE`):
+`PS2X_NO_VIF1=1 PS2X_NO_GS=1 PS2X_SKIP_CMOVIE=1` (+ `PS2X_SCENE=1` para a travessia nativa). Roteiro de pad que chega a uma fase em ~50 s: `PS2X_PAD` = `start` (0.8 s) a cada 1,5 s de t=3 a 18,
+depois `cross`@22, `down`@25, `cross`@28,31,34,37,40,43,47,51 (1 s cada). Rodar: `powershell -ExecutionPolicy Bypass -File run.ps1 -Scene 1 -Seconds 75 -Frames "3300" -Tag runN`.
+Variáveis novas: `PS2X_NO_VIF1` (ignora a execução do DMA do VIF1/VU1 mas sinaliza a conclusão), `PS2X_SKIP_CMOVIE` (`CMovie::Play` no-op, `Update` devolve 1), `PS2X_PEEK="hex,hex"` (palavras da RDRAM no log `[peek]`),
+`PS2X_PROF=1` (amostrador do PC ao vivo, grava `discroot/prof.<frame>`; mapear com `config/status.csv`), `PS2X_NOOP=addr,addr` (função vira no-op), e no stderr com `PS2X_STATS=1`: `[time]` (tempo de GS/upload/draw/idle),
+`[ui]` (currScreen, betweenScreens, ...), `[pad]`, `[scene]`.
+
+**O que se descobriu (e que desfaz conclusões anteriores):**
+1. A "tela preta" era artefato do `TakeScreenshot` antes do `rlDrawRenderBatchActive()`; com a correção aparece imagem (fundo 2D chapado, sem textura).
+2. A lentidão de ~40x vinha do DMA do VIF1 ser processado, com o VU1 interpretado, DENTRO do `sw 0x145 -> D1_CHCR` em `hierTraverseAsm` (0x207744, 99% das amostras). O EE ficava 100% ocupado, os ciclos virtuais andavam devagar e o
+   vsync (que exige ciclo virtual E prazo de host) saía a ~12 Hz. O `PS2X_NO_VIF1` resolve; o GS em CPU (`processGIFPacket`) era a outra metade (86% do tempo com GS ligado): `PS2X_NO_GS`.
+3. A thread de decodificação de filme girava 2M `switchThread` porque `CMovie::Play` (menu) não estava coberto pelo hook de skip.
+4. `currScreen` 0x14 = `screenWaitForStart` (Press Start): só aceita `screenGetInput(1)==0x10` (Start) quando `betweenScreens==0`; antes ficava preso no fade (animação lenta pelo relógio virtual).
+   Telas: 0x10 só faz `changeScreen(0x10->0x14)`, 1 menu, 99 (0x63) carregamento (`Shell::FadeScreen`, `DisplayLoadBackground`); dentro da fase `currScreen=1`.
+5. Endereços úteis: currScreen 0x6F8464, nextScreen 0x6F846C, betweenScreens 0x6F7E8C, screenFirstPass 0x6F7E80, targetAlpha 0x6F7E74, currAnimationIndex 0x6F7E88, fadingIn/Out 0x6F807C/0x6F8080, world 0x6F87C4.
+
+**Próximos passos, em ordem:**
+1. ~~Versionar o patch de runtime~~ (feito em 2026-10-10, `a6b9af2`); falta só o push no fork.
+2. Travessia nativa de verdade: de círculos para malhas, lendo `.NGP/.PTR/.RTX/.TEX` (`docs/FORMATOS.md`) e desenhando via raylib; cortar na fronteira `hierTraverseAsm`/`pktAddVu1ObjAsm` (`config/hw_boundary.csv`). Texturas vêm por `pktAddVu1Tex`/`texmActivateTexture`.
+3. Cobertura com gameplay (`PS2X_COVERAGE`, agora em tempo real) para realimentar `config/boot_coverage_asm.csv`; depois voltar à decompilação pela fila.
+4. Ideia do dono: um `PS2X_FAST_BOOT` que pule esperas de abertura (cortar só o laço/fade, não a inicialização; ex. `Shell::FadeScreen` 0x1AB660, `screenTransition` 0x19E698, `uiIntro` 0x1DA3C8).
+5. Pendentes antigos: PR #277 no PS2Recomp (SQRT.S/RSQRT.S), oracle para funções não-folha, `div.s` por zero e `min/max` com NaN no tradutor.
+
+## Camada nativa (`native/`): estado em 2026-10-10 (noite)
+**Funciona:** a cena da fase é lida direto da RAM do EE e desenhada com raylib, sem VU1/GS, com a **câmera do jogo** (`viewInfo[0]` -> `_cs`; HFOV ~79,6 graus, VFOV ~63,7 em 4:3). Validado com a CENTRAL: 692 itens / 3245 nós, os prédios, ruas e o céu aparecem do ponto de vista da partida.
+- `native/wotm_native.hpp` (header único: `Ram`, matrizes, `decodeObject` = malha do `polyPkt`, `Scene::collect/draw`, `readGameCamera`), `native/wotm_gs.hpp` (endereçamento do GS e decodificação de textura), `native/viewer.cpp` (visualizador standalone com câmera livre/do jogo, `--shot`, `--texdump`), `native/build.bat` (MSVC; usa o raylib do build do clone de teste). O formato da malha está em `docs/FORMATOS.md` ("Malhas") e o leitor offline em `tools/ngp.py`.
+- Fluxo de iteração (segundos, sem emulador): o runtime grava `ram_<q>.bin` + `vram_<q>.bin` (`PS2X_DUMP_RAM="3300,3900"`), e `build\viewer.exe ram_<q>.bin` desenha. O clone de teste tem `run_dump.ps1` (roteiro de pad até a fase + dumps).
+- Variáveis novas do runtime (branch `wotm`): `PS2X_DUMP_RAM`, `PS2X_GS_UPLOADS` (com `NO_GS`: o GS só processa uploads, sem rasterizar), `PS2X_VIF1_UPLOADS` (com `NO_VIF1`: processa a cadeia VIF1 sem executar o VU1) e `PS2X_NO_VU1=2` (só `rtWaitForVu1` vira no-op).
+
+**Texturas (resolvido em 2026-10-10, validado visualmente na CENTRAL):** cada textura é um pacote na RAM apontado por `texInfo[texId]` (0x50F100, 16 bytes por entrada): descritor em `+0x24` (largura), `+0x26` (altura), `+0x2A` (TBW), `+0x2B` (PSM) e pixels **lineares** (sem swizzle) a partir de `+0x80` (T8 = 1 byte, T4 = 2 pixels por byte, nibble baixo primeiro). O `TBP0` do TEX0 do objeto muitas vezes é 0 (o `texm` remenda na hora do desenho) e não é usado.
+- **Paletas vêm do `.RTX` da fase, lido do disco** (`Scene::loadRtx`, viewer `--rtx`): entradas de `(palavra0 >> 2) * 16` bytes, cabeçalho de 16 B (descritor GS em `+8`: DBP relativo no meia-palavra `+0xA`, TW/TH nos bits 40..47), corpo em **ordem lógica** (entrada `i` = palavra `i`): 16x16 CT32 = 256 cores (1040 B), 8x2 CT32 = 16 cores (80 B). O `TEX0.CBP` do objeto é `base + DBP`, com `base = tempVramTexAddr (0x6F8818) >> 6` (6753 na CENTRAL; confere nos 565 objetos). Alfa GS (0x80 = 1,0) vira 0..255 com `fixAlpha`.
+- **A VRAM do dump não serve para paletas**: guarda restos do menu (a paleta em `CBP` 7216 era outra). Por isso `PS2X_VIF1_UPLOADS`/`PS2X_NO_VU1=2` (que deixam o DMA do quadro correr e travam em `particleDraw`, 0x21B8A0) não são mais necessários para texturas; ficam no runtime só como experimento.
+- Armadilha do raylib: `rlBegin` com modo diferente do lote atual **reseta a textura** para a padrão; chame `rlBegin` antes de `rlSetTexture`, e descarregue o lote (`rlDrawRenderBatchActive`) a cada troca de textura (o alinhamento automático do rlgl bagunça os triângulos).
+- Céu: `worldCtx[0]` `+4/+8/+0xC` (`skyCs`, `skyCs2`, nuvens), desenhado antes do mundo, sem profundidade, com a posição trocada pela da câmera.
+- Alfa: o alfa de vértice só vale com `PRIM.ABE` (bit 6 do PRIM da tag GIF); com `ABE=0` o strip é opaco. Já respeitado.
+
+**Próximos passos (nativo):** (1) o nativo precisa do nome da fase para achar o `.RTX` (hoje `--rtx` explícito; sai de `Shell`/`m_levelId` + `LEVELS.TXT`); (2) incluir `wotm_native.hpp` no `wotm_scene.inc` do runtime (desenhar ao vivo, hoje só o visualizador usa); (3) personagens (CHAR_INSTANCE/ANIM_XFORM, esqueleto e `animMatrixPtr`), (4) estados de `DESTRUCTIBLE`/`INTERACTIVE`/`SWITCH` e `LOD` por distância, (5) partículas, HUD e fonte.
+
+## Desenho nativo ao vivo (2026-10-10)
+`PS2X_SCENE=1` (com `PS2X_NO_VU1=1 PS2X_NO_VIF1=1 PS2X_NO_GS=1 PS2X_SKIP_CMOVIE=1`) faz o runtime desenhar a fase direto da RAM com `native/wotm_native.hpp`, num render texture 4:3 mostrado por cima do quadro do GS (`wotm_live.inc` -> `wotmDrawNative`). Ele detecta a troca de fase (assinatura da imagem em 0xA00000 + `tempVramTexAddr`) e escolhe sozinho o `LVL/*.RTX` que cobre as paletas dos objetos texturizados. Sem fase carregada (menus) o quadro do GS segue como antes.
+- Rodar: `powershell -ExecutionPolicy Bypass -File C:/Users/TwistZero/wotm-recomp-win/run_live.ps1` (roteiro de pad automático até a fase, ~50 s; `-Auto 0` para jogar com o teclado; `-Stats 1` loga `[native]`). Build: `configure.bat` passa `-DWOTM_NATIVE_DIR=<WoTM>/native` e `build.bat` compila; **o ninja não rastreia os `.inc`**: depois de mudar `wotm_scene.inc`/`wotm_live.inc` faça `touch ps2xRuntime/src/lib/ps2_runtime.cpp`, senão "no work to do".
+- **Sem VU1 ninguém conclui o pacote**: o jogo espera `objsInPacket | objsInAlphaPacket` (0x6F87A0/A4) zerarem, em `rtWaitForVu1` (hookado) e num laço **embutido em `particleDraw`** (0x21B8A0) que o hook não cobre; com isso o jogo congelava antes de `rtMain` (`g_frame` em 0x6F7E38 ficava 0). A apresentação (60 Hz) zera esses dois contadores quando `PS2X_NO_VU1` está ligado.
+- O que aparece: mundo, céu, os `CS` ativos e os elementos de HUD (nós da hierarquia). **Falta**: personagens animados (esqueleto/`ANIM_XFORM`), estados de destrutíveis, LOD por distância, partículas, e o HUD/fonte como 2D de verdade.
+
+## Personagens na camada nativa (2026-10-10, parado no meio)
+**Feito e validado:**
+- **Alfa de vértice em meia escala**: `0x40` = 1,0 (o microcódigo dobra). A quase totalidade dos objetos tem alfa 66 (~0x42) e é opaca; só alfa baixo (0..51, névoa/sombras) é translúcido. Alfa efetivo = `min(255, a*4)`; o bit `PRIM.ABE` do template **não** serve para decidir blend. Com isso os prédios saem sólidos.
+- **Elementos de HUD** (ids 0x1C20..0x2133) são nós de espaço de tela e ficam fora do 3D (`drawCs` os pula).
+- **Veículos/props**: hierarquia rígida. `CHAR_INSTANCE` (+0xC = `animOutput.atMat`, +0x14 = `animMatrixPtr`, +0x18 = `animPktPtr`, filhos em +0x2C) com nós `ANIM_XFORM` (op 17): o próprio jogo calcula a matriz local de cada nó a cada quadro (`hierAnimTransNode`) em `atMat[matrixIdx]` (`matrixIdx` em +0xC4, `visible` float em +0xC, filhos em +0xCC); o nativo só lê (`native/wotm_native.hpp`, case 17/25/38). Caminhões, escavadeira e helicóptero aparecem.
+- **LOD**: `hierLod` escolhe o **maior índice cujo `switchOutDis` (distância ao quadrado) > distância**; o índice 0 é o mais grosseiro (388 vértices no monstro) e o último é o mais detalhado (pode ser um GROUP de partes). O nativo ainda usa sempre o 0: falta implementar a seleção por distância.
+- **Monstros são skinned** (`CS` com ids 96/97/101/105/106/107 -> GROUP -> `CHAR_INSTANCE` -> `SKEL_BONE` + `LOD`). O `polyPkt` deles é uma **cadeia de sub-pacotes**: tag `0x600100b4` (bit 16 = skinned; os 16 bits baixos NÃO são o tamanho), `UNPACK V4-32 @0xB5` (até 190 vértices, `x,y,z` + **peso em `w`**, com um **código de osso nos 8 bits baixos de x, y e z**), depois normais `V3-8 @0x175` e as seções de strip de sempre (`MSCALF`/`MSCNT`); cada sub-pacote termina em dois NOPs e o próximo vem alinhado em qword depois de alguns qwords zerados (às vezes 0x40 bytes de zeros antes da 1ª tag). `tools/ngp.py` (`decode_object`) já segue a cadeia e devolve, por vértice, `(..., w, cx, cy, cz)`.
+- **Paleta de matrizes**: `animPktPtr[lod]` é uma cadeia DMA cujo 1º tag (`3000007d <endereço>`) aponta o bloco de 125 qwords (31 matrizes de 4 qwords a partir de `+0x10`; na CENTRAL `0x11d1e80`, logo antes de `animMatrixPtr`). O código de osso é o **endereço de qword no VU1**: `slot = (código & 0x7F) / 4`, matriz = `bloco + 0x10 + 0x40*slot` (o bit 0x80 é uma flag ainda sem significado). `animMatrixPtr[i]` aponta para slots **embaralhados** dessa paleta (não use `animMatrixPtr[código/4]`). Com isso o monstro (lagarto bípede com cauda) sai coerente em pose, em wireframe.
+- **Skinning medido** (preservação do comprimento das arestas, bind x pose, `exp_skin.py`/`exp_w.py` no scratchpad): osso de `x` sozinho já preserva ~tudo; a melhor mistura testada é **`w` no osso de x + `(1-w)` no osso de y** (juntas: erro médio 0,10 contra 0,16 só com x); o código de z não ajudou. Ainda não é prova (o peso pode ser outro, ex. `w^1.5` melhorou as juntas, 0,094).
+
+**Falta**: (1) implementar no C++ (`wotm_native.hpp`): cadeia de sub-pacotes, `V4-32` com códigos, skinning `w*Mx + (1-w)*My` com a paleta de `animPktPtr`, guardando por vértice os códigos em `Vtx` e o endereço da paleta no `DrawItem`; (2) seleção de LOD por distância; (3) confirmar o significado do bit 0x80 e do código de z (olhar o microcódigo do VU1: está em RAM/`hierLoadVu1Ucode`, ou dumpar a memória de microprograma do runtime); (4) ver ao vivo (`run_live.ps1`) se os monstros aparecem no lugar certo (a câmera do jogo ficou colada em prédios nos testes, o monstro do jogador não estava visível); (5) destrutíveis (estado atual), partículas, HUD 2D.
+- Arquivos de análise (fora do repo, scratchpad da sessão): `exp_skin.py` (wireframe por hipótese), `exp_w.py` (métrica de arestas).
+
 ## Onde estamos
 - `sh tools/wsl/gate.sh` diz `ROM OK` (build + SHA1). Último estado medido (`python3 tools/progress.py`): `game` ~170 de 3181 funções
   decompiladas (idênticas + equivalentes), ~14 KB de 930 KB; `common` 192 de 1144. Convenções em `docs/ANALYSIS.md` ("Convenções de status das funções").
