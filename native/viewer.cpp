@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
     const char *texdump = nullptr;
     std::string rtxPath;
     bool wire = false, haveCam = false;
-    int lod = 0;
+    int lod = -1;   // -1 = automatico por distancia
     bool useFree = false;
     wotm::Camera cam;
     for (int i = 2; i < argc; ++i) {
@@ -78,6 +78,7 @@ int main(int argc, char **argv) {
 
     scene.collect(ram, lod);
     std::fprintf(stderr, "itens=%zu visitados=%u\n", scene.items.size(), scene.visited);
+    scene.dumpSkinned(ram);
     if (!haveCam) {   // enquadra a cena (ignora o domo do ceu)
         float lo[3] = {1e30f, 1e30f, 1e30f}, hi[3] = {-1e30f, -1e30f, -1e30f};
         for (const auto &it : scene.items) {
@@ -135,7 +136,7 @@ int main(int argc, char **argv) {
         if (IsKeyDown(KEY_E)) cam.pos[2] += sp;
         if (IsKeyDown(KEY_Q)) cam.pos[2] -= sp;
         if (IsKeyPressed(KEY_TAB)) wire = !wire;
-        if (IsKeyPressed(KEY_L)) { lod = (lod + 1) % 4; scene.collect(ram, lod); }
+        if (IsKeyPressed(KEY_L)) { lod = lod >= 3 ? -1 : lod + 1; scene.collect(ram, lod); }
 
         if (IsKeyPressed(KEY_C)) useGame = !useGame;
         Camera3D c3{};

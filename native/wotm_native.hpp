@@ -110,6 +110,8 @@ struct Vtx {
     float x, y, z;
     float u, v;
     uint8_t r, g, b, a;
+    float w = 1.f;                    // peso do osso de x (so objetos skinned)
+    uint8_t cx = 0, cy = 0, cz = 0;   // codigos de osso (endereco de qword no VU1: slot = (codigo & 0x7F) / 4)
 };
 
 struct MeshData {
@@ -118,24 +120,33 @@ struct MeshData {
     uint32_t sig = 0;        // assinatura barata para detectar RAM reaproveitada por outro nivel
     uint16_t texId = 0;
     bool valid = false;
+    bool skinned = false;    // polyPkt e uma cadeia de sub-pacotes com V4-32 (codigos de osso + peso)
     bool abe = false;        // PRIM.ABE da tag GIF: so entao o alfa de vertice vale (blend); senao opaco
 };
 
-inline MeshData decodeObject(const Ram &ram, uint32_t node) {
-    MeshData md;
-    const uint32_t pp = ram.u32(node + 4) & 0x0FFFFFFF;
-    if (!ram.ok(pp, 16)) return md;
+// Decodifica um sub-pacote em `md`; devolve o endereco do proximo (cadeia skinned) ou 0.
+inline uint32_t decodePacket(const Ram &ram, uint32_t pp, MeshData &md, bool first) {
+    uint32_t skip = 0;
+    while (skip < 0x400 && ram.ok(pp + skip, 16) && ram.u32(pp + skip) == 0 && ram.u32(pp + skip + 4) == 0) skip += 16;   // qwords zerados entre sub-pacotes
+    pp += skip;
+    if (!ram.ok(pp, 16)) return 0;
     const uint32_t tag = ram.u32(pp);
+    if (((tag >> 28) & 7) != 6) return 0;
+    const bool skinnedPkt = (tag & 0x10000) != 0;   // bit 16: vertices V4-32 com codigos de osso
     const uint32_t qwc = tag & 0xFFFF;
-    const uint32_t nwords = (qwc + 1) * 4 - 2;
+    uint32_t nwords = (qwc + 1) * 4 - 2;
     const uint32_t base = pp + 8;
-    if (qwc == 0 || !ram.ok(base, nwords * 4)) return md;
-    md.qwc = qwc;
-    md.sig = tag ^ ram.u32(pp + 8) ^ (ram.u32(pp + 12) * 31u) ^ (ram.u32(pp + 4 * (nwords + 1)) * 17u);
-    md.texId = ram.u16(node + 0x50);
-    md.valid = true;
+    if (skinnedPkt) nwords = ram.size > base ? uint32_t(std::min<size_t>(60000, (ram.size - base) / 4)) : 0;   // fim = dois NOPs seguidos
+    if (nwords == 0 || (!skinnedPkt && !ram.ok(base, nwords * 4))) return 0;
+    if (skinnedPkt) md.skinned = true;
+    if (first) {
+        md.qwc = qwc;
+        md.sig = tag ^ ram.u32(pp + 8) ^ (ram.u32(pp + 12) * 31u) ^ (skinnedPkt ? 0u : ram.u32(pp + 4 * (nwords + 1)) * 17u);
+        md.valid = true;
+    }
+    uint32_t endPp = 0;
 
-    struct P3 { float x, y, z; };
+    struct P3 { float x, y, z, w; uint8_t cx, cy, cz; };
     std::vector<P3> pos;
     uint32_t hdrAddr = 0, nloop = 0;
     bool haveHdr = false;
@@ -166,9 +177,9 @@ inline MeshData decodeObject(const Ram &ram, uint32_t node) {
             for (uint32_t k = 0; k < n; ++k) {
                 if (restart[k]) emit();
                 const uint32_t j = idx[k];
-                const P3 p = j < pos.size() ? pos[j] : P3{0, 0, 0};
+                const P3 p = j < pos.size() ? pos[j] : P3{0, 0, 0, 1.f, 0, 0, 0};
                 Vtx v{};
-                v.x = p.x; v.y = p.y; v.z = p.z;
+                v.x = p.x; v.y = p.y; v.z = p.z; v.w = p.w; v.cx = p.cx; v.cy = p.cy; v.cz = p.cz;
                 if (k < rgba.size()) { v.r = rgba[k][0]; v.g = rgba[k][1]; v.b = rgba[k][2]; v.a = rgba[k][3]; }
                 else { v.r = v.g = v.b = v.a = 128; }
                 if (k < uv.size()) { v.u = uv[k][0] / 4096.f; v.v = uv[k][1] / 4096.f; }
@@ -191,7 +202,15 @@ inline MeshData decodeObject(const Ram &ram, uint32_t node) {
             if (vn == 2 && vl == 0 && addr == 0xB5) {                        // V3-32 posicoes
                 if (haveHdr) flush();
                 pos.resize(n);
-                for (uint32_t k = 0; k < n; ++k) pos[k] = {ram.f32(a + 12 * k), ram.f32(a + 12 * k + 4), ram.f32(a + 12 * k + 8)};
+                for (uint32_t k = 0; k < n; ++k) pos[k] = {ram.f32(a + 12 * k), ram.f32(a + 12 * k + 4), ram.f32(a + 12 * k + 8), 1.f, 0, 0, 0};
+            } else if (vn == 3 && vl == 0 && addr == 0xB5 && n > 1) {         // V4-32 (skinned): codigos de osso nos 8 bits baixos de x/y/z, peso em w
+                if (haveHdr) flush();
+                pos.resize(n);
+                for (uint32_t k = 0; k < n; ++k) {
+                    const uint32_t o = a + 16 * k;
+                    pos[k] = {ram.f32(o), ram.f32(o + 4), ram.f32(o + 8), ram.f32(o + 12),
+                              uint8_t(ram.u32(o) & 0xFF), uint8_t(ram.u32(o + 4) & 0xFF), uint8_t(ram.u32(o + 8) & 0xFF)};
+                }
             } else if (vn == 3 && vl == 0 && n == 1) {                        // V4-32: tag GIF
                 hdrAddr = addr; nloop = ram.u32(a) & 0x7FFF; haveHdr = true;
                 if (((ram.u32(a + 4) >> 15) >> 6) & 1) md.abe = true;
@@ -219,9 +238,22 @@ inline MeshData decodeObject(const Ram &ram, uint32_t node) {
         else if (cmd == 0x4A) extra = (num ? num : 256) * 2;
         else if (cmd == 0x50 || cmd == 0x51) extra = (imm ? imm : 65536) * 4;
         else if (cmd == 0x14 || cmd == 0x15 || cmd == 0x17) flush();   // MSCAL/MSCALF/MSCNT: fim da secao
+        else if (cmd == 0 && skinnedPkt && i > 8 && ram.u32(a) == 0) {  // dois NOPs seguidos: fim do sub-pacote skinned
+            endPp = (base + 4 * (i + 2) + 15) & ~15u;
+            break;
+        }
         i += 1 + extra;
     }
     flush();
+    return endPp;
+}
+
+inline MeshData decodeObject(const Ram &ram, uint32_t node) {
+    MeshData md;
+    uint32_t pp = ram.u32(node + 4) & 0x0FFFFFFF;
+    if (!ram.ok(pp, 16)) return md;
+    md.texId = ram.u16(node + 0x50);
+    for (int guard = 0; pp && guard < 256; ++guard) pp = decodePacket(ram, pp, md, guard == 0);
     return md;
 }
 
@@ -230,6 +262,8 @@ inline MeshData decodeObject(const Ram &ram, uint32_t node) {
 struct DrawItem {
     M4 m;
     uint32_t node;   // HierObject
+    uint32_t animPkt = 0;   // CHAR_INSTANCE::animPktPtr (paleta de matrizes dos objetos skinned)
+    int lodIdx = 0;         // indice do LOD escolhido (animPktPtr[lodIdx] = cadeia DMA da paleta)
 };
 
 struct Camera {
@@ -389,7 +423,8 @@ public:
     }
 
     // Reune os objetos visiveis a partir de world->ep e das listas de CS.
-    void collect(const Ram &ram, int maxLod = 0) {
+    // maxLod < 0: LOD automatico por distancia ao olho da camera do jogo (como hierLod); >= 0 forca esse indice (0 = mais grosseiro).
+    void collect(const Ram &ram, int maxLod = -1) {
         items.clear();
         sky.clear();
         atMat_ = 0;
@@ -397,6 +432,12 @@ public:
         std::memset(byOp, 0, sizeof byOp);
         seen_.clear();
         lod_ = maxLod;
+        eyeOk_ = false;
+        if (lod_ < 0) {
+            const GameCamera gc = readGameCamera(ram, 0);
+            eyeOk_ = gc.ok;
+            for (int c = 0; c < 3; ++c) eye_[c] = gc.pos[c];
+        }
         const uint32_t wc = ram.u32(addr::world);
         if (ram.ok(wc, 0x40)) {
             const uint32_t ep = ram.u32(wc);
@@ -413,6 +454,16 @@ public:
         }
         csList(ram, addr::csActiveList);
         csList(ram, addr::csHPActiveList);
+    }
+
+    // Diagnostico: lista os itens skinned (no, triangulos, posicao no mundo, paleta achada?).
+    void dumpSkinned(const Ram &ram) {
+        for (const DrawItem &it : items) {
+            const MeshData *md = mesh(ram, it.node);
+            if (!md || !md->skinned) continue;
+            std::fprintf(stderr, "skinned no=%06x tris=%zu pos=(%.0f %.0f %.0f) animPkt=%06x lod=%d pal=%06x\n", it.node, md->tris.size() / 3,
+                         it.m.m[3][0], it.m.m[3][1], it.m.m[3][2], it.animPkt, it.lodIdx, palette(ram, it));
+        }
     }
 
     const MeshData *mesh(const Ram &ram, uint32_t node) {
@@ -463,9 +514,13 @@ public:
             }
             const unsigned tid = (wire || !cur) ? 0 : textureId(ram, it.node);
             const auto &t = md->tris;
+            const uint32_t pal = md->skinned ? palette(ram, it) : 0;
             for (size_t k = 0; k + 2 < t.size(); k += 3) {
                 float p[3][3];
-                for (int c = 0; c < 3; ++c) xform(it.m, t[k + c].x, t[k + c].y, t[k + c].z, p[c]);
+                for (int c = 0; c < 3; ++c) {
+                    if (pal) skinVertex(ram, pal, it.m, t[k + c], p[c]);
+                    else xform(it.m, t[k + c].x, t[k + c].y, t[k + c].z, p[c]);
+                }
                 for (int c = 0; c < 3; ++c) {
                     const int cs[2] = {c, (c + 1) % 3};
                     for (int e = 0; e < (wire ? 2 : 1); ++e) {
@@ -486,8 +541,39 @@ private:
     std::unordered_map<uint32_t, std::shared_ptr<MeshData>> cache_;
     std::unordered_map<uint64_t, Texture2D> tex_;
     std::vector<uint32_t> seen_;   // nos ja visitados neste quadro (ciclos / DAG)
-    int lod_ = 0;
+    int lod_ = -1;
+    bool eyeOk_ = false;
+    float eye_[3] = {0, 0, 0};
     uint32_t atMat_ = 0;   // animOutput.atMat do CHAR_INSTANCE que contem o no atual
+    uint32_t animPkt_ = 0; // animPktPtr do CHAR_INSTANCE que contem o no atual
+    int lodIdx_ = 0;       // LOD escolhido mais recentemente na descida
+
+    // Paleta de matrizes de um objeto skinned: animPktPtr[lod] e uma cadeia DMA (tag ref 0x3000007d) cujo endereco aponta o
+    // bloco de 125 qwords (31 matrizes de 4 qwords a partir de +0x10). Devolve 0 se nao achar.
+    static uint32_t palette(const Ram &ram, const DrawItem &it) {
+        if (!it.animPkt || it.lodIdx < 0 || it.lodIdx > 15) return 0;
+        const uint32_t chain = ram.u32(it.animPkt + 4 * uint32_t(it.lodIdx)) & 0x0FFFFFFF;
+        if (!ram.ok(chain, 8) || ((ram.u32(chain) >> 28) & 7) != 3) return 0;
+        const uint32_t block = ram.u32(chain + 4) & 0x0FFFFFFF;
+        return ram.ok(block, 0x10 + 0x40 * 32) ? block : 0;
+    }
+
+    // Skinning: osso de x com peso w e osso de y com peso 1-w (a melhor hipotese medida; o codigo de z e o bit 0x80 nao entram).
+    // O codigo e o endereco de qword no VU1: slot da paleta = (codigo & 0x7F) / 4.
+    static void skinVertex(const Ram &ram, uint32_t pal, const M4 &m, const Vtx &v, float out[3]) {
+        const float w = std::min(1.f, std::max(0.f, v.w));
+        float a[3], b[3];
+        const M4 ma = readM4(ram, pal + 0x10 + 0x40 * ((v.cx & 0x7F) / 4));
+        xform(ma, v.x, v.y, v.z, a);
+        if (w < 1.f) {
+            const M4 mb = readM4(ram, pal + 0x10 + 0x40 * ((v.cy & 0x7F) / 4));
+            xform(mb, v.x, v.y, v.z, b);
+        } else {
+            b[0] = a[0]; b[1] = a[1]; b[2] = a[2];
+        }
+        const float q[3] = {a[0] * w + b[0] * (1.f - w), a[1] * w + b[1] * (1.f - w), a[2] * w + b[2] * (1.f - w)};
+        xform(m, q[0], q[1], q[2], out);
+    }
 
     bool already(uint32_t n) {
         // lista pequena e ordenada por insercao; o jogo tem ate alguns milhares de nos
@@ -512,14 +598,31 @@ private:
         const uint32_t op = ram.u32(node) & 0x3F;
         ++byOp[op];
         switch (op) {
-        case 0: items.push_back({m, node}); break;                                           // OBJECT
+        case 0: items.push_back({m, node, animPkt_, lodIdx_}); break;                                           // OBJECT
         case 1: kids(ram, node + 0x20, ram.u16(node + 8), m, depth); break;                  // GROUP
         case 2: {                                                                           // LOD
             const uint32_t n = ram.u32(node + 4);
             if (n > 0 && n < 16) {
-                const uint32_t i = std::min<uint32_t>(lod_, n - 1);
+                int pick = -1;
+                if (lod_ >= 0) pick = int(std::min<uint32_t>(uint32_t(lod_), n - 1));
+                else {
+                    // hierLod: o MAIOR indice cujo switchOutDis (distancia ao quadrado) > distancia ao centro do LOD; nenhum = nao desenha
+                    float d2 = 0.f;
+                    if (eyeOk_) {
+                        float c[3];
+                        xform(m, ram.f32(node + 0x10), ram.f32(node + 0x14), ram.f32(node + 0x18), c);
+                        d2 = (c[0] - eye_[0]) * (c[0] - eye_[0]) + (c[1] - eye_[1]) * (c[1] - eye_[1]) + (c[2] - eye_[2]) * (c[2] - eye_[2]);
+                    }
+                    for (int k = int(n) - 1; k >= 0; --k)
+                        if (d2 < ram.f32(node + 0x20 + 16 * k + 4)) { pick = k; break; }
+                }
+                if (pick < 0) break;
+                const uint32_t i = uint32_t(pick);
                 const uint32_t c = ram.u32(node + 0x20 + 16 * i + 8);
+                const int savedLod = lodIdx_;
+                lodIdx_ = int(i);
                 if (ram.ok(c)) walk(ram, c, m, depth + 1);
+                lodIdx_ = savedLod;
             }
             break;
         }
@@ -543,10 +646,12 @@ private:
         case 25: {                                                                          // CHAR_INSTANCE
             // As partes do corpo sao nos ANIM_XFORM (hierarquia rigida, sem skinning). O proprio jogo calcula a matriz local de
             // cada no a cada quadro (hierAnimTransNode) em animOutput.atMat[matrixIdx]; basta le-la.
-            const uint32_t saved = atMat_;
+            const uint32_t saved = atMat_, savedPkt = animPkt_;
             atMat_ = ram.u32(node + 0xC);
+            animPkt_ = ram.u32(node + 0x18);
             kids(ram, node + 0x2C, ram.u32(node + 0x28), m, depth);
             atMat_ = saved;
+            animPkt_ = savedPkt;
             break;
         }
         case 17: {                                                                          // ANIM_XFORM
