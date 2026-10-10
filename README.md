@@ -53,3 +53,12 @@ Veja [docs/ANALYSIS.md](docs/ANALYSIS.md) para o que já se sabe sobre o execut�
 Ignoradas: **1212** funções, sendo 1056 de bibliotecas/SDK (`libs`: gcc, newlib, sce, lib989snd, crt0) e 156 de código de hardware do PS2 (`hw`) que o port substitui.
 Gerado por `tools/update_readme.py` a partir de `config/status.csv` (veja `tools/progress.py`); total de 5381 funções.
 <!-- PROGRESS:END -->
+
+<details>
+  <summary>Ver mídia sobre o progresso</summary>
+
+<img width="1024" height="768" alt="image" src="https://github.com/user-attachments/assets/c374d9bd-b484-45e7-88f3-e50b50bb1985" />
+
+https://github.com/user-attachments/assets/758f6b00-cc1d-4ac8-87dd-0591663a8dcf
+
+</details>
