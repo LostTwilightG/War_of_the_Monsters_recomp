@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
     const char *shot = nullptr;
     std::string vramPath;
     const char *texdump = nullptr;
+    std::string rtxPath;
     bool wire = false, haveCam = false;
     int lod = 0;
     bool useFree = false;
@@ -45,6 +46,7 @@ int main(int argc, char **argv) {
         if (a == "--shot" && i + 1 < argc) shot = argv[++i];
         else if (a == "--wire") wire = true;
         else if (a == "--free") useFree = true;
+        else if (a == "--rtx" && i + 1 < argc) rtxPath = argv[++i];
         else if (a == "--texdump" && i + 1 < argc) texdump = argv[++i];
         else if (a == "--vram" && i + 1 < argc) vramPath = argv[++i];
         else if (a == "--lod" && i + 1 < argc) lod = std::atoi(argv[++i]);
@@ -65,6 +67,10 @@ int main(int argc, char **argv) {
     wotm::Ram ram{data.data(), data.size()};
     wotm::Scene scene;
     scene.vram = {vram.data(), vram.size()};
+    if (!rtxPath.empty()) {
+        const bool ok = scene.loadRtx(rtxPath.c_str());
+        std::fprintf(stderr, "rtx %s: %s (%zu paletas)\n", rtxPath.c_str(), ok ? "ok" : "falhou", scene.rtxPal.size());
+    }
 
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_RESIZABLE);
     InitWindow(1024, 768, "WotM nativo");

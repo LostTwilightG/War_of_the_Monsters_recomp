@@ -46,7 +46,8 @@ constexpr uint32_t viewInfo = 0x006E1900;         // 5 x 0x14: [0] = _cs* da cam
 constexpr uint32_t worldToScreenMat = 0x006E1FD0; // 5 x 0x40
 constexpr uint32_t csActiveList = 0x0043A2C0;     // CsPool::m_activeList (CsNode: cs@0, next@4)
 constexpr uint32_t csHPActiveList = 0x0043A2E0;   // CsPool::m_HPActiveList
-constexpr uint32_t texInfo = 0x0050F100;          // texInfo[1000] x 16: [0] = pacote de upload da textura (RAM), [4] = residencia/VRAM
+constexpr uint32_t tempVramTexAddr = 0x006F8818;  // fim dos recursos (.RTX) na VRAM, em palavras; >> 6 = bloco base das paletas
+constexpr uint32_t texInfo = 0x0050F100;         // texInfo[1000] x 16: [0] = pacote de upload da textura (RAM), [4] = residencia/VRAM
 }
 
 // ---------------------------------------------------------------- matrizes (vetores-linha)
@@ -266,10 +267,64 @@ inline GameCamera readGameCamera(const Ram &ram, int view = 0) {
 class Scene {
 public:
     std::vector<DrawItem> items;
+    std::vector<DrawItem> sky;   // ceu / nuvens (desenhados antes, centrados na camera)
     uint32_t visited = 0;
     uint32_t byOp[64] = {};
 
-    gs::Vram vram;
+    gs::Vram vram;   // so para depuracao: a VRAM do dump guarda paletas velhas (restos do menu)
+
+    // Paletas da fase, lidas do `.RTX` do disco: entradas de `(palavra0 >> 2) * 16` bytes com cabecalho de 16 bytes (descritor GS
+    // em +8: DBP relativo no meia-palavra +0xA, TW/TH nos bits 40..47) e o corpo em ordem logica de paleta (entrada i = palavra i):
+    // 16x16 CT32 = 256 cores, 8x2 CT32 = 16 cores. O TEX0.CBP do objeto e `base + DBP`, com base = tempVramTexAddr >> 6.
+    std::unordered_map<uint32_t, std::vector<uint32_t>> rtxPal;
+
+    bool loadRtx(const char *path) {
+        rtxPal.clear();
+        std::vector<uint8_t> raw;
+        if (FILE *f = std::fopen(path, "rb")) {
+            std::fseek(f, 0, SEEK_END);
+            raw.resize(size_t(std::ftell(f)));
+            std::fseek(f, 0, SEEK_SET);
+            if (std::fread(raw.data(), 1, raw.size(), f) != raw.size()) raw.clear();
+            std::fclose(f);
+        }
+        if (raw.size() < 34) return false;
+        std::vector<uint8_t> data;
+        static const uint8_t kMagic[4] = {'I', 'E', 3, 4};
+        if (std::memcmp(raw.data(), kMagic, 4) == 0) {   // zip com o magic trocado, um arquivo em deflate cru
+            uint32_t csize = 0;
+            uint16_t nlen = 0, xlen = 0;
+            std::memcpy(&csize, raw.data() + 18, 4);
+            std::memcpy(&nlen, raw.data() + 26, 2);
+            std::memcpy(&xlen, raw.data() + 28, 2);
+            const size_t off = 30 + nlen + xlen;
+            if (off + csize > raw.size()) return false;
+            int outSize = 0;
+            unsigned char *d = DecompressData(raw.data() + off, int(csize), &outSize);
+            if (!d || outSize <= 0) return false;
+            data.assign(d, d + outSize);
+            MemFree(d);
+        } else {
+            data = raw;
+        }
+        size_t off = 0;
+        while (off + 16 <= data.size()) {
+            uint32_t w[4];
+            std::memcpy(w, data.data() + off, 16);
+            if (w[0] == 0) break;
+            const size_t sz = size_t(w[0] >> 2) * 16;
+            if (sz < 16 || off + sz > data.size()) break;
+            const uint64_t desc = uint64_t(w[2]) | (uint64_t(w[3]) << 32);
+            const uint32_t psm = uint32_t(desc >> 32) & 0x3F, tw = uint32_t(desc >> 40) & 15, th = uint32_t(desc >> 44) & 15;
+            if (psm == 0 && ((tw == 4 && th == 4) || (tw == 3 && th == 1))) {
+                std::vector<uint32_t> p((sz - 16) / 4);
+                std::memcpy(p.data(), data.data() + off + 16, p.size() * 4);
+                rtxPal[(w[2] >> 16) & 0xFFFF] = std::move(p);
+            }
+            off += sz;
+        }
+        return !rtxPal.empty();
+    }
 
     void invalidate() {
         cache_.clear();
@@ -303,14 +358,12 @@ public:
         uint32_t pal[256] = {};
         const uint32_t psm = ram.u8(ptr + 0x2B);
         if (psm == gs::T8 || psm == gs::T4) {
-            // Sem paleta na VRAM (a paleta chega por um upload que o runtime ainda nao reproduz) a textura sairia toda
-            // transparente: cai para a cor de vertice.
-            if (!vram.ok()) return false;
-            gs::readPalette(vram, t0, pal);
-            const uint32_t lo = psm == gs::T4 ? t0.csa * 16 : 0, n = psm == gs::T4 ? 16 : 256;
-            bool any = false;
-            for (uint32_t i = lo; i < lo + n && !any; ++i) any = (pal[i & 255] & 0x00FFFFFF) != 0;
-            if (!any) return false;
+            // A paleta vem do .RTX carregado (loadRtx); sem ela a textura cai para a cor de vertice.
+            const uint32_t base = ram.u32(addr::tempVramTexAddr) >> 6;
+            if (t0.cbp < base) return false;
+            const auto it = rtxPal.find(t0.cbp - base);
+            if (it == rtxPal.end()) return false;
+            for (size_t i = 0; i < it->second.size() && i < 256; ++i) pal[i] = gs::fixAlpha(it->second[i]);
         }
         w = ram.u16(ptr + 0x24); h = ram.u16(ptr + 0x26);
         return gs::decodeUpload(ram.p + ptr + 0x80, ram.size - ptr - 0x80, w, h, psm, t0.csa, pal, px);
@@ -338,6 +391,7 @@ public:
     // Reune os objetos visiveis a partir de world->ep e das listas de CS.
     void collect(const Ram &ram, int maxLod = 0) {
         items.clear();
+        sky.clear();
         visited = 0;
         std::memset(byOp, 0, sizeof byOp);
         seen_.clear();
@@ -346,6 +400,15 @@ public:
         if (ram.ok(wc, 0x40)) {
             const uint32_t ep = ram.u32(wc);
             if (ram.ok(ep)) walk(ram, ep, ident(), 0);
+        }
+        // ceu da vista 0: skyCs/skyCs2/skyClouds de worldCtx[0] (+4/+8/+0xC); hierTraceSky so olha o epNode e desenha no olho
+        {
+            std::vector<DrawItem> world;
+            world.swap(items);
+            const GameCamera gc = readGameCamera(ram, 0);
+            for (uint32_t off : {4u, 8u, 0xCu}) drawCs(ram, ram.u32(addr::worldCtx + off), false, gc.ok ? gc.pos : nullptr);
+            sky.swap(items);
+            items.swap(world);
         }
         csList(ram, addr::csActiveList);
         csList(ram, addr::csHPActiveList);
@@ -368,25 +431,33 @@ public:
 
     // Desenha com o raylib (deve estar dentro de BeginMode3D).
     void draw(const Ram &ram, bool wire = false) {
+        rlDisableDepthTest();   // o ceu e desenhado primeiro, centrado no olho, sem profundidade
+        drawList(ram, sky, wire);
+        rlDrawRenderBatchActive();
+        rlEnableDepthTest();
+        drawList(ram, items, wire);
+    }
+
+    void drawList(const Ram &ram, const std::vector<DrawItem> &list, bool wire) {
         rlDisableBackfaceCulling();
         std::vector<std::pair<uint64_t, uint32_t>> order;   // (tex0, indice do item)
-        order.reserve(items.size());
-        for (uint32_t i = 0; i < items.size(); ++i) order.push_back({wire ? 0 : texKey(ram, items[i].node), i});
+        order.reserve(list.size());
+        for (uint32_t i = 0; i < list.size(); ++i) order.push_back({wire ? 0 : texKey(ram, list[i].node), i});
         std::stable_sort(order.begin(), order.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
 
         const unsigned white = rlGetTextureIdDefault();
         uint64_t cur = ~0ull;
         bool open = false;
         for (const auto &o : order) {
-            const DrawItem &it = items[o.second];
+            const DrawItem &it = list[o.second];
             const MeshData *md = mesh(ram, it.node);
             if (!md || !md->valid || md->tris.empty()) continue;
             if (o.first != cur || !open) {
-                if (open) rlEnd();
+                if (open) { rlEnd(); rlDrawRenderBatchActive(); }   // um lote por textura (evita o alinhamento automatico do rlgl)
                 cur = o.first;
                 const unsigned id = wire ? 0 : textureId(ram, it.node);
+                rlBegin(wire ? RL_LINES : RL_TRIANGLES);   // rlBegin com outro modo reseta a textura do lote: setar depois
                 rlSetTexture(id ? id : white);
-                rlBegin(wire ? RL_LINES : RL_TRIANGLES);
                 open = true;
             }
             const unsigned tid = (wire || !cur) ? 0 : textureId(ram, it.node);
@@ -480,19 +551,24 @@ private:
     void csList(const Ram &ram, uint32_t head) {
         uint32_t n = ram.u32(head + 4);
         for (int guard = 0; ram.ok(n) && n != head && guard < 4096; ++guard, n = ram.u32(n + 4)) {
-            const uint32_t cs = ram.u32(n);
-            if (!ram.ok(cs, 0xB0) || !ram.u8(cs + 0xC)) continue;   // drawMe
-            const uint32_t ep = ram.u32(cs);
-            if (!ram.ok(ep)) continue;
-            M4 m = readM4(ram, cs + 0x20);
-            m.m[3][0] = ram.f32(cs + 0x10); m.m[3][1] = ram.f32(cs + 0x14); m.m[3][2] = ram.f32(cs + 0x18); m.m[3][3] = 1.f;
-            m.m[0][3] = m.m[1][3] = m.m[2][3] = 0.f;
-            if (ram.u8(cs + 0xF)) {   // scaleMe
-                const float sx = ram.f32(cs + 0x80), sy = ram.f32(cs + 0x84), sz = ram.f32(cs + 0x88);
-                m = mul(scaleM(sx, sy, sz), m);
-            }
-            walk(ram, ep, m, 0);
+            drawCs(ram, ram.u32(n), true);
         }
+    }
+
+    // Um `_cs` (instancia com matriz e posicao proprias): epNode em +0, drawMe +0xC, trans +0x10, mat +0x20, scaleMe +0xF, scale +0x80
+    void drawCs(const Ram &ram, uint32_t cs, bool needDrawMe, const float *at = nullptr) {
+        if (!ram.ok(cs, 0xB0) || (needDrawMe && !ram.u8(cs + 0xC))) return;
+        const uint32_t ep = ram.u32(cs);
+        if (!ram.ok(ep)) return;
+        M4 m = readM4(ram, cs + 0x20);
+        m.m[3][0] = ram.f32(cs + 0x10); m.m[3][1] = ram.f32(cs + 0x14); m.m[3][2] = ram.f32(cs + 0x18); m.m[3][3] = 1.f;
+        m.m[0][3] = m.m[1][3] = m.m[2][3] = 0.f;
+        if (at) { m.m[3][0] = at[0]; m.m[3][1] = at[1]; m.m[3][2] = at[2]; }
+        if (ram.u8(cs + 0xF)) {   // scaleMe
+            const float sx = ram.f32(cs + 0x80), sy = ram.f32(cs + 0x84), sz = ram.f32(cs + 0x88);
+            m = mul(scaleM(sx, sy, sz), m);
+        }
+        walk(ram, ep, m, 0);
     }
 };
 
