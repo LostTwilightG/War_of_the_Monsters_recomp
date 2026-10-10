@@ -117,6 +117,7 @@ struct MeshData {
     uint32_t sig = 0;        // assinatura barata para detectar RAM reaproveitada por outro nivel
     uint16_t texId = 0;
     bool valid = false;
+    bool abe = false;        // PRIM.ABE da tag GIF: so entao o alfa de vertice vale (blend); senao opaco
 };
 
 inline MeshData decodeObject(const Ram &ram, uint32_t node) {
@@ -192,6 +193,7 @@ inline MeshData decodeObject(const Ram &ram, uint32_t node) {
                 for (uint32_t k = 0; k < n; ++k) pos[k] = {ram.f32(a + 12 * k), ram.f32(a + 12 * k + 4), ram.f32(a + 12 * k + 8)};
             } else if (vn == 3 && vl == 0 && n == 1) {                        // V4-32: tag GIF
                 hdrAddr = addr; nloop = ram.u32(a) & 0x7FFF; haveHdr = true;
+                if (((ram.u32(a + 4) >> 15) >> 6) & 1) md.abe = true;
             } else if (haveHdr && vn == 0 && vl == 2 && (mask & 0xFF) == 0xBF) {   // S-8 sob mascara: ADC
                 for (uint32_t k = 0; k < n; ++k) {
                     const int e = int(addr) - int(hdrAddr) - 3 + 3 * int(k);
@@ -299,9 +301,19 @@ public:
         const uint32_t ptr = ram.u32(addr::texInfo + 16 * ram.u16(node + 0x50)) & 0x0FFFFFFF;
         if (!ram.ok(ptr + 0x80)) return false;
         uint32_t pal[256] = {};
-        if (vram.ok()) gs::readPalette(vram, t0, pal);
+        const uint32_t psm = ram.u8(ptr + 0x2B);
+        if (psm == gs::T8 || psm == gs::T4) {
+            // Sem paleta na VRAM (a paleta chega por um upload que o runtime ainda nao reproduz) a textura sairia toda
+            // transparente: cai para a cor de vertice.
+            if (!vram.ok()) return false;
+            gs::readPalette(vram, t0, pal);
+            const uint32_t lo = psm == gs::T4 ? t0.csa * 16 : 0, n = psm == gs::T4 ? 16 : 256;
+            bool any = false;
+            for (uint32_t i = lo; i < lo + n && !any; ++i) any = (pal[i & 255] & 0x00FFFFFF) != 0;
+            if (!any) return false;
+        }
         w = ram.u16(ptr + 0x24); h = ram.u16(ptr + 0x26);
-        return gs::decodeUpload(ram.p + ptr + 0x80, ram.size - ptr - 0x80, w, h, ram.u8(ptr + 0x2B), t0.csa, pal, px);
+        return gs::decodeUpload(ram.p + ptr + 0x80, ram.size - ptr - 0x80, w, h, psm, t0.csa, pal, px);
     }
 
     unsigned textureId(const Ram &ram, uint32_t node) {
@@ -386,7 +398,7 @@ public:
                     const int cs[2] = {c, (c + 1) % 3};
                     for (int e = 0; e < (wire ? 2 : 1); ++e) {
                         const Vtx &v = t[k + cs[e]];
-                        rlColor4ub(uint8_t(std::min(255, v.r * 2)), uint8_t(std::min(255, v.g * 2)), uint8_t(std::min(255, v.b * 2)), uint8_t(std::min(255, v.a * 2)));
+                        rlColor4ub(uint8_t(std::min(255, v.r * 2)), uint8_t(std::min(255, v.g * 2)), uint8_t(std::min(255, v.b * 2)), md->abe ? uint8_t(std::min(255, v.a * 2)) : uint8_t(255));
                         if (tid) rlTexCoord2f(v.u, v.v);
                         rlVertex3f(p[cs[e]][0], p[cs[e]][1], p[cs[e]][2]);
                     }
