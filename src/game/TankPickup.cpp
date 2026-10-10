@@ -2,8 +2,13 @@
 #include "engine.h"
 #include "game/military_pickup.h"
 #include "game/vehicle_navigator.h"
+#include "game/pickup_fx.h"
 
 class GamePad;
+class TankSound {
+public:
+    void terminateTankSound(void);
+};
 
 class TankPickup : public MilitaryPickup {
 public:
@@ -23,6 +28,7 @@ public:
     void updateAttackBehavior(GamePad &pad);
     void enterState(MilitaryPickup::State s);
     void resignFormation(void);
+    void kill(void);
 };
 
 INCLUDE_ASM("asm/nonmatchings/game/TankPickup", __10TankPickup);
@@ -52,7 +58,15 @@ void TankPickup::drop(void)
     Pickup::hatCheck();
     hdReparentCsGrid(cs);
 }
-INCLUDE_ASM("asm/nonmatchings/game/TankPickup", kill__10TankPickup);
+void TankPickup::kill(void)
+{
+    cs->drawMe = 0;
+    cs->testCollision = 0;
+    particleCreateFx(&cs->trans, 0xB, 8.0f, 0, 0.0f);
+    PICKUP_SOUNDS()->playDestructibleSound(0x65, &cs->trans);
+    ((TankSound *)((char *)this + 0x190))->terminateTankSound();
+    MilitaryPickup::kill();
+}
 INCLUDE_ASM("asm/nonmatchings/game/TankPickup", fire__10TankPickupR7GamePad);
 INCLUDE_ASM("asm/nonmatchings/game/TankPickup", update__10TankPickup);
 INCLUDE_ASM("asm/nonmatchings/game/TankPickup", updateLeadBehavior__10TankPickupR7GamePad);

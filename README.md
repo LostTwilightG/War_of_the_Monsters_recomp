@@ -6,6 +6,18 @@ Projeto de decompilação/recompilação de **War of the Monsters** (PS2, NTSC-U
 
 Você precisa de uma cópia própria do jogo. Nenhum arquivo do jogo vai para este repositório.
 
+## Objetivo
+Um **port nativo de PC fácil de modar**. O caminho que estamos validando (decidido em 2026-10-09, ainda em teste):
+1. **Recompilação estática como base.** O [PS2Recomp](https://github.com/ran-j/PS2Recomp) traduz o executável inteiro (5.382 funções, 0 falhas de decodificação, VU0 incluso) para C++ que roda num runtime próprio. Esse C++ é literal (uma função por função MIPS, sobre uma RAM de PS2 emulada) e é código do jogo, então **nunca entra neste repositório**: é gerado localmente a partir da sua ISO.
+2. **Decompilação só do que importa para modar.** Lógica de jogo, IA, monstros, fases e formatos de arquivo viram C++ legível aqui (função `matched` ou `equivalent`) e entram como *hooks* no lugar da versão recompilada. Bater byte a byte é **opcional**: serve para manter a ROM retail reproduzível, mas não é exigido de cada função.
+3. **Renderização nativa.** Em vez de emular VU1/GS, cortamos na fronteira da engine (`hier`, `pkt`, `disp`, partículas; veja `config/hw_boundary.csv`) e desenhamos com a GPU do PC. Som, FMVs e entrada completa ficam para depois do primeiro port.
+
+Arquitetura, o que vai no repo e o que se gera localmente: [docs/PLANO.md](docs/PLANO.md).
+
+**Licença:** o código deste repositório é [GPL-3.0](LICENSE). Ela cobre apenas o que está aqui (decomp, ferramentas, camada nativa); não dá nenhum direito sobre o jogo, que continua pertencendo aos seus detentores.
+
+Estado: o jogo recompilado inicializa e chega ao laço de interface (`userintMain`) num runtime de teste; ainda **não** validamos imagem na tela (teste em Windows/MSVC em andamento). Veja [docs/PROXIMOS_PASSOS.md](docs/PROXIMOS_PASSOS.md) e [tools/recomp_oracle/README.md](tools/recomp_oracle/README.md).
+
 ## Setup (WSL/Ubuntu)
 ```sh
 sudo apt install binutils-mips-linux-gnu ninja-build python3-venv
@@ -34,10 +46,19 @@ Veja [docs/ANALYSIS.md](docs/ANALYSIS.md) para o que já se sabe sobre o execut�
 
 | Área | Feitas | Total | % | Bytes |
 |---|---:|---:|---:|---|
-| `game` | 600 | 3181 | 18,9% | 63,4 KB de 909,0 KB (7,0%) |
-| `common` / engine | 241 | 1144 | 21,1% | 33,8 KB de 252,4 KB (13,4%) |
+| `game` | 932 | 3181 | 29,3% | 107,9 KB de 909,0 KB (11,9%) |
+| `common` / engine | 243 | 1144 | 21,2% | 33,9 KB de 252,4 KB (13,4%) |
 
 "Feita" = função `matched` (byte a byte igual ao original) ou `equivalent` (C++ equivalente, ainda sem bater).
 Ignoradas: **1212** funções, sendo 1056 de bibliotecas/SDK (`libs`: gcc, newlib, sce, lib989snd, crt0) e 156 de código de hardware do PS2 (`hw`) que o port substitui.
 Gerado por `tools/update_readme.py` a partir de `config/status.csv` (veja `tools/progress.py`); total de 5381 funções.
 <!-- PROGRESS:END -->
+
+<details>
+  <summary>Ver mídia sobre o progresso</summary>
+
+<img width="1024" height="768" alt="image" src="https://github.com/user-attachments/assets/c374d9bd-b484-45e7-88f3-e50b50bb1985" />
+
+https://github.com/user-attachments/assets/758f6b00-cc1d-4ac8-87dd-0591663a8dcf
+
+</details>

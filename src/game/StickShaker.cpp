@@ -121,7 +121,7 @@ int StickShaker::update(void)
         Monster *mon = game->m_monsters[i];
 
         vecSub(&diff, &pos, &mon->m_cs->trans);
-        d = sqrtf(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+        d = eeSqrtf(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
         if (d <= t && hits.newHit(mon->m_id, false)) {
             ActuatorData *a;
             int k;

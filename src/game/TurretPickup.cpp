@@ -2,6 +2,8 @@
 #include "engine.h"
 #include "game/pickup.h"
 #include "game/pickup_sound.h"
+#include "game/pickup_fx.h"
+#include "cs_pool.h"
 
 class TurretPickup : public Pickup {
 public:
@@ -18,6 +20,7 @@ public:
     void grab(int i);
     void enterState(State s);
     bool update(void);
+    void kill(void);
     void updateBehavior(void);
 };
 
@@ -34,7 +37,19 @@ void TurretPickup::drop(void)
     Pickup::hatCheck();
     hdReparentCsGrid(cs);
 }
-INCLUDE_ASM("asm/nonmatchings/game/TurretPickup", kill__12TurretPickup);
+void TurretPickup::kill(void)
+{
+    cs->drawMe = 0;
+    cs->testCollision = 0;
+    particleCreateFx(&cs->trans, 0xB, 8.0f, 0, 0.0f);
+    PICKUP_SOUNDS()->playDestructibleSound(0x65, &cs->trans);
+    sound.terminateTurretSound();
+    flags &= 0xFFFD;
+    if ((bits & 1) == 0) {
+        CsPool::csDeactivate(cs);
+        cs = 0;
+    }
+}
 bool TurretPickup::update(void)
 {
     updateBehavior();

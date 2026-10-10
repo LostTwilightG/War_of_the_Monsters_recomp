@@ -1,6 +1,15 @@
 # Contribuindo
 
-Obrigado por ajudar! O projeto é uma decompilação por correspondência; leia o [CLAUDE.md](CLAUDE.md) (serve para humanos também) e o [README](README.md) para o setup.
+Obrigado por ajudar! O projeto é uma decompilação cujo objetivo é um port nativo de PC fácil de modar; leia o [CLAUDE.md](CLAUDE.md) (serve para humanos também) e o [README](README.md) para o setup.
+
+## O que priorizar (desde 2026-10-09)
+- **Byte match não é mais exigido.** Uma função `equivalent` (C++ legível, comportamento conferido) vale tanto quanto uma `matched` para o objetivo. Se bater barato, ótimo; não gaste horas afinando.
+- **Escolha pelo que importa para modar**, não pelo tamanho: lógica de jogo, IA, monstros, fases, animação e formatos de arquivo. A fila está em `config/boot_coverage_asm.csv`
+  (funções ainda em asm que o jogo chama do boot até a interface). Deixe para o fim memory card (`McPage`/`McFile`), `input`, `vi`, `ps`, `sce/*` e `lib989snd`.
+- **Confira o comportamento**: `tools/difftest.py` para funções sem VU0; `tools/recomp_oracle` (veja o README dele) para as que usam VU0 ou `min/max/madd`. Não use `sqrtf` em código novo: use `eeSqrtf` (`include/vecmath.h`).
+
+## Licença
+Ao contribuir, você concorda que sua contribuição seja distribuída sob a [GPL-3.0](LICENSE) do projeto.
 
 ## Antes de começar
 - Você precisa da **sua própria cópia** do jogo (NTSC-U, SCUS-97197). Nada do jogo entra no repo: nem ISO, nem `asm/`, nem trechos de assembly em issues/PRs.
