@@ -22,7 +22,7 @@ travessia nativa lê a hierarquia (`world`, 483 nós / 29 objetos). Ainda não h
 
 **Onde está o código (fora do repo, por ser derivado do jogo / do PS2Recomp):**
 - Clone de teste `C:\Users\TwistZero\wotm-recomp-win` (build MSVC em `build\`, `build.bat` recompila só o runner; o link LTCG leva ~10 min; `run.ps1` executa e captura).
-- Mudanças de runtime NÃO versionadas ainda: `wotm_runtime_diagnostics.patch` (446 linhas, só `ps2xRuntime/src/lib` e `main.cpp`) e `wotm_scene.inc` na raiz desse clone. O fork `yanm1103/PS2Recomp` (branch `wotm`, submódulo `third_party/PS2Recomp`) está em `aebfcd3` e NÃO tem estas mudanças. O código gerado (`register_functions.cpp` etc.) nunca vai ao repo.
+- Mudanças de runtime (`PS2X_NO_VIF1`, `SKIP_CMOVIE`, `PEEK`, `PROF`, `STATS`, diagnósticos do escalonador) já estão versionadas na branch `wotm` do fork (`yanm1103/PS2Recomp`, submódulo `third_party/PS2Recomp`) no commit `a6b9af2`, **só local: falta o push no fork (decisão do dono)**. O `wotm_runtime_diagnostics.patch` e o `wotm_scene.inc` do clone de teste ficam como cópia de segurança (o patch é contra o upstream `2c5fbb9`, não aplica na branch `wotm`). O código gerado (`register_functions.cpp` etc.) nunca vai ao repo.
 
 **Combo que funciona** (`PS2X_*` lidas pelo runner; `run.ps1` já põe `SKIP_MOVIES`, `STATS`, `NO_VU1`, `CD_IMAGE`):
 `PS2X_NO_VIF1=1 PS2X_NO_GS=1 PS2X_SKIP_CMOVIE=1` (+ `PS2X_SCENE=1` para a travessia nativa). Roteiro de pad que chega a uma fase em ~50 s: `PS2X_PAD` = `start` (0.8 s) a cada 1,5 s de t=3 a 18,
@@ -41,7 +41,7 @@ Variáveis novas: `PS2X_NO_VIF1` (ignora a execução do DMA do VIF1/VU1 mas sin
 5. Endereços úteis: currScreen 0x6F8464, nextScreen 0x6F846C, betweenScreens 0x6F7E8C, screenFirstPass 0x6F7E80, targetAlpha 0x6F7E74, currAnimationIndex 0x6F7E88, fadingIn/Out 0x6F807C/0x6F8080, world 0x6F87C4.
 
 **Próximos passos, em ordem:**
-1. Versionar: aplicar `wotm_runtime_diagnostics.patch` + `wotm_scene.inc` na branch `wotm` do fork, atualizar o submódulo e commitar aqui (push no fork é decisão do dono).
+1. ~~Versionar o patch de runtime~~ (feito em 2026-10-10, `a6b9af2`); falta só o push no fork.
 2. Travessia nativa de verdade: de círculos para malhas, lendo `.NGP/.PTR/.RTX/.TEX` (`docs/FORMATOS.md`) e desenhando via raylib; cortar na fronteira `hierTraverseAsm`/`pktAddVu1ObjAsm` (`config/hw_boundary.csv`). Texturas vêm por `pktAddVu1Tex`/`texmActivateTexture`.
 3. Cobertura com gameplay (`PS2X_COVERAGE`, agora em tempo real) para realimentar `config/boot_coverage_asm.csv`; depois voltar à decompilação pela fila.
 4. Ideia do dono: um `PS2X_FAST_BOOT` que pule esperas de abertura (cortar só o laço/fade, não a inicialização; ex. `Shell::FadeScreen` 0x1AB660, `screenTransition` 0x19E698, `uiIntro` 0x1DA3C8).
