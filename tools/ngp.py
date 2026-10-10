@@ -108,16 +108,38 @@ class Mesh:
 
 
 def decode_object(img, node):
-    """Decodifica o `polyPkt` de um HierObject e devolve `Mesh` (strips de vertices ja resolvidos)."""
+    """Decodifica o `polyPkt` de um HierObject e devolve `Mesh` (strips de vertices ja resolvidos).
+    Objetos skinned sao uma cadeia de sub-pacotes (cada um com tag propria e ate 190 posicoes)."""
     mesh = Mesh()
-    pp = img.u32(node + 4)
+    pp = img.u32(node + 4) & 0x0FFFFFFF
+    for _ in range(256):
+        nxt = _decode_packet(img, pp, mesh)
+        if nxt is None:
+            break
+        pp = nxt
+    return mesh
+
+
+def _decode_packet(img, pp, mesh):
+    """Decodifica um sub-pacote em `mesh`; devolve o endereco do proximo (skinned) ou None."""
     if not img.ok(pp, 16):
-        return mesh
-    qwc = img.u32(pp) & 0xFFFF
+        return None
+    skip = 0
+    while skip < 0x400 and img.ok(pp + skip, 16) and img.u32(pp + skip) == 0 and img.u32(pp + skip + 4) == 0:
+        skip += 16   # quadwords zerados entre sub-pacotes
+    pp += skip
+    tag = img.u32(pp)
+    if ((tag >> 28) & 7) != 6:
+        return None
+    qwc = tag & 0xFFFF
+    skinned = bool(tag & 0x10000)   # bit 16 da tag: vertices V4-32 com codigos de osso
     nwords = (qwc + 1) * 4 - 2
+    if skinned:
+        nwords = min(60000, (len(img.d) - (pp + 8 - img.base)) // 4)   # comprimento real = ate dois NOPs seguidos (abaixo)
     base = pp + 8
-    if not img.ok(base, nwords * 4):
-        return mesh
+    if not img.ok(base, 16) or (not skinned and not img.ok(base, nwords * 4)):
+        return None
+    end_pp = None
 
     pos, nrm = [], []
     hdr = None            # (addr, nloop, prim)
@@ -141,7 +163,7 @@ def decode_object(img, node):
             q = nrm[j] if j < len(nrm) else (0.0, 1.0, 0.0)
             c = rgba[k] if k < len(rgba) else (128, 128, 128, 128)
             t = uv[k] if k < len(uv) else (0, 0)
-            cur.verts.append((p[0], p[1], p[2], q[0], q[1], q[2], c[0], c[1], c[2], c[3], t[0] / 4096.0, t[1] / 4096.0))
+            cur.verts.append((p[0], p[1], p[2], q[0], q[1], q[2], c[0], c[1], c[2], c[3], t[0] / 4096.0, t[1] / 4096.0) + tuple(p[3:]))
         hdr, idx, rgba, uv, adc = None, [], [], [], set()
 
     while i < nwords:
@@ -159,6 +181,11 @@ def decode_object(img, node):
                 if hdr is not None:
                     flush()
                 pos = [(img.f32(a + 12 * k), img.f32(a + 12 * k + 4), img.f32(a + 12 * k + 8)) for k in range(n)]
+            elif fmt == (3, 0) and addr == VU_POS and n > 1:           # V4-32 (skinned): x,y,z com um codigo de osso nos 8 bits baixos + peso em w
+                if hdr is not None:
+                    flush()
+                pos = [(img.f32(a + 16 * k), img.f32(a + 16 * k + 4), img.f32(a + 16 * k + 8), img.f32(a + 16 * k + 12),
+                        img.u32(a + 16 * k) & 0xFF, img.u32(a + 16 * k + 4) & 0xFF, img.u32(a + 16 * k + 8) & 0xFF) for k in range(n)]
             elif fmt == (2, 2) and addr == VU_NRM:                     # V3-8 normais
                 # 3 bytes por normal, empacotados em bytes consecutivos (sem preenchimento por elemento)
                 nrm = [tuple(img.s8(a + 3 * k + c) / 127.0 for c in range(3)) for k in range(n)]
@@ -191,9 +218,12 @@ def decode_object(img, node):
             extra = (imm or 65536) * 4
         elif cmd in (0x14, 0x15, 0x17):       # MSCAL/MSCALF/MSCNT: fim de uma secao de strip
             flush()
+        elif cmd == 0 and skinned and i > 8 and img.u32(a) == 0:   # dois NOPs seguidos: fim do sub-pacote skinned
+            end_pp = (base + 4 * (i + 2) + 15) & ~15   # proximo sub-pacote: alinhado em quadword
+            break
         i += 1 + extra
     flush()
-    return mesh
+    return end_pp
 
 
 # ---------------------------------------------------------------- hierarquia

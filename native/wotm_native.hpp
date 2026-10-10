@@ -392,6 +392,7 @@ public:
     void collect(const Ram &ram, int maxLod = 0) {
         items.clear();
         sky.clear();
+        atMat_ = 0;
         visited = 0;
         std::memset(byOp, 0, sizeof byOp);
         seen_.clear();
@@ -469,7 +470,7 @@ public:
                     const int cs[2] = {c, (c + 1) % 3};
                     for (int e = 0; e < (wire ? 2 : 1); ++e) {
                         const Vtx &v = t[k + cs[e]];
-                        rlColor4ub(uint8_t(std::min(255, v.r * 2)), uint8_t(std::min(255, v.g * 2)), uint8_t(std::min(255, v.b * 2)), md->abe ? uint8_t(std::min(255, v.a * 2)) : uint8_t(255));
+                        rlColor4ub(uint8_t(std::min(255, v.r * 2)), uint8_t(std::min(255, v.g * 2)), uint8_t(std::min(255, v.b * 2)), uint8_t(std::min(255, v.a * 4)));
                         if (tid) rlTexCoord2f(v.u, v.v);
                         rlVertex3f(p[cs[e]][0], p[cs[e]][1], p[cs[e]][2]);
                     }
@@ -486,6 +487,7 @@ private:
     std::unordered_map<uint64_t, Texture2D> tex_;
     std::vector<uint32_t> seen_;   // nos ja visitados neste quadro (ciclos / DAG)
     int lod_ = 0;
+    uint32_t atMat_ = 0;   // animOutput.atMat do CHAR_INSTANCE que contem o no atual
 
     bool already(uint32_t n) {
         // lista pequena e ordenada por insercao; o jogo tem ate alguns milhares de nos
@@ -538,7 +540,32 @@ private:
         }
         case 8: { const uint32_t c = ram.u32(node + 4); if (ram.ok(c)) walk(ram, c, m, depth + 1); break; }   // CONTROL: child1
         case 23: { const uint32_t c = ram.u32(node + 4); if (ram.ok(c)) walk(ram, c, m, depth + 1); break; } // ACTION_DATA
-        case 25: kids(ram, node + 0x2C, ram.u32(node + 0x28), m, depth); break;             // CHAR_INSTANCE
+        case 25: {                                                                          // CHAR_INSTANCE
+            // As partes do corpo sao nos ANIM_XFORM (hierarquia rigida, sem skinning). O proprio jogo calcula a matriz local de
+            // cada no a cada quadro (hierAnimTransNode) em animOutput.atMat[matrixIdx]; basta le-la.
+            const uint32_t saved = atMat_;
+            atMat_ = ram.u32(node + 0xC);
+            kids(ram, node + 0x2C, ram.u32(node + 0x28), m, depth);
+            atMat_ = saved;
+            break;
+        }
+        case 17: {                                                                          // ANIM_XFORM
+            if (ram.f32(node + 0xC) == 0.f) break;                                          // visible
+            M4 local = ident();
+            const uint32_t idx = ram.u32(node + 0xC4);
+            if (atMat_ && idx < 4096 && ram.ok(atMat_ + idx * 64, 64)) local = readM4(ram, atMat_ + idx * 64);
+            local.m[0][3] = local.m[1][3] = local.m[2][3] = 0.f; local.m[3][3] = 1.f;
+            kids(ram, node + 0xCC, ram.u32(node + 4), mul(local, m), depth);
+            break;
+        }
+        case 38: {                                                                          // ANIM_SCALE: escala e depois translacao
+            if (ram.f32(node + 0xC) == 0.f) break;
+            float sx = ram.f32(node + 0x20), sy = ram.f32(node + 0x24), sz = ram.f32(node + 0x28);
+            if (sx == 0.f && sy == 0.f && sz == 0.f) sx = sy = sz = 1.f;
+            kids(ram, node + 0x60, ram.u32(node + 4),
+                 mul(mul(scaleM(sx, sy, sz), translateM(ram.f32(node + 0x30), ram.f32(node + 0x34), ram.f32(node + 0x38))), m), depth);
+            break;
+        }
         case 39: { const uint32_t c = ram.u32(node + 0xC); if (ram.ok(c)) walk(ram, c, m, depth + 1); break; } // INTERACTIVE
         case 31: {                                                                          // DESTRUCTIBLE: estado 0 (intacto)
             if (ram.u16(node + 0xA)) { const uint32_t c = ram.u32(node + 0xC); if (ram.ok(c)) walk(ram, c, m, depth + 1); }
@@ -560,6 +587,8 @@ private:
         if (!ram.ok(cs, 0xB0) || (needDrawMe && !ram.u8(cs + 0xC))) return;
         const uint32_t ep = ram.u32(cs);
         if (!ram.ok(ep)) return;
+        const uint32_t id = ram.u32(ep) >> 18;   // id do objeto (14 bits altos); 0x1C20..0x2133 = elementos de HUD (espaco de tela)
+        if (needDrawMe && id >= 0x1C20 && id <= 0x2133) return;
         M4 m = readM4(ram, cs + 0x20);
         m.m[3][0] = ram.f32(cs + 0x10); m.m[3][1] = ram.f32(cs + 0x14); m.m[3][2] = ram.f32(cs + 0x18); m.m[3][3] = 1.f;
         m.m[0][3] = m.m[1][3] = m.m[2][3] = 0.f;
