@@ -152,6 +152,11 @@ int main(int argc, char **argv) {
                 uint32_t per[8] = {};
                 for (const auto &v : md->tris) ++per[v.slot & 7];
                 std::fprintf(stderr, "  slotMask=%x verts/slot: %u %u %u %u %u", md->slotMask, per[0], per[1], per[2], per[3], per[4]);
+                for (uint32_t sl = 0; sl < 2; ++sl) {
+                    float u0 = 1e9f, u1 = -1e9f, v0 = 1e9f, v1 = -1e9f;
+                    for (const auto &v : md->tris) if (v.slot == sl) { u0 = std::min(u0, v.u); u1 = std::max(u1, v.u); v0 = std::min(v0, v.v); v1 = std::max(v1, v.v); }
+                    std::fprintf(stderr, " | slot%u uv u[%.2f %.2f] v[%.2f %.2f]", sl, u0, u1, v0, v1);
+                }
             }
             std::fprintf(stderr, "\n");
         }
