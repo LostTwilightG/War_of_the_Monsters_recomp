@@ -1,0 +1,20 @@
+#include "common.h"
+
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", init__9AnimPappyR11_animHandle);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", update__9AnimPappyR13DbInteractive);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", __9AnimBlend14AnimBlendTypesi);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", init__9AnimBlendR11_animHandle);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", rampIn__9AnimBlendf);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", rampOut__9AnimBlendf);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", rampOutAndDealloc__9AnimBlendf);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", runAndDealloc__9AnimBlendff);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", updateRampOut__9AnimBlend);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", updateRampOutAndDealloc__9AnimBlend);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", setPercent__9AnimBlendf);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", setSpeed__9AnimBlendf);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", getPercent__9AnimBlend);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", getWeight__9AnimBlend);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", __static_initialization_and_destruction_0_00164670);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", updateRampOut__9AnimBlendPv);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", updateRampOutAndDealloc__9AnimBlendPv);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterAnimBlend", _GLOBAL_$I$_13AnimBlendPool$s_pool);

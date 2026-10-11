@@ -14,8 +14,55 @@ void PadFlags::setCurrentAction(ButtonActions button, MappedActions mapped)
     curActionTime = timerGetFieldCount();
 }
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", pushAction__8PadFlags13ButtonActions13MappedActions);
+#ifdef NON_MATCHING
+/* Oldest actions are dropped once they are older than tweak17B0 fields (checked the first time after a reset); returns the pending button action or NONE. */
+ButtonActions PadFlags::nextButtonAction(void)
+{
+    if (actionsStarted == 0) {
+        int now = timerGetFieldCount();
+
+        for (;;) {
+            int expired = 0;
+
+            if (usedList.next != &usedList)
+                expired = (now - usedList.next->action->time) >= tweak17B0;
+            if (!expired)
+                break;
+            popAction();
+        }
+        actionsStarted = 1;
+    }
+    if (usedList.next != &usedList)
+        return (ButtonActions)usedList.next->action->button;
+    return BUTTON_ACTION_NONE;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", nextButtonAction__8PadFlags);
+#endif
+#ifdef NON_MATCHING
+MappedActions PadFlags::nextMappedAction(void)
+{
+    if (actionsStarted == 0) {
+        int now = timerGetFieldCount();
+
+        for (;;) {
+            int expired = 0;
+
+            if (usedList.next != &usedList)
+                expired = (now - usedList.next->action->time) >= tweak17B0;
+            if (!expired)
+                break;
+            popAction();
+        }
+        actionsStarted = 1;
+    }
+    if (usedList.next != &usedList)
+        return (MappedActions)usedList.next->action->mapped;
+    return (MappedActions)0xF;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", nextMappedAction__8PadFlags);
+#endif
 #ifdef NON_MATCHING
 /* 3/25 words, untuned: register choice for the list nodes */
 void PadFlags::popAction(void)
@@ -90,7 +137,19 @@ PadEntry *PadFlags::operator[](int back)
     return (PadEntry *)(ring + i * ENTRY_SIZE);
 }
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", interpretInputs__8PadFlagsR7GamePad);
+#ifdef NON_MATCHING
+/* Left stick as a vector: x = right - left, y = up - down (each 0..255 scaled to 0..1), z = 0. */
+void PadFlags::computeMotionVec(_fvector &v)
+{
+    PadEntry *e = (*this)[0];
+
+    v.x = (float)e->f1C * 0.003921569f - (float)e->f1A * 0.003921569f;
+    v.z = 0.0f;
+    v.y = (float)*(unsigned short *)(e->data + 0x12) * 0.003921569f - (float)*(unsigned short *)(e->data + 0x14) * 0.003921569f;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", computeMotionVec__8PadFlagsR8_fvector);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", computeMotionRot__8PadFlags);
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", updateViewChanges__8PadFlagsR7GamePad);
 INCLUDE_ASM("asm/nonmatchings/game/PadFlags", okToChangeMap__8PadFlags);

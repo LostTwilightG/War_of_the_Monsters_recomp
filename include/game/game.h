@@ -30,6 +30,9 @@ class Monster {
 public:
     void enterNewState(MonsterState *state);
     void takeDamage(float dmg, bool b, Monster *src);
+    void takeHit(_fvector *dir, float dmg, int attackerId);
+    void knockBack(_fvector &dir, float a, float b);
+    void takeAdditiveRecoil(_fvector &dir, float f);
     void initAfterDbLoad(void);
     bool attacksEnabled(void) const;
     float getHeight(void) const;
@@ -564,6 +567,7 @@ public:
     static void SetCameraToFollowMonster(int view, Monster *m);
     static void SetCameraPOV(int view, Camera::CameraPOV pov);
     static void TogglePOV(int view);
+    static float GetUnifiedTime(void);
 };
 
 void fontSetColor(int font, int r, int g, int b, int a);

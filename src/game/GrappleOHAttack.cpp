@@ -1,0 +1,20 @@
+#include "common.h"
+
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", _vt$19StateMonkeyOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", _vt$20StateGrappleOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", __20StateGrappleOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", transitionOK__20StateGrappleOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", transitionFeasible__20StateGrappleOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", transitionInto__20StateGrappleOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", update__20StateGrappleOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", __19StateMonkeyOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", transitionOK__19StateMonkeyOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", transitionFeasible__19StateMonkeyOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", transitionInto__19StateMonkeyOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", update__19StateMonkeyOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", startAttack__19StateMonkeyOHAttack11MonsterAnim);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", inWindUp__11AttackState);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", inWindDown__11AttackState);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", __tf20StateGrappleOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", __tf19StateMonkeyOHAttack);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleOHAttack", __tf11AttackState);

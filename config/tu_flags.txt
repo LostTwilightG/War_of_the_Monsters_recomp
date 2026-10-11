@@ -1,2 +1,4 @@
 # Extra cflags per translation unit (appended after the default -O2 -G8)
 common/hieri -O0
+game/Ai -ffast-math
+game/AiAction -ffast-math

@@ -4,5 +4,6 @@
 cd "$(dirname "$0")/../.."
 py=${PYTHON:-$HOME/.venvs/wotm/bin/python}
 for t in "$@"; do
-    $py tools/ccmatch.py "src/game/$t.cpp" '-DNON_MATCHING' project 2>&1 | tail -1 | sed 's/^project *//' | tr ';' '\n' | sed "s/^ *//; s/^/$t: /"
+    extra=$(grep "^game/$t " config/tu_flags.txt 2>/dev/null | cut -d' ' -f2-)
+    $py tools/ccmatch.py "src/game/$t.cpp" "-DNON_MATCHING $extra" project 2>&1 | tail -1 | sed 's/^project *//' | tr ';' '\n' | sed "s/^ *//; s/^/$t: /"
 done | sort

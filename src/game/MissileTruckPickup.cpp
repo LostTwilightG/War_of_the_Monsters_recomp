@@ -2,6 +2,7 @@
 #include "engine.h"
 #include "game/military_pickup.h"
 #include "game/vehicle_navigator.h"
+#include "game/pickup_fx.h"
 
 class GamePad;
 
@@ -17,6 +18,7 @@ public:
     void leadFormation(void);
     void followFormation(void);
     void setTrans(_fvector &p);
+    void kill(void);
     void takeHit(_fvector *pos, float dmg, int x);
     void drop(void);
     void updateFollowBehavior(GamePad &pad);
@@ -52,7 +54,14 @@ void MissileTruckPickup::drop(void)
     Pickup::hatCheck();
     hdReparentCsGrid(cs);
 }
-INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", kill__18MissileTruckPickup);
+void MissileTruckPickup::kill(void)
+{
+    cs->drawMe = 0;
+    cs->testCollision = 0;
+    particleCreateFx(&cs->trans, 0xB, 8.0f, 0, 0.0f);
+    PICKUP_SOUNDS()->playDestructibleSound(0x65, &cs->trans);
+    MilitaryPickup::kill();
+}
 INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", fire__18MissileTruckPickupR7GamePad);
 INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", update__18MissileTruckPickup);
 INCLUDE_ASM("asm/nonmatchings/game/MissileTruckPickup", updateLeadBehavior__18MissileTruckPickupR7GamePad);

@@ -1,0 +1,25 @@
+#include "common.h"
+
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", __16StateGrappleLift);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", transitionOK__16StateGrappleLift);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", transitionInto__16StateGrappleLift);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", update__16StateGrappleLift);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", __17StateGrappleThrow);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", transitionOK__17StateGrappleThrow);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", transitionInto__17StateGrappleThrow);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", update__17StateGrappleThrow);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", throwToTarget__17StateGrappleThrowR8_fvector);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", handlePreemption__17StateGrappleThrowP12MonsterState);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", __18StateGrappleThrow1);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", transitionOK__18StateGrappleThrow1);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", transitionInto__18StateGrappleThrow1);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", update__18StateGrappleThrow1);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", func_0013E7D8);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", func_0013E7E0);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", _vt$18StateGrappleThrow1);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", _vt$17StateGrappleThrow);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", _vt$16StateGrappleLift);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", __tf16StateGrappleLift);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", __tf17StateGrappleThrow);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", __tf18StateGrappleThrow1);
+INCLUDE_ASM("asm/nonmatchings/game/GrappleThrow", func_0013E8D8);

@@ -57,4 +57,15 @@ static inline void vecScale(_fvector *dst, _fvector *a, float s)
                      : "=m"(*dst), "=r"(t) : "r"(a), "f"(s));
 }
 
+#ifdef NON_MATCHING
+/* R5900 SQRT.S fd, ft takes its source from ft (fs = 0, e.g. retail 0x46020084). GNU as encodes sqrt.s (and ee-gcc's inline sqrtf) in the
+   MIPS32 form with the source in fs, which the EE reads as $f0 (the z term was silently dropped in computeCostEstimate). .word 0x46040104 = sqrt.s $f4,$f4. */
+static inline float eeSqrtf(float v)
+{
+    register float x __asm__("$f4") = v;
+    __asm__(".word 0x46040104" : "+f"(x));
+    return x;
+}
+#endif
+
 #endif

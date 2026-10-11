@@ -58,7 +58,10 @@ void PointToolKit::setReticleMoveStep(float s)
 {
     reticleMoveStep = s;
 }
-INCLUDE_ASM("asm/nonmatchings/common/PointToolKit", exportPoints__12PointToolKit);
+void exportPoints__12PointToolKit(void *self) __asm__("exportPoints__12PointToolKit");
+void exportPoints__12PointToolKit(void *self)
+{
+}
 int PointToolKit::getNumPoints(void)
 {
     return numPoints;

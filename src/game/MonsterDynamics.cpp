@@ -1,0 +1,23 @@
+#include "common.h"
+
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", __15MonsterDynamicsR7Monster);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", init__15MonsterDynamics);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", allStop__15MonsterDynamics);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", smoothToUpright__15MonsterDynamicsf);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", setMotionVec__15MonsterDynamicsR8_fvector);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", setMotionVecFromPad__15MonsterDynamics);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", setMotionRotFromPad__15MonsterDynamics);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", computeTargetSpeed__15MonsterDynamicsff);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", updateMove__15MonsterDynamicsb);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", updateAirMotion__15MonsterDynamicsff);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", updateFootMotion__15MonsterDynamicsfff);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", updateTurn__15MonsterDynamicsb);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", updateTurnMotion__15MonsterDynamicsfff);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", updatePosition__15MonsterDynamics);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", handleHeadCollis__15MonsterDynamicsR9_hdResultf);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", handleBodyCollis__15MonsterDynamicsR9_hdResultf);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", handleGroundCollis__15MonsterDynamicsR9_hdResultf);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", getContactVel__15MonsterDynamicsR8_fvectorR9_hdResult);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", computeAuxiliaries__15MonsterDynamics);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", getSpeedModifier__15MonsterDynamics);
+INCLUDE_ASM("asm/nonmatchings/game/MonsterDynamics", getConfig__15MonsterDynamics);

@@ -1,14 +1,19 @@
 #include "common.h"
+#include "game/hud.h"
+#include "game/game.h"
+
+extern "C" int sprintf(char *, const char *, ...);
+extern char **gMessageBuf;
+__asm__("#SNFIX_SMALL gMessageBuf");
+
+/* Message ids: 4 combo, 7 health, 8 energy. A message already on screen gets its alpha/timer refreshed, otherwise it is added. */
+#define REFRESH(id, t) do {         if (msgId[0] == (id)) { msgAlpha[0] = 0x80; msgTimer[0] = (t); }         else if (msgId[1] == (id)) { msgAlpha[1] = 0x80; msgTimer[1] = (t); }         else if (msgId[2] == (id)) { msgAlpha[2] = 0x80; msgTimer[2] = (t); }     } while (0)
 
 INCLUDE_ASM("asm/nonmatchings/game/Hud", initBefore__3Hudi);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", initAfter__3Hudi);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", initForReplay__3Hud);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", update__3Hud);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", parseHudElements__3HudP9_hierhead);
-class Hud {
-public:
-    void print(void);
-};
 void Hud::print(void)
 {
 }
@@ -18,9 +23,50 @@ INCLUDE_ASM("asm/nonmatchings/game/Hud", buildSeparator__3Hud);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", addHealthIndicators__3Hud);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", drawHealthIcon__3HudP7Monsteri);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", drawBossHealthBar__3Hudf);
+#ifdef NON_MATCHING
+void Hud::registerComboHit(void)
+{
+    comboHits++;
+    sprintf(gMessageBuf[4], "%d-Hit Combo", comboHits);
+    if (msgId[0] != 4 && msgId[1] != 4 && msgId[2] != 4 && comboHits >= 2)
+        addMessage(4, 0);
+    else
+        REFRESH(4, 0x64);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Hud", registerComboHit__3Hud);
+#endif
+#ifdef NON_MATCHING
+/* Only while the viewed monster's stamina is not full. */
+void Hud::registerStaminaCredit(int amount)
+{
+    StaminaMeter &st = game->m_slots[game->m_viewSlot[view]].m_stamina;
+
+    if (!(st.maxLevel <= st.cur)) {
+        staminaCredit += amount;
+        sprintf(gMessageBuf[8], "Energy +%d", staminaCredit);
+        if (msgId[0] != 8 && msgId[1] != 8 && msgId[2] != 8)
+            addMessage(8, 0);
+        else
+            REFRESH(8, 0x3C);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Hud", registerStaminaCredit__3Hudi);
+#endif
+#ifdef NON_MATCHING
+void Hud::registerHealthCredit(int amount)
+{
+    healthCredit += amount;
+    sprintf(gMessageBuf[7], "Health +%d", healthCredit);
+    if (msgId[0] != 7 && msgId[1] != 7 && msgId[2] != 7)
+        addMessage(7, 0);
+    else
+        REFRESH(7, 0x3C);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/Hud", registerHealthCredit__3Hudi);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/Hud", addMessage__3Hudii);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", updateMessage__3Hud);
 INCLUDE_ASM("asm/nonmatchings/game/Hud", addTextBoxMessage__3Hudi);

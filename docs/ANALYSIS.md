@@ -127,6 +127,20 @@ Um decomp-permuter deve resolver boa parte desses casos.
 - `long long` e `long128` têm 128 bits no ee-gcc (`long` tem 64).
 - Cobrem só a engine em `common/hier*`; o resto do jogo (`game/`) segue sem tipos.
 
+## Recompilação estática (experimento de 2026-10-09)
+Feita com o [PS2Recomp](https://github.com/ran-j/PS2Recomp) (commit 2c5fbb9), **fora do repo** (o C++ gerado é código do jogo: ~90 MB, 5.385 arquivos).
+- O ELF tem símbolos, então o analisador acha 5.382 funções com nome e tamanho. Recompila em ~1,4 s: 5.042 recompiladas, 340 trocadas por handlers do runtime
+  (SDK/libc/libm), **0 falhas de decodificação, 0 instruções não tratadas** (COP2/VU0 macro-mode incluso). 432 funções têm `jr`/`jalr` indireto (`switch`) que o analisador não resolve
+  (0 jump tables detectadas); o recompilador as cobre com "fallback entries" (60.604).
+- Todo o C++ compila e linka com o runtime. No runtime de teste o jogo inicializa: carrega os 7 IRX no IOP emulado (989snd incluso), passa do init de som e entra no laço de
+  interface (`userintMain`). Os filmes ficam presos porque o decodificador do jogo (`decBs0`/`videoDec*`) espera a IPU, que o runtime não emula; nos testes foram pulados por hook
+  (`playMpegMovie*` e a thread `updateMpegMovieDecoding`). Imagem na tela **ainda não validada** (os testes foram em WSL com `llvmpip`).
+- O runtime já traz GS em CPU, interpretadores de VU e VIF1 e um IOP emulado; é a ponte, não o destino (o destino é renderização nativa na fronteira da engine).
+- **Bug do PS2Recomp achado**: `SQRT.S fd, ft` lê a fonte em `ft` (usa |ft|) e `RSQRT.S fd, fs, ft` é `fs / sqrt(|ft|)`; o upstream usava `fs`. Afeta 108 funções (`sqrt.s`) e 76 (`rsqrt.s`).
+  Suspeitos **não verificados**: `div.s` por zero (o EE satura em ±FLT_MAX) e `min/max` com NaN.
+- **Bug nosso achado pelo oracle**: o gas codifica `sqrt.s` na forma MIPS32 (fonte em `fs`); no EE isso lê `$f0`. Corrigido com `eeSqrtf` (`include/vecmath.h`).
+- Cobertura do boot até a interface (3 min, filmes pulados): 786 funções distintas (97 matched, 31 equivalent, 601 asm, 57 hw). Lista das 601 em `config/boot_coverage_asm.csv`.
+
 ## Convenções de status das funções
 Cada função do binário está em um destes estados (`python3 tools/progress.py`, tabela completa em `config/status.csv`):
 

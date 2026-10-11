@@ -1,6 +1,13 @@
 #include "common.h"
 #include "engine.h"
 #include "game/pickup.h"
+#include "game/pickup_fx.h"
+#include "cs_pool.h"
+
+class HeliSound {
+public:
+    void terminateHeliSound(void);
+};
 
 class HeliPickup : public Pickup {
 public:
@@ -16,6 +23,7 @@ public:
     void grab(int i);
     void enterState(State s);
     void regen(void);
+    void kill(void);
 };
 
 INCLUDE_ASM("asm/nonmatchings/game/HeliPickup", __10HeliPickupb);
@@ -34,7 +42,20 @@ void HeliPickup::drop(void)
     Pickup::hatCheck();
     hdReparentCsGrid(cs);
 }
-INCLUDE_ASM("asm/nonmatchings/game/HeliPickup", kill__10HeliPickup);
+void HeliPickup::kill(void)
+{
+    cs->drawMe = 0;
+    cs->testCollision = 0;
+    particleCreateFx(&cs->trans, 0xB, 8.0f, 0, 0.0f);
+    PICKUP_SOUNDS()->playDestructibleSound(0x65, &cs->trans);
+    ((HeliSound *)((char *)this + 0x2E4))->terminateHeliSound();
+    particleKillFx(fx);
+    flags &= 0xFFFD;
+    if ((bits & 1) == 0) {
+        CsPool::csDeactivate(cs);
+        cs = 0;
+    }
+}
 INCLUDE_ASM("asm/nonmatchings/game/HeliPickup", update__10HeliPickup);
 void HeliPickup::regen(void)
 {
