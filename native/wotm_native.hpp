@@ -324,8 +324,15 @@ inline GameCamera readGameCamera(const Ram &ram, int view = 0) {
         c.fwd[i] = ram.f32(cs + 0x20 + 16 * 1 + 4 * i);
         c.up[i] = ram.f32(cs + 0x20 + 16 * 2 + 4 * i);
     }
-    const float f0 = ram.f32(addr::worldToScreenMat + 0x40 * view);          // 384: foco horizontal
-    const float fv = -ram.f32(addr::worldToScreenMat + 0x40 * view + 0x18);  // 180,48: foco vertical por campo (entrelacado)
+    // worldToScreenMat NAO guarda o foco em elementos fixos: a linha 0 e 384*direita + 2048*frente e a linha 1 e -180,48*cima + 2048*frente
+    // (o jogo embute os eixos da camera). Ler [0][0]/[1][2] cru dava um FOV que mudava com a orientacao da camera (zoom in/out ao girar).
+    // O foco vem de projetar cada linha no eixo certo do _cs: horizontal = linha0 . direita (384; 496 no menu), vertical = -(linha1 . cima).
+    const uint32_t wm = addr::worldToScreenMat + 0x40 * view;
+    float f0 = 0.f, fv = 0.f;
+    for (int i = 0; i < 3; ++i) {
+        f0 += ram.f32(wm + 4 * i) * ram.f32(cs + 0x20 + 4 * i);              // . direita (linha 0 do _cs)
+        fv -= ram.f32(wm + 0x10 + 4 * i) * c.up[i];                          // . cima
+    }
     if (f0 > 1.f && fv > 1.f) c.fovy = 2.f * std::atan(224.f / (2.f * fv)) * 180.f / 3.14159265f;
     c.ok = std::isfinite(c.pos[0]) && std::isfinite(c.fwd[0]) && (std::fabs(c.fwd[0]) + std::fabs(c.fwd[1]) + std::fabs(c.fwd[2])) > 0.1f;
     return c;
