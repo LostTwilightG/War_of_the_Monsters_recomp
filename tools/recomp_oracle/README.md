@@ -46,7 +46,7 @@ e funções cujo laço depende do dado aleatório podem estourar o tempo (`Monst
 
 ## Varredura de `sqrt.s` mal codificado
 `python3 tools/recomp_oracle/scan_sqrt.py <elf>`: conta `sqrt.s` na forma R5900 (`fs=0`) e na forma errada (`ft=0, fs≠0`). O retail tem 127 e nenhuma errada.
-Ver `docs/PROXIMOS_PASSOS.md` (armadilha do `sqrtf`; usar `eeSqrtf` de `include/vecmath.h` em código NM).
+Ver `docs/passos/ARMADILHAS.md` (armadilha do `sqrtf`; usar `eeSqrtf` de `include/vecmath.h` em código NM).
 
 ## Achados (2026-10-09)
 - `AiPathFinder::computeCostEstimate` e mais 10 usos de `sqrtf`: `sqrt.s` codificado na forma MIPS32 → no EE lia `$f0`. Corrigido (`eeSqrtf`). 0/300 → 300/300.

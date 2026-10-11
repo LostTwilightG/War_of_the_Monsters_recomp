@@ -12,6 +12,10 @@ Um **port nativo de PC fácil de modar**. O caminho que estamos validando (decid
 2. **Decompilação só do que importa para modar.** Lógica de jogo, IA, monstros, fases e formatos de arquivo viram C++ legível aqui (função `matched` ou `equivalent`) e entram como *hooks* no lugar da versão recompilada. Bater byte a byte é **opcional**: serve para manter a ROM retail reproduzível, mas não é exigido de cada função.
 3. **Renderização nativa.** Em vez de emular VU1/GS, cortamos na fronteira da engine (`hier`, `pkt`, `disp`, partículas; veja `config/hw_boundary.csv`) e desenhamos com a GPU do PC. Som, FMVs e entrada completa ficam para depois do primeiro port.
 
+Arquitetura, o que vai no repo e o que se gera localmente: [docs/PLANO.md](docs/PLANO.md).
+
+**Licença:** o código deste repositório é [GPL-3.0](LICENSE). Ela cobre apenas o que está aqui (decomp, ferramentas, camada nativa); não dá nenhum direito sobre o jogo, que continua pertencendo aos seus detentores.
+
 Estado: o jogo recompilado inicializa e chega ao laço de interface (`userintMain`) num runtime de teste; ainda **não** validamos imagem na tela (teste em Windows/MSVC em andamento). Veja [docs/PROXIMOS_PASSOS.md](docs/PROXIMOS_PASSOS.md) e [tools/recomp_oracle/README.md](tools/recomp_oracle/README.md).
 
 ## Setup (WSL/Ubuntu)
@@ -49,3 +53,12 @@ Veja [docs/ANALYSIS.md](docs/ANALYSIS.md) para o que já se sabe sobre o execut�
 Ignoradas: **1212** funções, sendo 1056 de bibliotecas/SDK (`libs`: gcc, newlib, sce, lib989snd, crt0) e 156 de código de hardware do PS2 (`hw`) que o port substitui.
 Gerado por `tools/update_readme.py` a partir de `config/status.csv` (veja `tools/progress.py`); total de 5381 funções.
 <!-- PROGRESS:END -->
+
+<details>
+  <summary>Ver mídia sobre o progresso</summary>
+
+<img width="1024" height="768" alt="image" src="https://github.com/user-attachments/assets/c374d9bd-b484-45e7-88f3-e50b50bb1985" />
+
+https://github.com/user-attachments/assets/758f6b00-cc1d-4ac8-87dd-0591663a8dcf
+
+</details>
