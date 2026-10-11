@@ -901,8 +901,9 @@ public:
         drawList(ram, sky, wire);
         rlDrawRenderBatchActive();
         rlEnableDepthTest();
-        drawList(ram, items, wire, wire ? -1 : 0);
-        if (!wire) {
+        static const bool onePass = std::getenv("WOTM_ONEPASS") != nullptr;   // diagnostico: tudo num passe so (sem separar translucidos)
+        drawList(ram, items, wire, (wire || onePass) ? -1 : 0);
+        if (!wire && !onePass) {
             rlDrawRenderBatchActive();
             rlDisableDepthMask();   // translucidos testam profundidade mas nao a escrevem
             drawList(ram, items, wire, 1);
@@ -930,6 +931,43 @@ public:
     // pass: -1 tudo; 0 so opacos/recortados; 1 so translucidos (ordenados do mais longe ao mais perto)
     void drawList(const Ram &ram, const std::vector<DrawItem> &list, bool wire, int pass = -1) {
         rlDisableBackfaceCulling();
+        {   // diagnostico: WOTM_CMP=1 compara, por triangulo, as arestas de dois itens skinned com a mesma malha (ex.: jogador x inimigo)
+            static const bool cmp = std::getenv("WOTM_CMP") != nullptr;
+            static bool done = false;
+            if (cmp && !done) {
+                const DrawItem *A = nullptr, *B = nullptr;
+                for (const DrawItem &it : list) {
+                    const MeshData *md = mesh(ram, it.node);
+                    if (!md || !md->skinned || md->tris.size() != 4428 || !it.animPkt) continue;
+                    if (!A) A = &it; else if (!B && it.animPkt != A->animPkt) B = &it;
+                }
+                if (A && B) {
+                    done = true;
+                    const MeshData *md = mesh(ram, A->node);
+                    const uint32_t pa = palette(ram, *A), pb = palette(ram, *B);
+                    int slotBad[32] = {0}, slotAll[32] = {0}, nbad = 0, ntri = 0;
+                    for (size_t k = 0; k + 2 < md->tris.size(); k += 3) {
+                        float qa[3][3], qb[3][3];
+                        for (int c = 0; c < 3; ++c) { skinVertex(ram, pa, M4{}, md->tris[k + c], qa[c]); skinVertex(ram, pb, M4{}, md->tris[k + c], qb[c]); }
+                        auto mx = [](float q[3][3]) { float m = 0; for (int c = 0; c < 3; ++c) { const float *a = q[c], *b = q[(c + 1) % 3]; m = std::max(m, std::sqrt((a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2]))); } return m; };
+                        const float ea = mx(qa), eb = mx(qb);
+                        ++ntri;
+                        auto area = [](float q[3][3]) { const float u[3] = {q[1][0]-q[0][0], q[1][1]-q[0][1], q[1][2]-q[0][2]}, w[3] = {q[2][0]-q[0][0], q[2][1]-q[0][1], q[2][2]-q[0][2]};
+                            const float cx = u[1]*w[2]-u[2]*w[1], cy = u[2]*w[0]-u[0]*w[2], cz = u[0]*w[1]-u[1]*w[0]; return 0.5f * std::sqrt(cx*cx + cy*cy + cz*cz); };
+                        const float aa = area(qa), ab = area(qb);
+                        const bool bad = ab < 0.15f * aa && aa > 4.f;   // triangulo colapsado no B (area < 15%% da do A)
+                        if (bad) ++nbad;
+                        for (int c = 0; c < 3; ++c) {
+                            const Vtx &v = md->tris[k + c];
+                            const int sl[3] = {(v.cx & 0x7F) / 4, (v.cy & 0x7F) / 4, (v.cz & 0x7F) / 4};
+                            for (int z = 0; z < 3; ++z) if (sl[z] < 32) { ++slotAll[sl[z]]; if (bad) ++slotBad[sl[z]]; }
+                        }
+                    }
+                    std::fprintf(stderr, "[cmp] tris %d, colapsados no B (area < 15%% da do A): %d\n", ntri, nbad);
+                    for (int z = 0; z < 31; ++z) std::fprintf(stderr, "[cmp] slot %2d: usos %4d, em rasgados %4d (%.0f%%)\n", z, slotAll[z], slotBad[z], slotAll[z] ? 100.0 * slotBad[z] / slotAll[z] : 0.0);
+                }
+            }
+        }
         struct Ent { uint64_t key; uint32_t item; uint32_t slot; };
         std::vector<Ent> order;   // (chave de textura, indice do item, slot de textura)
         order.reserve(list.size());
@@ -941,6 +979,13 @@ public:
                 if (only) {
                     const std::string s = std::string(",") + only + ",";
                     if (s.find("," + std::to_string(ram.u16(list[i].node + 0x50)) + ",") == std::string::npos) continue;
+                }
+            }
+            {   // diagnostico: WOTM_ONLYNODE=<hex[,hex..]> desenha so esses nos (isola um personagem do resto da cena)
+                static const char *onlyN = std::getenv("WOTM_ONLYNODE");
+                if (onlyN) {
+                    char b[16]; std::snprintf(b, sizeof b, ",%x,", list[i].node);
+                    if ((std::string(",") + onlyN + ",").find(b) == std::string::npos) continue;
                 }
             }
             const MeshData *mdi = mesh(ram, list[i].node);
@@ -980,7 +1025,28 @@ public:
                         const uint8_t c[4] = {v.cx, v.cy, v.cz, v.slot};
                         for (int b = 0; b < 4; ++b) h = (h ^ c[b]) * 1099511628211ull;
                     }
+                    int perSlot[8] = {0};
+                    for (const Vtx &v : md->tris) ++perSlot[v.slot & 7];
+                    std::fprintf(stderr, "   slotMask %x verts/slot %d %d %d %d %d texIds %u %u %u\n", md->slotMask, perSlot[0], perSlot[1], perSlot[2], perSlot[3], perSlot[4],
+                                 unsigned(ram.u16(it.node + 0x50)), unsigned(ram.u16(it.node + 0x52)), unsigned(ram.u16(it.node + 0x54)));
                     std::fprintf(stderr, "   geomhash %016llx nverts %zu\n", (unsigned long long)h, md->tris.size());
+                    // arestas apos o skinning (unidades do mundo): malha rasgada tem cauda longa; compara modelos de peso e paletas
+                    const uint32_t palD = palette(ram, it);
+                    std::vector<float> el;
+                    for (size_t k = 0; palD && k + 2 < md->tris.size(); k += 3) {
+                        float q[3][3];
+                        for (int c = 0; c < 3; ++c) skinVertex(ram, palD, it.m, md->tris[k + c], q[c]);
+                        float mx = 0;
+                        for (int c = 0; c < 3; ++c) {
+                            const float *a = q[c], *b = q[(c + 1) % 3];
+                            mx = std::max(mx, std::sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]) + (a[2] - b[2]) * (a[2] - b[2])));
+                        }
+                        el.push_back(mx);
+                    }
+                    if (!el.empty()) {
+                        std::sort(el.begin(), el.end());
+                        std::fprintf(stderr, "   maxedge med %.2f p90 %.2f p99 %.2f max %.2f\n", el[el.size() / 2], el[el.size() * 9 / 10], el[el.size() * 99 / 100], el.back());
+                    }
                 }
                 if (ls && md && md->skinned && !wire) { for (int r = 0; r < 3; ++r) std::fprintf(stderr, "   m[%d] %.3f %.3f %.3f %.3f\n", r, it.m.m[r][0], it.m.m[r][1], it.m.m[r][2], it.m.m[r][3]); }
             }
@@ -1005,7 +1071,12 @@ public:
             static const bool noSkin = std::getenv("WOTM_NOSKIN") != nullptr;   // diagnostico: pose de referencia, sem skinning
             static const uint32_t palOverride = std::getenv("WOTM_PALBLOCK") ? uint32_t(std::strtoul(std::getenv("WOTM_PALBLOCK"), nullptr, 16)) : 0;   // diagnostico
             const uint32_t pal = (md->skinned && !noSkin) ? (palOverride ? palOverride : palette(ram, it)) : 0;
-            M4 skinM = it.m;   // diagnostico: WOTM_SKINPOS=x,y,z poe todos os itens skinned nessa posicao (testa dependencia de posicao)
+            M4 skinM = it.m;
+            {   // diagnostico: WOTM_SKINM1=<animPkt hex> usa a matriz do objeto desse item para todos os skinned (isola matriz x paleta)
+                static const uint32_t refPkt = std::getenv("WOTM_SKINM1") ? uint32_t(std::strtoul(std::getenv("WOTM_SKINM1"), nullptr, 16)) : 0;
+                if (refPkt && md->skinned)
+                    for (const DrawItem &r : list) if (r.animPkt == refPkt) { skinM = r.m; break; }
+            }   // diagnostico: WOTM_SKINPOS=x,y,z poe todos os itens skinned nessa posicao (testa dependencia de posicao)
             { static float sp[3]; static const int have = std::getenv("WOTM_SKINPOS") ? std::sscanf(std::getenv("WOTM_SKINPOS"), "%f,%f,%f", sp, sp + 1, sp + 2) : 0; if (have == 3 && md->skinned) for (int c = 0; c < 3; ++c) skinM.m[3][c] = sp[c]; }
             // zBufferFudge (objeto +0x28): multiplicador da profundidade (1,0 = nada). Escalar o vertice ao longo do raio a partir do
             // olho muda so a profundidade, nao a posicao na tela: resolve o z-fighting de camadas coplanares.
@@ -1034,7 +1105,7 @@ public:
                 }
             }
         }
-        if (open) rlEnd();
+        if (open) { rlEnd(); rlDrawRenderBatchActive(); }   // descarrega o ultimo lote ANTES de religar o culling (o estado GL vale no flush)
         rlSetTexture(0);
         rlEnableBackfaceCulling();
     }
@@ -1064,20 +1135,28 @@ private:
         return ram.ok(block, 0x10 + 0x40 * 32) ? block : 0;
     }
 
-    // Skinning: osso de x com peso w e osso de y com peso 1-w (a melhor hipotese medida; o codigo de z e o bit 0x80 nao entram).
-    // O codigo e o endereco de qword no VU1: slot da paleta = (codigo & 0x7F) / 4.
+    // Skinning, como o microcodigo do VU1 (desmontado com tools/vu1dis.py; laco em 0x3C8): tres ossos por vertice.
+    // Os codigos de osso (8 bits baixos de x, y, z; & 0x7F = endereco de qword da matriz na paleta) escolhem 3 matrizes e os pesos
+    // saem do float w: w1 = w, w2 = frac(w * 2048) (mantissa baixa), w3 = 1 - w1 - w2. pos = w1*Mx*p + w2*My*p + w3*Mz*p.
+    // Slot da paleta = (codigo & 0x7F) / 4.
     static void skinVertex(const Ram &ram, uint32_t pal, const M4 &m, const Vtx &v, float out[3]) {
-        const float w = std::min(1.f, std::max(0.f, v.w));
-        float a[3], b[3];
-        const M4 ma = readM4(ram, pal + 0x10 + 0x40 * ((v.cx & 0x7F) / 4));
-        xform(ma, v.x, v.y, v.z, a);
-        if (w < 1.f) {
-            const M4 mb = readM4(ram, pal + 0x10 + 0x40 * ((v.cy & 0x7F) / 4));
-            xform(mb, v.x, v.y, v.z, b);
-        } else {
-            b[0] = a[0]; b[1] = a[1]; b[2] = a[2];
+        static const bool old2 = std::getenv("WOTM_SKIN2BONE") != nullptr;   // diagnostico: modelo antigo (2 ossos, w clampado)
+        float w1 = v.w, w2 = 0.f, w3 = 0.f;
+        if (old2) { w1 = std::min(1.f, std::max(0.f, v.w)); w2 = 1.f - w1; }
+        else {
+            const float s = v.w * 2048.f;
+            w2 = s - std::trunc(s);
+            w3 = 1.f - w1 - w2;
         }
-        const float q[3] = {a[0] * w + b[0] * (1.f - w), a[1] * w + b[1] * (1.f - w), a[2] * w + b[2] * (1.f - w)};
+        const uint8_t codes[3] = {v.cx, v.cy, v.cz};
+        const float ws[3] = {w1, w2, w3};
+        float q[3] = {0, 0, 0};
+        for (int k = 0; k < 3; ++k) {
+            if (ws[k] == 0.f) continue;
+            float a[3];
+            xform(readM4(ram, pal + 0x10 + 0x40 * ((codes[k] & 0x7F) / 4)), v.x, v.y, v.z, a);
+            for (int c = 0; c < 3; ++c) q[c] += a[c] * ws[k];
+        }
         xform(m, q[0], q[1], q[2], out);
     }
 
