@@ -104,8 +104,6 @@ game/ui
 game/screen
 game/rt
 common/input
-common/font
-common/resetcom
 game/MovementStates
 game/MonsterStates
 game/AiReflex
@@ -125,3 +123,5 @@ game/GrappleOHAttack
 game/GrappleThrow
 game/FinalBoss
 game/PlantBoss
+common/font
+common/resetcom
