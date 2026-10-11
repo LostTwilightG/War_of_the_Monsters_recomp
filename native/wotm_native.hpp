@@ -967,6 +967,23 @@ public:
         for (const auto &o : order) {
             const DrawItem &it = list[o.item];
             const MeshData *md = mesh(ram, it.node);
+            {   // diagnostico: WOTM_LISTSKIN=1 lista os itens skinned desenhados (no, LOD, animPkt, posicao do objeto)
+                static const bool ls = std::getenv("WOTM_LISTSKIN") != nullptr;
+                if (ls && md && md->skinned && !wire)
+                    std::fprintf(stderr, "[skin] node %x lod %d animPkt %x pos %.1f %.1f %.1f tris %zu slot %u\n", it.node, it.lodIdx, it.animPkt, it.m.m[3][0], it.m.m[3][1], it.m.m[3][2], md->tris.size() / 3, o.slot);
+                if (ls && md && md->skinned && !wire) {
+                    uint64_t h = 1469598103934665603ull;   // FNV-1a da geometria decodificada (sem cor): compara meshes de monstros diferentes
+                    for (const Vtx &v : md->tris) {
+                        const float f[6] = {v.x, v.y, v.z, v.u, v.v, v.w};
+                        const uint8_t *q = reinterpret_cast<const uint8_t *>(f);
+                        for (int b = 0; b < 24; ++b) h = (h ^ q[b]) * 1099511628211ull;
+                        const uint8_t c[4] = {v.cx, v.cy, v.cz, v.slot};
+                        for (int b = 0; b < 4; ++b) h = (h ^ c[b]) * 1099511628211ull;
+                    }
+                    std::fprintf(stderr, "   geomhash %016llx nverts %zu\n", (unsigned long long)h, md->tris.size());
+                }
+                if (ls && md && md->skinned && !wire) { for (int r = 0; r < 3; ++r) std::fprintf(stderr, "   m[%d] %.3f %.3f %.3f %.3f\n", r, it.m.m[r][0], it.m.m[r][1], it.m.m[r][2], it.m.m[r][3]); }
+            }
             if (!md || !md->valid || md->tris.empty()) continue;
             const uint32_t slot = o.slot;
             const bool multi = md->slotMask & (md->slotMask - 1);   // mais de um slot usado
@@ -988,6 +1005,8 @@ public:
             static const bool noSkin = std::getenv("WOTM_NOSKIN") != nullptr;   // diagnostico: pose de referencia, sem skinning
             static const uint32_t palOverride = std::getenv("WOTM_PALBLOCK") ? uint32_t(std::strtoul(std::getenv("WOTM_PALBLOCK"), nullptr, 16)) : 0;   // diagnostico
             const uint32_t pal = (md->skinned && !noSkin) ? (palOverride ? palOverride : palette(ram, it)) : 0;
+            M4 skinM = it.m;   // diagnostico: WOTM_SKINPOS=x,y,z poe todos os itens skinned nessa posicao (testa dependencia de posicao)
+            { static float sp[3]; static const int have = std::getenv("WOTM_SKINPOS") ? std::sscanf(std::getenv("WOTM_SKINPOS"), "%f,%f,%f", sp, sp + 1, sp + 2) : 0; if (have == 3 && md->skinned) for (int c = 0; c < 3; ++c) skinM.m[3][c] = sp[c]; }
             // zBufferFudge (objeto +0x28): multiplicador da profundidade (1,0 = nada). Escalar o vertice ao longo do raio a partir do
             // olho muda so a profundidade, nao a posicao na tela: resolve o z-fighting de camadas coplanares.
             const float fz = ram.f32(it.node + 0x28);
@@ -997,7 +1016,7 @@ public:
                 { static const int onlySub = std::getenv("WOTM_SUBPKT") ? std::atoi(std::getenv("WOTM_SUBPKT")) : -1; if (onlySub >= 0 && md->skinned && t[k].sub != onlySub) continue; }
                 float p[3][3];
                 for (int c = 0; c < 3; ++c) {
-                    if (pal) skinVertex(ram, pal, it.m, t[k + c], p[c]);
+                    if (pal) skinVertex(ram, pal, skinM, t[k + c], p[c]);
                     else xform(it.m, t[k + c].x, t[k + c].y, t[k + c].z, p[c]);
                     if (fudge) for (int a = 0; a < 3; ++a) p[c][a] = eye_[a] + (p[c][a] - eye_[a]) * fz;
                 }
