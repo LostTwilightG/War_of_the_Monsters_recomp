@@ -104,12 +104,6 @@ game/ui
 game/screen
 game/rt
 common/input
-common/font
-common/resetcom
-common/animation
-common/AnimCurve
-common/tod
-common/view
 game/MovementStates
 game/MonsterStates
 game/AiReflex
@@ -129,4 +123,10 @@ game/GrappleOHAttack
 game/GrappleThrow
 game/FinalBoss
 game/PlantBoss
+common/font
+common/resetcom
+common/animation
+common/AnimCurve
+common/tod
+common/view
 common/mathf

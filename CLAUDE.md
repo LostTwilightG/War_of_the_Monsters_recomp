@@ -7,7 +7,7 @@ por hook, só o que importa para modar. **Byte match não é mais requisito por 
 usando `config/boot_coverage_asm.csv`, não por tamanho. O VU1/GS emulado do runtime do PS2Recomp é só ponte; o destino é renderização nativa na fronteira da engine. Detalhes em `docs/PROXIMOS_PASSOS.md`
 ("Direção atual") e `docs/ANALYSIS.md` ("Recompilação estática"). As regras abaixo continuam valendo; onde disserem "matching", leia "matching quando for o objetivo da função".
 
-Leia antes de começar: `README.md` (setup), `docs/ANALYSIS.md` (o que se sabe do ELF e as convenções de status) e `docs/PROXIMOS_PASSOS.md` (como retomar, ferramentas, headers compartilhados).
+Leia antes de começar: `README.md` (setup), `docs/ANALYSIS.md` (o que se sabe do ELF e as convenções de status) e `docs/PROXIMOS_PASSOS.md` (como retomar e índice; ferramentas, headers e armadilhas em `docs/passos/`).
 
 ## Regras que não podem ser quebradas
 1. **Nenhum arquivo do jogo vai para o repo.** `ISO/`, `disc/`, `asm/`, `assets/`, `build/`, `*.rom`, `*.elf` e `tools/cc/` estão no `.gitignore`. O `asm/` contém código do jogo: nunca force `git add -f`, nunca cole assembly do jogo em issues, PRs ou documentação.
