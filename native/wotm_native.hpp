@@ -674,6 +674,7 @@ public:
         sky.clear();
         atMat_ = 0;
         visited = 0;
+        std::memset(destrHist_, 0, sizeof destrHist_);
         std::memset(byOp, 0, sizeof byOp);
         seen_.clear();
         lod_ = maxLod;
@@ -699,6 +700,8 @@ public:
         }
         csList(ram, addr::csActiveList);
         csList(ram, addr::csHPActiveList);
+        static const bool ds = std::getenv("WOTM_DESTRSTAT") != nullptr;
+        if (ds) { std::fprintf(stderr, "[destr] estados:"); for (int i = 0; i < 8; ++i) std::fprintf(stderr, " %u", destrHist_[i]); std::fprintf(stderr, "\n"); }
     }
 
     // Copia o estado atual da cena (depois de collect) para um instantaneo: itens, ceu, camera e as paletas de matrizes dos skinned
@@ -1293,6 +1296,7 @@ private:
     std::unordered_map<uint64_t, Texture2D> tex_;
     std::vector<uint32_t> seen_;   // nos ja visitados neste quadro (ciclos / DAG)
     int lod_ = -1;
+    uint32_t destrHist_[8] = {};   // diagnostico (WOTM_DESTRSTAT): destrutiveis por estado atual
     Shader alphaShader_{};
     bool alphaShaderTried_ = false;
     std::unordered_map<uint64_t, bool> partial_;   // textura (texKey) com alfa semitransparente
@@ -1529,7 +1533,23 @@ private:
                  mul(mul(scaleM(sx, sy, sz), translateM(ram.f32(node + 0x30), ram.f32(node + 0x34), ram.f32(node + 0x38))), m), depth);
             break;
         }
-        case 39: { const uint32_t c = ram.u32(node + 0xC); if (ram.ok(c)) walk(ram, c, m, depth + 1); break; } // INTERACTIVE
+        case 39: {                                                                          // INTERACTIVE_STATE (+4 whichChild, +0xC filho)
+            // O filho de um destrutivel e um DESTRUCTIBLE: o jogo escolhe o estado (0 = intacto, depois danificado/ruina...) em
+            // `whichChild` deste no pai (docs/FORMATOS.md, "Destrutiveis"); a travessia desce so para child[whichChild].child.
+            const uint32_t c = ram.u32(node + 0xC);
+            if (!ram.ok(c)) break;
+            if ((ram.u32(c) & 63) == 31) {
+                const uint32_t n = ram.u16(c + 0xA);
+                uint32_t w = ram.u32(node + 4);
+                static const bool noDestr = std::getenv("WOTM_NODESTR") != nullptr;   // diagnostico: sempre o estado 0 (intacto)
+                ++destrHist_[std::min<uint32_t>(w, 7)];
+                if (noDestr || w >= n) w = 0;
+                if (!n) break;
+                const uint32_t ch = ram.u32(c + 0xC + 12 * w);
+                if (ram.ok(ch)) walk(ram, ch, m, depth + 1);
+            } else walk(ram, c, m, depth + 1);
+            break;
+        }
         case 31: {                                                                          // DESTRUCTIBLE: estado 0 (intacto)
             if (ram.u16(node + 0xA)) { const uint32_t c = ram.u32(node + 0xC); if (ram.ok(c)) walk(ram, c, m, depth + 1); }
             break;
