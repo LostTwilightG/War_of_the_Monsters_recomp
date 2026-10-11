@@ -144,6 +144,7 @@ struct MeshData {
     bool abe = false;        // PRIM.ABE da tag GIF: so entao o alfa de vertice vale (blend); senao opaco
     uint32_t slotMask = 0;   // slots de textura usados pelas secoes (bit i = gsTexCtx[i])
     uint8_t curSub = 0;   // sub-pacote em decodificacao (diagnostico)
+    uint8_t curSlot = 0;  // textura corrente do GS: seletor 0 na tag = nao troca o contexto (herda o da secao anterior)
     uint32_t posTot = 0, posUsed = 0;   // posicoes carregadas / usadas por algum indice (diagnostico)
     uint32_t dropAdc = 0, dropDegen = 0;   // triangulos descartados por ADC / degenerados (diagnostico)
     uint32_t secTot = 0, secBad = 0, secBadEx = 0;   // secoes de tira / com nloop != indices (diagnostico)
@@ -192,6 +193,7 @@ inline uint32_t decodePacket(const Ram &ram, uint32_t pp, MeshData &md, bool fir
             static const int adcMode = std::getenv("WOTM_ADCMODE") ? std::atoi(std::getenv("WOTM_ADCMODE")) : 0;   // diagnostico: 1 = ignora ADC
             static const int adcShift = std::getenv("WOTM_ADCSHIFT") ? std::atoi(std::getenv("WOTM_ADCSHIFT")) : 0;   // diagnostico
             if (adcMode != 1) for (uint32_t k : adc) { const int kk = int(k) + adcShift; if (kk >= 0 && uint32_t(kk) < n) restart[uint32_t(kk)] = true; }
+            { static const bool hs = std::getenv("WOTM_HDRSEL") != nullptr; if (hs) std::fprintf(stderr, "[hdrsel] tex=%u sel=%u n=%u\n", md.texId, hdrSel, n); }   // diagnostico
             std::vector<Vtx> strip;
             // ADC (bit de GIF no vertice k): o GS NAO desenha o triangulo que termina em k, mas a tira continua (a convencao de
             // "novo strip" e ADC nos dois primeiros vertices). Tratar como reinicio perdia um triangulo por reinicio (furos).
@@ -217,7 +219,9 @@ inline uint32_t decodePacket(const Ram &ram, uint32_t pp, MeshData &md, bool fir
                 const P3 p = j < pos.size() ? pos[j] : P3{0, 0, 0, 1.f, 0, 0, 0};
                 Vtx v{};
                 v.x = p.x; v.y = p.y; v.z = p.z; v.w = p.w; v.cx = p.cx; v.cy = p.cy; v.cz = p.cz;
-                v.slot = uint8_t(hdrSel >= 1 && hdrSel <= 13 ? (hdrSel - 1) / 3 : 0);
+                const uint32_t sel = hdrSel & 0x7FFF;   // bit 15: flag (os predios usam 0x8001, 0x8004...)
+                if (sel >= 1 && sel <= 13) md.curSlot = uint8_t((sel - 1) / 3);   // 0 = mantem a textura anterior
+                v.slot = md.curSlot;
                 v.sub = md.curSub;
                 md.slotMask |= 1u << v.slot;
                 if (k < rgba.size()) { v.r = rgba[k][0]; v.g = rgba[k][1]; v.b = rgba[k][2]; v.a = rgba[k][3]; }
@@ -308,12 +312,73 @@ struct DrawItem {
     uint32_t node;   // HierObject
     uint32_t animPkt = 0;   // CHAR_INSTANCE::animPktPtr (paleta de matrizes dos objetos skinned)
     int lodIdx = 0;         // indice do LOD escolhido (animPktPtr[lodIdx] = cadeia DMA da paleta)
+    std::shared_ptr<std::vector<M4>> pal;   // copia das 31 matrizes da paleta (preenchida por takeSnapshot; vazia = ler da RAM)
 };
 
 struct Camera {
     float pos[3] = {0, 0, 0};
     float yaw = 0, pitch = 0;   // radianos; yaw 0 olha para +X, Z para cima
 };
+
+// ---------------------------------------------------------------- interpolacao entre quadros do jogo
+// O jogo atualiza a 30 quadros/s e a tela desenha a 60: sem interpolar, camera e animacoes ficam "picotadas". A camada ao vivo guarda dois
+// instantaneos (A anterior, B atual) e desenha a mistura; a rotacao usa slerp (lerp elemento a elemento encolhe a malha em giros rapidos).
+struct Quat { float w, x, y, z; };
+
+// Rotacao (linhas = imagens dos eixos) + escala uniforme; falso se a matriz nao for rotacao * escala uniforme (ai o chamador faz lerp simples).
+inline bool decomposeRot(const M4 &m, Quat &q, float &scale) {
+    float rl[3];
+    for (int i = 0; i < 3; ++i) rl[i] = std::sqrt(m.m[i][0] * m.m[i][0] + m.m[i][1] * m.m[i][1] + m.m[i][2] * m.m[i][2]);
+    scale = rl[0];
+    if (!(scale > 1e-4f) || std::fabs(rl[1] - scale) > 0.03f * scale || std::fabs(rl[2] - scale) > 0.03f * scale) return false;
+    float A[3][3];   // matriz-coluna padrao A = (R/escala)^T
+    for (int r = 0; r < 3; ++r)
+        for (int c = 0; c < 3; ++c) A[r][c] = m.m[c][r] / scale;
+    for (int i = 0; i < 3; ++i) {   // ortogonalidade
+        const int j = (i + 1) % 3;
+        const float d = m.m[i][0] * m.m[j][0] + m.m[i][1] * m.m[j][1] + m.m[i][2] * m.m[j][2];
+        if (std::fabs(d) > 0.03f * scale * scale) return false;
+    }
+    const float det = A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+    if (det < 0.9f) return false;   // reflexao: lerp simples
+    const float tr = A[0][0] + A[1][1] + A[2][2];
+    if (tr > 0.f) { const float t = std::sqrt(tr + 1.f) * 2.f; q = {0.25f * t, (A[2][1] - A[1][2]) / t, (A[0][2] - A[2][0]) / t, (A[1][0] - A[0][1]) / t}; }
+    else if (A[0][0] > A[1][1] && A[0][0] > A[2][2]) { const float t = std::sqrt(1.f + A[0][0] - A[1][1] - A[2][2]) * 2.f; q = {(A[2][1] - A[1][2]) / t, 0.25f * t, (A[0][1] + A[1][0]) / t, (A[0][2] + A[2][0]) / t}; }
+    else if (A[1][1] > A[2][2]) { const float t = std::sqrt(1.f + A[1][1] - A[0][0] - A[2][2]) * 2.f; q = {(A[0][2] - A[2][0]) / t, (A[0][1] + A[1][0]) / t, 0.25f * t, (A[1][2] + A[2][1]) / t}; }
+    else { const float t = std::sqrt(1.f + A[2][2] - A[0][0] - A[1][1]) * 2.f; q = {(A[1][0] - A[0][1]) / t, (A[0][2] + A[2][0]) / t, (A[1][2] + A[2][1]) / t, 0.25f * t}; }
+    return true;
+}
+
+inline Quat slerp(Quat a, Quat b, float t) {
+    float d = a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z;
+    if (d < 0.f) { b = {-b.w, -b.x, -b.y, -b.z}; d = -d; }
+    float ka, kb;
+    if (d > 0.9995f) { ka = 1.f - t; kb = t; }
+    else { const float th = std::acos(d), sn = std::sin(th); ka = std::sin((1.f - t) * th) / sn; kb = std::sin(t * th) / sn; }
+    Quat r{ka * a.w + kb * b.w, ka * a.x + kb * b.x, ka * a.y + kb * b.y, ka * a.z + kb * b.z};
+    const float n = std::sqrt(r.w * r.w + r.x * r.x + r.y * r.y + r.z * r.z);
+    if (n > 0.f) { r.w /= n; r.x /= n; r.y /= n; r.z /= n; }
+    return r;
+}
+
+inline M4 lerpM4(const M4 &a, const M4 &b, float t) {
+    M4 r;
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j) r.m[i][j] = a.m[i][j] + (b.m[i][j] - a.m[i][j]) * t;   // translacao e coluna 4 (e fallback da rotacao)
+    Quat qa, qb;
+    float sa, sb;
+    if (decomposeRot(a, qa, sa) && decomposeRot(b, qb, sb)) {
+        const Quat q = slerp(qa, qb, t);
+        const float s = sa + (sb - sa) * t;
+        const float x = q.x, y = q.y, z = q.z, w = q.w;
+        const float A[3][3] = {{1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)},
+                               {2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)},
+                               {2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)}};
+        for (int i = 0; i < 3; ++i)
+            for (int j = 0; j < 3; ++j) r.m[i][j] = A[j][i] * s;   // volta para vetores-linha
+    }
+    return r;
+}
 
 // Camera do jogo para uma vista: o `_cs` de viewInfo[view] (posicao em +0x10, matriz em +0x20: as linhas sao os eixos do
 // olho em coordenadas de mundo = direita, FRENTE, cima). worldToScreenMat tem foco 384 sobre 640 px (HFOV ~79,6 graus) e,
@@ -335,17 +400,71 @@ inline GameCamera readGameCamera(const Ram &ram, int view = 0) {
         c.fwd[i] = ram.f32(cs + 0x20 + 16 * 1 + 4 * i);
         c.up[i] = ram.f32(cs + 0x20 + 16 * 2 + 4 * i);
     }
-    const float f0 = ram.f32(addr::worldToScreenMat + 0x40 * view);          // 384: foco horizontal
-    const float fv = -ram.f32(addr::worldToScreenMat + 0x40 * view + 0x18);  // 180,48: foco vertical por campo (entrelacado)
-    if (f0 > 1.f && fv > 1.f) c.fovy = 2.f * std::atan(224.f / (2.f * fv)) * 180.f / 3.14159265f;
+    // worldToScreenMat NAO guarda o foco em elementos fixos: a linha 0 e 384*direita + 2048*frente e a linha 1 e -180,48*cima + 2048*frente
+    // (o jogo embute os eixos da camera). Ler [0][0]/[1][2] cru dava um FOV que mudava com a orientacao da camera (zoom in/out ao girar).
+    const uint32_t wm = addr::worldToScreenMat + 0x40 * view;
+    // So a propria matriz: linha 3 = frente (unitaria); o foco vertical e a parte da linha 1 perpendicular a ela. Misturar com o _cs lido
+    // em outro instante dava picos de FOV de 1-2 graus em leituras rasgadas (o jogo reescreve a matriz e o _cs em momentos diferentes).
+    float r1[3], r3[3], d13 = 0.f, n3 = 0.f;
+    for (int i = 0; i < 3; ++i) { r1[i] = ram.f32(wm + 0x10 + 4 * i); r3[i] = ram.f32(wm + 0x30 + 4 * i); d13 += r1[i] * r3[i]; n3 += r3[i] * r3[i]; }
+    float fv = 0.f;
+    const float f0 = n3 > 0.5f ? 1.f : 0.f;
+    if (n3 > 0.5f) {
+        for (int i = 0; i < 3; ++i) { const float p = r1[i] - d13 / n3 * r3[i]; fv += p * p; }
+        fv = std::sqrt(fv);
+    }
+    if (f0 > 0.5f && fv > 1.f) c.fovy = 2.f * std::atan(224.f / (2.f * fv)) * 180.f / 3.14159265f;
     c.ok = std::isfinite(c.pos[0]) && std::isfinite(c.fwd[0]) && (std::fabs(c.fwd[0]) + std::fabs(c.fwd[1]) + std::fabs(c.fwd[2])) > 0.1f;
     return c;
+}
+
+// Particula desenhada como sprite voltado para a camera (destroços, poeira...). Lida de fx[] (0x5BA280, 98 x 12000 bytes).
+struct Sprite {
+    float pos[3] = {0, 0, 0};
+    float size = 1.f;       // lado do quadrado em unidades do mundo
+    float rot = 0.f;        // radianos, em torno do eixo de visada
+    float rgba[4] = {1, 1, 1, 1};
+    uint32_t texId = 0;     // indice em texInfo (0 = circulo suave procedural)
+    uint64_t tex0 = 0;      // TEX0 do efeito (psm, CBP da paleta)
+    uint32_t cell = 0;      // celula do atlas (celulas de 8x8 texels)
+    uint32_t key = 0;       // fx * 4096 + indice: casa a mesma particula entre dois quadros
+};
+
+// Instantaneo da cena em um quadro do jogo (itens ja com a paleta copiada) para interpolar entre dois quadros.
+struct Snapshot {
+    std::vector<Sprite> sprites;
+    std::vector<DrawItem> items, sky;
+    GameCamera cam;
+    double t = 0.0;     // relogio da apresentacao no momento da captura (segundos)
+    uint32_t g = 0;     // contador de quadros do jogo
+    bool valid = false;
+};
+
+// Mistura de camera: posicao lerp, eixos nlerp, FOV lerp. Corte (teleporte ou giro brusco) = sem mistura.
+inline GameCamera lerpCamera(const GameCamera &a, const GameCamera &b, float t) {
+    GameCamera r = b;
+    if (!a.ok || !b.ok) return r;
+    const float dx = b.pos[0] - a.pos[0], dy = b.pos[1] - a.pos[1], dz = b.pos[2] - a.pos[2];
+    const float dotf = a.fwd[0] * b.fwd[0] + a.fwd[1] * b.fwd[1] + a.fwd[2] * b.fwd[2];
+    if (dx * dx + dy * dy + dz * dz > 400.f * 400.f || dotf < 0.7f) return r;   // corte de camera
+    for (int i = 0; i < 3; ++i) {
+        r.pos[i] = a.pos[i] + (b.pos[i] - a.pos[i]) * t;
+        r.fwd[i] = a.fwd[i] + (b.fwd[i] - a.fwd[i]) * t;
+        r.up[i] = a.up[i] + (b.up[i] - a.up[i]) * t;
+    }
+    for (float *v : {r.fwd, r.up}) {
+        const float n = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        if (n > 1e-6f) { v[0] /= n; v[1] /= n; v[2] /= n; }
+    }
+    r.fovy = a.fovy + (b.fovy - a.fovy) * t;
+    return r;
 }
 
 class Scene {
 public:
     std::vector<DrawItem> items;
     std::vector<DrawItem> sky;   // ceu / nuvens (desenhados antes, centrados na camera)
+    std::vector<Sprite> sprites;   // particulas (destroços, poeira) lidas de fx[]; desenhadas como sprites voltados para a camera
     uint32_t visited = 0;
     uint32_t byOp[64] = {};
 
@@ -534,6 +653,18 @@ public:
             } else return false;
         }
         w = ram.u16(ptr + 0x24); h = ram.u16(ptr + 0x26);
+        static const bool t4swz = std::getenv("WOTM_T4SWZ") != nullptr;   // diagnostico: pixels T4 do pacote como memoria do GS (nibbles embaralhados)
+        if (t4swz && psm == gs::T4 && w && h && w <= 512 && h <= 512) {
+            px.assign(size_t(w) * h, 0);
+            const uint32_t bw = std::max<uint32_t>(1, ram.u8(ptr + 0x2A));
+            for (uint32_t y = 0; y < h; ++y)
+                for (uint32_t x = 0; x < w; ++x) {
+                    const uint32_t n = gs::nibT4(0, bw, x, y);
+                    const uint8_t b = ram.u8(ptr + 0x80 + n / 2);
+                    px[size_t(y) * w + x] = pal[(t0.csa * 16 + ((n & 1) ? (b >> 4) : (b & 15))) & 255];
+                }
+            return true;
+        }
         return gs::decodeUpload(ram.p + ptr + 0x80, ram.size - ptr - 0x80, w, h, psm, t0.csa, pal, px);
     }
 
@@ -749,6 +880,29 @@ public:
         return t.id;
     }
 
+    // Textura de efeito (particulas): `texInfo[id]` guarda o pacote (como nos objetos) e o TEX0 do efeito (fx[i].TEX0ptr) traz psm e CBP da paleta.
+    bool decodeFxTex(const Ram &ram, uint32_t id, uint64_t tex0, std::vector<uint32_t> &px, uint32_t &w, uint32_t &h) const {
+        const gs::Tex0 t0 = gs::Tex0::decode(tex0);
+        const uint32_t ptr = ram.u32(addr::texInfo + 16 * id) & 0x0FFFFFFF;
+        if (!ram.ok(ptr + 0x80)) return false;
+        uint32_t pal[256] = {};
+        const uint32_t psm = ram.u8(ptr + 0x2B);
+        if (psm == gs::T8 || psm == gs::T4) {
+            const auto it = rtxPal.find(t0.cbp);
+            if (it == rtxPal.end()) return false;
+            fillPal(pal, it->second, psm == gs::T8);
+        }
+        w = ram.u16(ptr + 0x24); h = ram.u16(ptr + 0x26);
+        return w && h && gs::decodeUpload(ram.p + ptr + 0x80, ram.size - ptr - 0x80, w, h, psm, t0.csa, pal, px);
+    }
+
+    // diagnostico: WOTM_TEXFROM=<de>:<para> desenha os vertices do slot <de> com a textura do slot <para>
+    static uint32_t texRemap(uint32_t slot) {
+        static int from = -1, to = -1; static bool init = false;
+        if (!init) { init = true; if (const char *e = std::getenv("WOTM_TEXFROM")) std::sscanf(e, "%d:%d", &from, &to); }
+        return (from >= 0 && int(slot) == from) ? uint32_t(to) : slot;
+    }
+
     unsigned textureId(const Ram &ram, uint32_t node, uint32_t slot = 0) {
         const uint64_t key = texKey(ram, node, slot);
         if (!key) return 0;
@@ -807,14 +961,17 @@ public:
     void collect(const Ram &ram, int maxLod = -1) {
         items.clear();
         sky.clear();
+        sprites.clear();
         atMat_ = 0;
         visited = 0;
+        std::memset(destrHist_, 0, sizeof destrHist_);
         std::memset(byOp, 0, sizeof byOp);
         seen_.clear();
         lod_ = maxLod;
         eyeOk_ = false;
         {
             const GameCamera gc = readGameCamera(ram, 0);
+            cam_ = gc;
             eyeOk_ = gc.ok;
             for (int c = 0; c < 3; ++c) eye_[c] = gc.pos[c];
         }
@@ -834,8 +991,248 @@ public:
         }
         csList(ram, addr::csActiveList);
         csList(ram, addr::csHPActiveList);
-        fx.collect(ram);
+        fx.collect(ram);          // particulas com cor/textura/mistura do retail (wotm_fx.hpp); destroços (13) ficam com collectParticles
         collectShadows(ram);
+        collectParticles(ram);
+        static const bool ds = std::getenv("WOTM_DESTRSTAT") != nullptr;
+        if (ds) { std::fprintf(stderr, "[destr] estados:"); for (int i = 0; i < 8; ++i) std::fprintf(stderr, " %u", destrHist_[i]); std::fprintf(stderr, "\n"); }
+    }
+
+    // Copia o estado atual da cena (depois de collect) para um instantaneo: itens, ceu, camera e as paletas de matrizes dos skinned
+    // (a RAM e reescrita a cada quadro do jogo; o instantaneo precisa guardar os valores).
+    Snapshot takeSnapshot(const Ram &ram, double now, uint32_t g) {
+        Snapshot sn;
+        sn.items = items;
+        sn.sky = sky;
+        sn.sprites = sprites;
+        sn.cam = readGameCamera(ram, 0);
+        sn.t = now;
+        sn.g = g;
+        sn.valid = true;
+        std::unordered_map<uint32_t, std::shared_ptr<std::vector<M4>>> byBlock;
+        for (std::vector<DrawItem> *list : {&sn.items, &sn.sky})
+            for (DrawItem &it : *list) {
+                if (!it.animPkt) continue;
+                const uint32_t blk = palette(ram, it);
+                if (!blk) continue;
+                auto &sp = byBlock[blk];
+                if (!sp) {
+                    sp = std::make_shared<std::vector<M4>>();
+                    sp->reserve(32);
+                    for (uint32_t k = 0; k < 32; ++k) sp->push_back(readM4(ram, blk + 0x10 + 0x40 * k));
+                }
+                it.pal = sp;
+            }
+        return sn;
+    }
+
+    // Preenche items/sky com a mistura de A (anterior) e B (atual) em alpha (0 = A, 1 = B) e devolve a camera misturada. Itens que
+    // existem so em B entram sem mistura; saltos grandes (teleporte, troca de LOD) tambem. Atualiza o olho usado no desenho.
+    GameCamera blend(const Snapshot &A, const Snapshot &B, float alpha) {
+        alpha = std::min(1.f, std::max(0.f, alpha));
+        auto mix = [&](const std::vector<DrawItem> &la, const std::vector<DrawItem> &lb, std::vector<DrawItem> &out) {
+            out.clear();
+            out.reserve(lb.size());
+            std::unordered_map<uint64_t, const DrawItem *> amap;
+            amap.reserve(la.size() * 2);
+            {
+                std::unordered_map<uint32_t, uint32_t> occ;
+                for (const DrawItem &a : la) amap[(uint64_t(a.node) << 8) | std::min<uint32_t>(occ[a.node]++, 255)] = &a;
+            }
+            std::unordered_map<uint32_t, uint32_t> occ;
+            std::map<std::pair<const void *, const void *>, std::shared_ptr<std::vector<M4>>> palCache;
+            for (const DrawItem &b : lb) {
+                DrawItem r = b;
+                const auto f = amap.find((uint64_t(b.node) << 8) | std::min<uint32_t>(occ[b.node]++, 255));
+                if (f != amap.end()) {
+                    const DrawItem &a = *f->second;
+                    const float dx = b.m.m[3][0] - a.m.m[3][0], dy = b.m.m[3][1] - a.m.m[3][1], dz = b.m.m[3][2] - a.m.m[3][2];
+                    if (dx * dx + dy * dy + dz * dz < 150.f * 150.f && a.lodIdx == b.lodIdx) {
+                        r.m = lerpM4(a.m, b.m, alpha);
+                        if (a.pal && b.pal && a.pal->size() == b.pal->size() && a.pal != b.pal) {
+                            auto &sp = palCache[{a.pal.get(), b.pal.get()}];
+                            if (!sp) {
+                                sp = std::make_shared<std::vector<M4>>(a.pal->size());
+                                for (size_t k = 0; k < sp->size(); ++k) (*sp)[k] = lerpM4((*a.pal)[k], (*b.pal)[k], alpha);
+                            }
+                            r.pal = sp;
+                        }
+                    }
+                }
+                out.push_back(std::move(r));
+            }
+        };
+        mix(A.items, B.items, items);
+        mix(A.sky, B.sky, sky);
+        {   // particulas: mesma (fx, indice) nos dois quadros -> posicao, tamanho e rotacao misturados
+            std::unordered_map<uint32_t, const Sprite *> am;
+            am.reserve(A.sprites.size() * 2);
+            for (const Sprite &a : A.sprites) am[a.key] = &a;
+            sprites.clear();
+            sprites.reserve(B.sprites.size());
+            for (const Sprite &b : B.sprites) {
+                Sprite r = b;
+                const auto f = am.find(b.key);
+                if (f != am.end()) {
+                    const Sprite &a = *f->second;
+                    const float dx = b.pos[0] - a.pos[0], dy = b.pos[1] - a.pos[1], dz = b.pos[2] - a.pos[2];
+                    if (dx * dx + dy * dy + dz * dz < 200.f * 200.f) {
+                        for (int c = 0; c < 3; ++c) r.pos[c] = a.pos[c] + (b.pos[c] - a.pos[c]) * alpha;
+                        r.size = a.size + (b.size - a.size) * alpha;
+                        r.rot = a.rot + (b.rot - a.rot) * alpha;
+                        for (int c = 0; c < 4; ++c) r.rgba[c] = a.rgba[c] + (b.rgba[c] - a.rgba[c]) * alpha;
+                    }
+                }
+                sprites.push_back(r);
+            }
+        }
+        const GameCamera c = lerpCamera(A.cam, B.cam, alpha);
+        cam_ = c;
+        eyeOk_ = c.ok;
+        for (int i = 0; i < 3; ++i) eye_[i] = c.pos[i];
+        return c;
+    }
+
+    // ---- Particulas (fx[], 0x5BA280: 98 x 0x2EE0 bytes; o VU1 monta os quadrados, aqui viram sprites voltados para a camera) ----
+    // Por efeito: vis.attribs & 0xFF = tipo (3 sprite, 4 texsprite, 13 destroço, 14 pedestre, 15 poeira...), numParticles +0x2ED0, pos[] (+0x2EB0,
+    // 16 bytes: xyz mundo e w = rotacao nos destroços), age[] (+0x2EB8, int16), info.lifetime (+0x2E4A), tamanho min/max (+0x2E38/+0x2E3C),
+    // texLoad[0] (+0x2C40) = indice em texInfo e TEX0ptr (+0x2EBC) = TEX0 (psm, CBP da paleta). Poeira/fumaça "compostas" (texInfo 0xFFFF) nao
+    // tem pixels no jogo (geradas na VRAM): ficam como circulo suave. Destroços (13) usam o atlas FragTex em celulas de 8x8.
+    void collectParticles(const Ram &ram) {
+        static const bool off = std::getenv("WOTM_NOFX") != nullptr;   // diagnostico: sem particulas
+        if (off) return;
+        constexpr uint32_t kFx = 0x005BA280u, kStride = 12000u;
+        for (uint32_t i = 1; i < 98 && sprites.size() < 6000; ++i) {
+            const uint32_t b = kFx + i * kStride;
+            const uint32_t np = ram.u32(b + 0x2ED0);
+            const uint32_t type = ram.u32(b + 0x2E90) & 0xFF;
+            if (!np || np > 1024 || type != 13) continue;   // so destroços; os outros tipos ficam com fx (wotm_fx.hpp: cor, textura e mistura do retail)
+            const uint32_t pos = ram.u32(b + 0x2EB0), age = ram.u32(b + 0x2EB8);
+            if (!ram.ok(pos, 16 * np) || !ram.ok(age, 2 * np)) continue;
+            const int life = int(int16_t(ram.u16(b + 0x2E30 + 0x1A)));
+            const float minS = ram.f32(b + 0x2E30 + 8), maxS = ram.f32(b + 0x2E30 + 0xC);
+            const uint32_t texLoad = ram.u16(b + 0x2C40);
+            const uint32_t t0p = ram.u32(b + 0x2EBC);
+            uint64_t tex0 = 0;
+            if (ram.ok(t0p, 8)) tex0 = uint64_t(ram.u32(t0p)) | (uint64_t(ram.u32(t0p + 4)) << 32);
+            const bool atlas = type == 13 && texLoad != 0xFFFF && tex0;
+            for (uint32_t k = 0; k < np; ++k) {
+                Sprite s;
+                for (int c = 0; c < 3; ++c) s.pos[c] = ram.f32(pos + 16 * k + 4 * c);
+                if (!std::isfinite(s.pos[0]) || !std::isfinite(s.pos[1]) || !std::isfinite(s.pos[2])) continue;
+                const int a = int(int16_t(ram.u16(age + 2 * k)));
+                if (a < 0 || (life > 0 && a >= life)) continue;
+                const float t = life > 0 ? float(a) / float(life) : 0.f;
+                const uint32_t h = (k * 2654435761u) ^ (i * 40503u);
+                s.key = i * 4096u + k;
+                if (atlas) {   // destroço: celula e tamanho fixos por particula, gira com w, some no fim da vida
+                    s.texId = texLoad; s.tex0 = tex0;
+                    s.cell = (h >> 8) & 0xFFFF;
+                    s.size = minS + (maxS - minS) * float((h >> 4) & 255) / 255.f;
+                    s.rot = ram.f32(pos + 16 * k + 12);
+                    s.rgba[3] = t > 0.85f ? (1.f - t) / 0.15f : 1.f;
+                } else {       // poeira/fumaça: circulo suave que cresce e esvanece
+                    s.size = minS + (maxS > minS ? (maxS - minS) * t : 0.f);
+                    if (s.size < 1.f) s.size = 8.f;
+                    s.rgba[0] = 0.78f; s.rgba[1] = 0.72f; s.rgba[2] = 0.65f;
+                    s.rgba[3] = 0.55f * (1.f - t);
+                }
+                sprites.push_back(s);
+            }
+        }
+    }
+
+    unsigned fxTexture(const Ram &ram, uint32_t texId, uint64_t tex0, int &w, int &h) {
+        static Texture2D soft{};
+        if (!texId || !tex0) {
+            if (!soft.id) {   // circulo suave (alfa radial)
+                std::vector<uint32_t> px(64 * 64);
+                for (int y = 0; y < 64; ++y)
+                    for (int x = 0; x < 64; ++x) {
+                        const float d = std::sqrt(float((x - 32) * (x - 32) + (y - 32) * (y - 32))) / 32.f;
+                        const float al = d >= 1.f ? 0.f : (1.f - d) * (1.f - d);
+                        px[size_t(y) * 64 + x] = 0x00FFFFFFu | (uint32_t(al * 255.f) << 24);
+                    }
+                Image img{px.data(), 64, 64, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+                soft = LoadTextureFromImage(img);
+                SetTextureFilter(soft, TEXTURE_FILTER_BILINEAR);
+                SetTextureWrap(soft, TEXTURE_WRAP_CLAMP);
+            }
+            w = h = 64;
+            return soft.id;
+        }
+        const uint64_t key = (0xF0ull << 56) | (uint64_t(texId) << 32) | uint32_t(gs::Tex0::decode(tex0).cbp);
+        auto it = tex_.find(key);
+        if (it != tex_.end()) { w = it->second.width; h = it->second.height; return it->second.id; }
+        Texture2D t{};
+        std::vector<uint32_t> px;
+        uint32_t tw = 0, th = 0;
+        if (decodeFxTex(ram, texId, tex0, px, tw, th)) {
+            Image img{px.data(), int(tw), int(th), 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+            t = LoadTextureFromImage(img);
+            if (t.id) { SetTextureFilter(t, TEXTURE_FILTER_POINT); SetTextureWrap(t, TEXTURE_WRAP_CLAMP); }
+        }
+        tex_[key] = t;
+        w = t.width; h = t.height;
+        return t.id;
+    }
+
+    // Sprites ordenados do mais longe ao mais perto, sem escrever profundidade; um lote por textura.
+    void drawSprites(const Ram &ram) {
+        if (sprites.empty() || !cam_.ok) return;
+        float R[3] = {cam_.fwd[1] * cam_.up[2] - cam_.fwd[2] * cam_.up[1], cam_.fwd[2] * cam_.up[0] - cam_.fwd[0] * cam_.up[2], cam_.fwd[0] * cam_.up[1] - cam_.fwd[1] * cam_.up[0]};
+        const float rn = std::sqrt(R[0] * R[0] + R[1] * R[1] + R[2] * R[2]);
+        if (rn < 1e-6f) return;
+        for (float &v : R) v /= rn;
+        const float *U = cam_.up;
+        std::vector<std::pair<float, uint32_t>> order;
+        order.reserve(sprites.size());
+        for (uint32_t i = 0; i < sprites.size(); ++i) {
+            const Sprite &s = sprites[i];
+            const float dx = s.pos[0] - cam_.pos[0], dy = s.pos[1] - cam_.pos[1], dz = s.pos[2] - cam_.pos[2];
+            if (dx * cam_.fwd[0] + dy * cam_.fwd[1] + dz * cam_.fwd[2] < 1.f) continue;   // atras da camera
+            order.push_back({-(dx * dx + dy * dy + dz * dz), i});   // mais longe primeiro
+        }
+        std::sort(order.begin(), order.end());
+        rlDisableBackfaceCulling();
+        rlDisableDepthMask();
+        unsigned cur = ~0u;
+        bool open = false;
+        for (const auto &o : order) {
+            const Sprite &s = sprites[o.second];
+            int tw = 0, th = 0;
+            const unsigned id = fxTexture(ram, s.texId, s.tex0, tw, th);
+            if (!id) continue;
+            if (id != cur || !open) {
+                if (open) { rlEnd(); rlDrawRenderBatchActive(); }
+                rlBegin(RL_TRIANGLES);
+                rlSetTexture(id);
+                cur = id; open = true;
+            }
+            float u0 = 0.f, v0 = 0.f, u1 = 1.f, v1 = 1.f;
+            if (s.tex0 && tw >= 8 && th >= 8) {   // atlas de celulas 8x8
+                const uint32_t cols = uint32_t(tw) / 8, rows = uint32_t(th) / 8, c = s.cell % (cols * rows);
+                u0 = float(c % cols) * 8.f / float(tw); u1 = u0 + 8.f / float(tw);
+                v0 = float(c / cols) * 8.f / float(th); v1 = v0 + 8.f / float(th);
+            }
+            const float cs = std::cos(s.rot), sn = std::sin(s.rot), hs = s.size * 0.5f;
+            const float ax[3] = {(R[0] * cs + U[0] * sn) * hs, (R[1] * cs + U[1] * sn) * hs, (R[2] * cs + U[2] * sn) * hs};   // eixo "direita" girado
+            const float ay[3] = {(-R[0] * sn + U[0] * cs) * hs, (-R[1] * sn + U[1] * cs) * hs, (-R[2] * sn + U[2] * cs) * hs};   // eixo "cima" girado
+            const unsigned char cr = uint8_t(255.f * std::min(1.f, s.rgba[0])), cg = uint8_t(255.f * std::min(1.f, s.rgba[1])), cb = uint8_t(255.f * std::min(1.f, s.rgba[2])), ca = uint8_t(255.f * std::max(0.f, std::min(1.f, s.rgba[3])));
+            const float cx[4] = {-1, 1, 1, -1}, cy[4] = {-1, -1, 1, 1};   // cantos (esq-baixo, dir-baixo, dir-cima, esq-cima)
+            const float cu[4] = {u0, u1, u1, u0}, cv[4] = {v1, v1, v0, v0};
+            const int tri[6] = {0, 1, 2, 0, 2, 3};
+            for (int q = 0; q < 6; ++q) {
+                const int k = tri[q];
+                rlColor4ub(cr, cg, cb, ca);
+                rlTexCoord2f(cu[k], cv[k]);
+                rlVertex3f(s.pos[0] + ax[0] * cx[k] + ay[0] * cy[k], s.pos[1] + ax[1] * cx[k] + ay[1] * cy[k], s.pos[2] + ax[2] * cx[k] + ay[2] * cy[k]);
+            }
+        }
+        if (open) { rlEnd(); rlDrawRenderBatchActive(); }
+        rlSetTexture(0);
+        rlEnableDepthMask();
+        rlEnableBackfaceCulling();
     }
 
     // Diagnostico: faixa de UV por item texturizado (agrupada por tamanho da faixa).
@@ -1149,7 +1546,8 @@ public:
             rlDrawRenderBatchActive();
             rlEnableDepthMask();
         }
-        // particulas por ultimo (testam profundidade, nao escrevem), na ordem de particleDraw
+        // particulas por ultimo (testam profundidade, nao escrevem): destroços interpolados (drawSprites), depois os demais tipos na ordem de particleDraw
+        if (!wire) drawSprites(ram);
         if (!wire) fx.draw(ram, [&](uint32_t id, uint64_t t0) { return particleTexture(ram, id, t0); });
         if (useShader) EndShaderMode();
     }
@@ -1233,7 +1631,8 @@ public:
             const uint32_t smask = (mdi && mdi->slotMask) ? mdi->slotMask : 1u;
             for (uint32_t sl = 0; sl < 5; ++sl) {
             if (!(smask & (1u << sl))) continue;
-            uint64_t key = wire ? 0 : texKey(ram, list[i].node, sl);
+            { static const int onlySl = std::getenv("WOTM_ONLYSLOT") ? std::atoi(std::getenv("WOTM_ONLYSLOT")) : -1; if (onlySl >= 0 && int(sl) != onlySl) continue; }   // diagnostico: so este slot de textura
+            uint64_t key = wire ? 0 : texKey(ram, list[i].node, texRemap(sl));
             if (far2near) {
                 const M4 &m = list[i].m;
                 const float dx = m.m[3][0] - eye_[0], dy = m.m[3][1] - eye_[1], dz = m.m[3][2] - eye_[2];
@@ -1297,14 +1696,14 @@ public:
             if (o.key != cur || !open || far2near) {
                 if (open) { rlEnd(); rlDrawRenderBatchActive(); }   // um lote por textura (evita o alinhamento automatico do rlgl)
                 cur = o.key;
-                const unsigned id = wire ? 0 : textureId(ram, it.node, slot);
+                const unsigned id = wire ? 0 : textureId(ram, it.node, texRemap(slot));
                 rlBegin(wire ? RL_LINES : RL_TRIANGLES);   // rlBegin com outro modo reseta a textura do lote: setar depois
                 static const bool idc = std::getenv("WOTM_IDCOLOR") != nullptr;   // diagnostico: cor = texId do objeto (leia o pixel para achar o id)
                 rlSetTexture((id && !idc) ? id : white);
                 open = true;
             }
             static const bool idcMode = std::getenv("WOTM_IDCOLOR") != nullptr;   // uma vez: getenv por vertice e lento no Windows
-            const unsigned tid = (wire || !cur) ? 0 : textureId(ram, it.node, slot);
+            const unsigned tid = (wire || !cur) ? 0 : textureId(ram, it.node, texRemap(slot));
             const auto &t = md->tris;
             static const bool forceOpaqueEnv = std::getenv("WOTM_OPAQUE") != nullptr;   // diagnostico: alfa de vertice ignorado em skinned
             const bool forceOpaque = forceOpaqueEnv && md->skinned;
@@ -1312,6 +1711,12 @@ public:
             static const bool noSkin = std::getenv("WOTM_NOSKIN") != nullptr;   // diagnostico: pose de referencia, sem skinning
             static const uint32_t palOverride = std::getenv("WOTM_PALBLOCK") ? uint32_t(std::strtoul(std::getenv("WOTM_PALBLOCK"), nullptr, 16)) : 0;   // diagnostico
             const uint32_t pal = (md->skinned && !noSkin) ? (palOverride ? palOverride : palette(ram, it)) : 0;
+            std::vector<M4> pmTmp;   // paleta lida da RAM (item sem copia: viewer, ou WOTM_PALBLOCK)
+            const M4 *pm = nullptr;
+            if (md->skinned && !noSkin) {
+                if (!palOverride && it.pal && it.pal->size() >= 31) pm = it.pal->data();
+                else if (pal) { for (uint32_t kk = 0; kk < 32; ++kk) pmTmp.push_back(readM4(ram, pal + 0x10 + 0x40 * kk)); pm = pmTmp.data(); }
+            }
             M4 skinM = it.m;
             {   // diagnostico: WOTM_SKINM1=<animPkt hex> usa a matriz do objeto desse item para todos os skinned (isola matriz x paleta)
                 static const uint32_t refPkt = std::getenv("WOTM_SKINM1") ? uint32_t(std::strtoul(std::getenv("WOTM_SKINM1"), nullptr, 16)) : 0;
@@ -1328,7 +1733,7 @@ public:
                 { static const int onlySub = std::getenv("WOTM_SUBPKT") ? std::atoi(std::getenv("WOTM_SUBPKT")) : -1; if (onlySub >= 0 && md->skinned && t[k].sub != onlySub) continue; }
                 float p[3][3];
                 for (int c = 0; c < 3; ++c) {
-                    if (pal) skinVertex(ram, pal, skinM, t[k + c], p[c]);
+                    if (pm) skinVertexPM(pm, skinM, t[k + c], p[c]);
                     else xform(it.m, t[k + c].x, t[k + c].y, t[k + c].z, p[c]);
                     if (fudge) for (int a = 0; a < 3; ++a) p[c][a] = eye_[a] + (p[c][a] - eye_[a]) * fz;
                 }
@@ -1340,7 +1745,7 @@ public:
                         else if (v.isAdc) rlColor4ub(255, 0, 0, 255);   // WOTM_SHOWADC
                         else if (noVcol && md->skinned) rlColor4ub(255, 255, 255, 255);   // diagnostico
                         else rlColor4ub(uint8_t(std::min(255, v.r * 2)), uint8_t(std::min(255, v.g * 2)), uint8_t(std::min(255, v.b * 2)), forceOpaque ? uint8_t(255) : uint8_t(std::min(255, v.a * 4)));
-                        if (tid) rlTexCoord2f(v.u, v.v);
+                        if (tid) { static const char *un = std::getenv("WOTM_UVNEG"); const float su = (un && std::strchr(un, 'u')) ? -1.f : 1.f, sv = (un && std::strchr(un, 'v')) ? -1.f : 1.f; rlTexCoord2f(su * v.u, sv * v.v); }   // diagnostico: WOTM_UVNEG=u|v|uv inverte o sinal do UV
                         rlVertex3f(p[cs[e]][0], p[cs[e]][1], p[cs[e]][2]);
                     }
                 }
@@ -1356,12 +1761,14 @@ private:
     std::unordered_map<uint64_t, Texture2D> tex_;
     std::vector<uint32_t> seen_;   // nos ja visitados neste quadro (ciclos / DAG)
     int lod_ = -1;
+    uint32_t destrHist_[8] = {};   // diagnostico (WOTM_DESTRSTAT): destrutiveis por estado atual
     Shader alphaShader_{};
     bool alphaShaderTried_ = false;
     std::unordered_map<uint64_t, bool> partial_;   // textura (texKey) com alfa semitransparente
     std::vector<Texture2D> shadowTex_;   // silhuetas das sombras (uma por bloqueador desenhado)
     static constexpr int kShadowRes = 128;
     uint32_t resSig_ = 0;   // assinatura dos recursos em fileStatus ja carregados (loadResources)
+    GameCamera cam_;   // camera do ultimo collect/blend (eixos para os sprites)
     bool eyeOk_ = false;
     float eye_[3] = {0, 0, 0};
     uint32_t atMat_ = 0;   // animOutput.atMat do CHAR_INSTANCE que contem o no atual
@@ -1382,6 +1789,23 @@ private:
     // Os codigos de osso (8 bits baixos de x, y, z; & 0x7F = endereco de qword da matriz na paleta) escolhem 3 matrizes e os pesos
     // saem do float w: w1 = w, w2 = frac(w * 2048) (mantissa baixa), w3 = 1 - w1 - w2. pos = w1*Mx*p + w2*My*p + w3*Mz*p.
     // Slot da paleta = (codigo & 0x7F) / 4.
+    static void skinVertexPM(const M4 *pm, const M4 &m, const Vtx &v, float out[3]) {
+        static const bool old2 = std::getenv("WOTM_SKIN2BONE") != nullptr;
+        float w1 = v.w, w2 = 0.f, w3 = 0.f;
+        if (old2) { w1 = std::min(1.f, std::max(0.f, v.w)); w2 = 1.f - w1; }
+        else { const float s = v.w * 2048.f; w2 = s - std::trunc(s); w3 = 1.f - w1 - w2; }
+        const uint8_t codes[3] = {v.cx, v.cy, v.cz};
+        const float ws[3] = {w1, w2, w3};
+        float q[3] = {0, 0, 0};
+        for (int k = 0; k < 3; ++k) {
+            if (ws[k] == 0.f) continue;
+            float a[3];
+            xform(pm[(codes[k] & 0x7F) / 4], v.x, v.y, v.z, a);
+            for (int c = 0; c < 3; ++c) q[c] += a[c] * ws[k];
+        }
+        xform(m, q[0], q[1], q[2], out);
+    }
+
     static void skinVertex(const Ram &ram, uint32_t pal, const M4 &m, const Vtx &v, float out[3]) {
         static const bool old2 = std::getenv("WOTM_SKIN2BONE") != nullptr;   // diagnostico: modelo antigo (2 ossos, w clampado)
         float w1 = v.w, w2 = 0.f, w3 = 0.f;
@@ -1401,6 +1825,80 @@ private:
             for (int c = 0; c < 3; ++c) q[c] += a[c] * ws[k];
         }
         xform(m, q[0], q[1], q[2], out);
+    }
+
+    // ---- CONTROL (hierCtrlNode, 0x2048F0): predios com versao "transparente" quando bloqueiam a visao do monstro ----
+    // No: +4 child1, +8 child2, +0xC numVolumes, +0xE volType, +0x10 esfera (centro, raio em +0x1C), +0x20 volumes BSP (ponteiros).
+    // volType 0: se o olho NAO esta no ar (folha != 0x200) em algum volume -> child2 (camera dentro do predio). volType != 0: para cada
+    // ponto de visada (g_cameraLosPoints: direcao unitaria da camera ate o monstro + distancia em w) o segmento olho->ponto nao pode
+    // atravessar solido (folha != 0x200) de nenhum volume; se atravessar -> child2 (que pode ser nulo = o predio some).
+    static constexpr uint32_t kLosPoints = 0x0050F020, kLosPerView = 0x0050F0C0;
+
+    static void toLocal(const M4 &m, const float w[3], float out[3]) {
+        for (int c = 0; c < 3; ++c) {
+            const float *r = m.m[c];
+            const float n2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+            out[c] = n2 > 1e-9f ? ((w[0] - m.m[3][0]) * r[0] + (w[1] - m.m[3][1]) * r[1] + (w[2] - m.m[3][2]) * r[2]) / n2 : 0.f;
+        }
+    }
+
+    // Folha onde o ponto cai (0x200 = ar), igual a bspPointTest.
+    static int bspPoint(const Ram &ram, uint32_t b, const float p[3]) {
+        int ret = 0x200;
+        for (int guard = 0; b && ram.ok(b, 32) && guard < 64; ++guard) {
+            const float d = ram.f32(b + 0x10) * p[0] + ram.f32(b + 0x14) * p[1] + ram.f32(b + 0x18) * p[2] - ram.f32(b + 0x1C);
+            const bool neg = d < 0.f;
+            ret = neg ? ram.u16(b + 0xE) : ram.u16(b + 0xC);
+            b = neg ? ram.u32(b + 4) : ram.u32(b);
+        }
+        return ret;
+    }
+
+    // Verdadeiro se o segmento a->c atravessa alguma folha que nao seja ar.
+    static bool bspSegHit(const Ram &ram, uint32_t b, const float a[3], const float c[3], int depth = 0) {
+        if (depth > 64) return false;
+        if (!b || !ram.ok(b, 32)) return false;
+        const float n[3] = {ram.f32(b + 0x10), ram.f32(b + 0x14), ram.f32(b + 0x18)}, dd = ram.f32(b + 0x1C);
+        const float d0 = n[0] * a[0] + n[1] * a[1] + n[2] * a[2] - dd, d1 = n[0] * c[0] + n[1] * c[1] + n[2] * c[2] - dd;
+        const uint32_t front = ram.u32(b), back = ram.u32(b + 4);
+        auto side = [&](bool neg, const float p[3], const float q[3]) -> bool {
+            const uint32_t kid = neg ? back : front;
+            if (kid) return bspSegHit(ram, kid, p, q, depth + 1);
+            return (neg ? ram.u16(b + 0xE) : ram.u16(b + 0xC)) != 0x200;   // folha
+        };
+        if (d0 >= 0.f && d1 >= 0.f) return side(false, a, c);
+        if (d0 < 0.f && d1 < 0.f) return side(true, a, c);
+        const float t = d0 / (d0 - d1);
+        const float mid[3] = {a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t, a[2] + (c[2] - a[2]) * t};
+        return d0 >= 0.f ? (side(false, a, mid) || side(true, mid, c)) : (side(true, a, mid) || side(false, mid, c));
+    }
+
+    uint32_t ctrlChild(const Ram &ram, uint32_t node, const M4 &m) const {
+        static const bool off = std::getenv("WOTM_NOCTRL") != nullptr;   // diagnostico: sempre child1 (comportamento antigo)
+        const uint32_t c1 = ram.u32(node + 4), c2 = ram.u32(node + 8);
+        if (off || !eyeOk_) return c1;
+        const uint32_t nvol = std::min<uint32_t>(ram.u8(node + 0xC), 16), vtype = ram.u8(node + 0xE);
+        if (!nvol || !ram.ok(node, 0x20 + 4 * nvol)) return c1;
+        float eyeL[3];
+        toLocal(m, eye_, eyeL);
+        bool visible = true;
+        if (vtype == 0) {
+            for (uint32_t i = 0; i < nvol && visible; ++i)
+                if (bspPoint(ram, ram.u32(node + 0x20 + 4 * i), eyeL) != 0x200) visible = false;
+        } else {
+            const int nlos = std::min<int>(int(ram.u32(kLosPerView)), 2);   // vista 0
+            for (int k = 0; k < nlos && visible; ++k) {
+                const uint32_t pa = kLosPoints + 0x20 * 0 + 16 * k;
+                const float len = ram.f32(pa + 12);
+                if (!(len > 0.f) || len > 1e6f) continue;
+                const float pw[3] = {eye_[0] + ram.f32(pa) * len, eye_[1] + ram.f32(pa + 4) * len, eye_[2] + ram.f32(pa + 8) * len};
+                float pl[3];
+                toLocal(m, pw, pl);
+                for (uint32_t i = 0; i < nvol && visible; ++i)
+                    if (bspSegHit(ram, ram.u32(node + 0x20 + 4 * i), eyeL, pl)) visible = false;
+            }
+        }
+        return visible ? c1 : c2;
     }
 
     bool already(uint32_t n) {
@@ -1469,7 +1967,11 @@ private:
             if (which < n) { const uint32_t c = ram.u32(node + 0xC + 4 * which); if (ram.ok(c)) walk(ram, c, m, depth + 1); }
             break;
         }
-        case 8: { const uint32_t c = ram.u32(node + 4); if (ram.ok(c)) walk(ram, c, m, depth + 1); break; }   // CONTROL: child1
+        case 8: {   // CONTROL: child1 (predio solido) ou child2 (versao "transparente"/ausente) conforme o volume bloqueia a visao do monstro
+            const uint32_t c = ctrlChild(ram, node, m);
+            if (c && ram.ok(c)) walk(ram, c, m, depth + 1);
+            break;
+        }
         case 23: { const uint32_t c = ram.u32(node + 4); if (ram.ok(c)) walk(ram, c, m, depth + 1); break; } // ACTION_DATA
         case 25: {                                                                          // CHAR_INSTANCE
             // As partes do corpo sao nos ANIM_XFORM (hierarquia rigida, sem skinning). O proprio jogo calcula a matriz local de
@@ -1499,7 +2001,23 @@ private:
                  mul(mul(scaleM(sx, sy, sz), translateM(ram.f32(node + 0x30), ram.f32(node + 0x34), ram.f32(node + 0x38))), m), depth);
             break;
         }
-        case 39: { const uint32_t c = ram.u32(node + 0xC); if (ram.ok(c)) walk(ram, c, m, depth + 1); break; } // INTERACTIVE
+        case 39: {                                                                          // INTERACTIVE_STATE (+4 whichChild, +0xC filho)
+            // O filho de um destrutivel e um DESTRUCTIBLE: o jogo escolhe o estado (0 = intacto, depois danificado/ruina...) em
+            // `whichChild` deste no pai (docs/FORMATOS.md, "Destrutiveis"); a travessia desce so para child[whichChild].child.
+            const uint32_t c = ram.u32(node + 0xC);
+            if (!ram.ok(c)) break;
+            if ((ram.u32(c) & 63) == 31) {
+                const uint32_t n = ram.u16(c + 0xA);
+                uint32_t w = ram.u32(node + 4);
+                static const bool noDestr = std::getenv("WOTM_NODESTR") != nullptr;   // diagnostico: sempre o estado 0 (intacto)
+                ++destrHist_[std::min<uint32_t>(w, 7)];
+                if (noDestr || w >= n) w = 0;
+                if (!n) break;
+                const uint32_t ch = ram.u32(c + 0xC + 12 * w);
+                if (ram.ok(ch)) walk(ram, ch, m, depth + 1);
+            } else walk(ram, c, m, depth + 1);
+            break;
+        }
         case 31: {                                                                          // DESTRUCTIBLE: estado 0 (intacto)
             if (ram.u16(node + 0xA)) { const uint32_t c = ram.u32(node + 0xC); if (ram.ok(c)) walk(ram, c, m, depth + 1); }
             break;

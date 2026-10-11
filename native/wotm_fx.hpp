@@ -26,7 +26,8 @@
 //     UV (3 normal, 1 espelha U, 2 espelha V, 0 os dois); a cor sai da tabela pela idade, como no loadColors
 //   - linha: de pos ate pos - vel (a cauda e projetada com a matriz do quadro anterior: borrao de movimento da camera)
 //   - strite: cabeca pos e cauda pos - vel, esticada 2x para cada lado (de pos + 2*vel a pos - 3*vel), largura por pos.w
-// Ainda aproximado: as faixas (sprine, stripe, sweepTrail) ligam particulas consecutivas; kite, wake, frag e dustTrail viram sprites;
+// Destroços (frag, 13) nao passam por aqui: Scene::collectParticles/drawSprites (atlas de celulas 8x8, pos.w = giro, interpolados).
+// Ainda aproximado: as faixas (sprine, stripe, sweepTrail) ligam particulas consecutivas; kite, wake e dustTrail viram sprites;
 // a cauda das linhas e do strite usa a matriz atual.
 #pragma once
 
@@ -132,7 +133,7 @@ public:
             const int maxN = int32_t(ram.u32(b + fxoff::maxParticles));
             const bool built = (ram.u32(b + fxoff::infoAttribs) & 0x400) != 0;
             const int minN = s.type == FX_SPRINE ? 2 : 1;
-            if (built && s.type != 11 && s.n >= minN && s.n <= std::max(maxN, 1) && s.n <= 1024 && ram.ok(ram.u32(b + fxoff::pos), 16 * uint32_t(s.n)))
+            if (built && s.type != 11 && s.type != FX_FRAG && s.n >= minN && s.n <= std::max(maxN, 1) && s.n <= 1024 && ram.ok(ram.u32(b + fxoff::pos), 16 * uint32_t(s.n)))
                 systems.push_back(s);
             i = next;
         }
