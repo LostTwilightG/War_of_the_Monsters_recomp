@@ -135,6 +135,27 @@ int main(int argc, char **argv) {
             done[key] = 1;
         }
     }
+    if (const char *fxd = std::getenv("WOTM_FXDUMP")) {   // depuracao: texturas dos efeitos (fx[] em 0x5BA280, 98 x 12000 bytes) decodificadas da VRAM do dump
+        std::unordered_map<uint64_t, int> done;
+        for (uint32_t i = 1; i < 98; ++i) {
+            const uint32_t b = 0x005BA280u + i * 12000u;
+            const uint32_t np = ram.u32(b + 0x2ED0);
+            const uint32_t t0p = ram.u32(b + 0x2EBC);
+            if (!np || np > 4096 || !ram.ok(t0p, 8)) continue;
+            const uint64_t t0 = uint64_t(ram.u32(t0p)) | (uint64_t(ram.u32(t0p + 4)) << 32);
+            const auto t = wotm::gs::Tex0::decode(t0);
+            std::vector<uint32_t> px;
+            uint32_t w = 0, h = 0;
+            const uint32_t texId = ram.u16(b + 0x2C40);   // texLoad[0]: indice em texInfo
+            const bool ok = scene.decodeFxTex(ram, texId, t0, px, w, h);
+            std::fprintf(stderr, "fx%u vis=%u fxTex=%u texInfo=%u n=%u psm=%02x %ux%u tbp0=%u cbp=%u -> %s\n", i, ram.u32(b + 0x2E90) & 0xFF, ram.u32(b + 0x2E98), texId, np, t.psm, w, h, t.tbp0, t.cbp, ok ? "ok" : "falhou");
+            if (ok && !done.count(t0)) {
+                done[t0] = 1;
+                Image img{px.data(), int(w), int(h), 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+                ExportImage(img, TextFormat("%s_fx%02u.png", fxd, i));
+            }
+        }
+    }
     const wotm::GameCamera gcam = wotm::readGameCamera(ram, 0);
     bool useGame = gcam.ok && !useFree && !haveCam;
     std::fprintf(stderr, "camera do jogo: %s pos %.1f %.1f %.1f fovy %.1f\n", gcam.ok ? "ok" : "ausente", gcam.pos[0], gcam.pos[1], gcam.pos[2], gcam.fovy);

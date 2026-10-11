@@ -19,7 +19,7 @@ for ($i = 0; $i -lt 70; $i++) {
 }
 $env:PS2X_PAD = $base + ";" + ($extra -join ";")
 $env:WOTM_DESTRSTAT = "1"; $env:WOTM_CAMLOG = "1"
-if ($Dump) { $env:PS2X_DUMP_RAM = $Dump }
+if ($Dump) { $env:PS2X_DUMP_RAM = $Dump; $env:PS2X_GS_UPLOADS = "1" }   # uploads do GS ligados: a VRAM do dump guarda as texturas dos efeitos
 $env:PS2X_CD_IMAGE = "$repo\ISO\SCUS_971.97.War of the Monsters.iso"
 Set-Location $dr
 $p = Start-Process -FilePath "$root\build_dev\ps2xRuntime\ps2EntryRunner.exe" -ArgumentList "`"$dr\SCUS_971.97`"" -WorkingDirectory $dr -PassThru -RedirectStandardOutput "$root\atk.out.log" -RedirectStandardError "$root\atk.err.log"

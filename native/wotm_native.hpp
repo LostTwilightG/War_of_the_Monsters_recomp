@@ -403,8 +403,21 @@ inline GameCamera readGameCamera(const Ram &ram, int view = 0) {
     return c;
 }
 
+// Particula desenhada como sprite voltado para a camera (destroços, poeira...). Lida de fx[] (0x5BA280, 98 x 12000 bytes).
+struct Sprite {
+    float pos[3] = {0, 0, 0};
+    float size = 1.f;       // lado do quadrado em unidades do mundo
+    float rot = 0.f;        // radianos, em torno do eixo de visada
+    float rgba[4] = {1, 1, 1, 1};
+    uint32_t texId = 0;     // indice em texInfo (0 = circulo suave procedural)
+    uint64_t tex0 = 0;      // TEX0 do efeito (psm, CBP da paleta)
+    uint32_t cell = 0;      // celula do atlas (celulas de 8x8 texels)
+    uint32_t key = 0;       // fx * 4096 + indice: casa a mesma particula entre dois quadros
+};
+
 // Instantaneo da cena em um quadro do jogo (itens ja com a paleta copiada) para interpolar entre dois quadros.
 struct Snapshot {
+    std::vector<Sprite> sprites;
     std::vector<DrawItem> items, sky;
     GameCamera cam;
     double t = 0.0;     // relogio da apresentacao no momento da captura (segundos)
@@ -436,6 +449,7 @@ class Scene {
 public:
     std::vector<DrawItem> items;
     std::vector<DrawItem> sky;   // ceu / nuvens (desenhados antes, centrados na camera)
+    std::vector<Sprite> sprites;   // particulas (destroços, poeira) lidas de fx[]; desenhadas como sprites voltados para a camera
     uint32_t visited = 0;
     uint32_t byOp[64] = {};
 
@@ -614,6 +628,22 @@ public:
         return gs::decodeUpload(ram.p + ptr + 0x80, ram.size - ptr - 0x80, w, h, psm, t0.csa, pal, px);
     }
 
+    // Textura de efeito (particulas): `texInfo[id]` guarda o pacote (como nos objetos) e o TEX0 do efeito (fx[i].TEX0ptr) traz psm e CBP da paleta.
+    bool decodeFxTex(const Ram &ram, uint32_t id, uint64_t tex0, std::vector<uint32_t> &px, uint32_t &w, uint32_t &h) const {
+        const gs::Tex0 t0 = gs::Tex0::decode(tex0);
+        const uint32_t ptr = ram.u32(addr::texInfo + 16 * id) & 0x0FFFFFFF;
+        if (!ram.ok(ptr + 0x80)) return false;
+        uint32_t pal[256] = {};
+        const uint32_t psm = ram.u8(ptr + 0x2B);
+        if (psm == gs::T8 || psm == gs::T4) {
+            const auto it = rtxPal.find(t0.cbp);
+            if (it == rtxPal.end()) return false;
+            fillPal(pal, it->second, psm == gs::T8);
+        }
+        w = ram.u16(ptr + 0x24); h = ram.u16(ptr + 0x26);
+        return w && h && gs::decodeUpload(ram.p + ptr + 0x80, ram.size - ptr - 0x80, w, h, psm, t0.csa, pal, px);
+    }
+
     unsigned textureId(const Ram &ram, uint32_t node, uint32_t slot = 0) {
         const uint64_t key = texKey(ram, node, slot);
         if (!key) return 0;
@@ -672,6 +702,7 @@ public:
     void collect(const Ram &ram, int maxLod = -1) {
         items.clear();
         sky.clear();
+        sprites.clear();
         atMat_ = 0;
         visited = 0;
         std::memset(destrHist_, 0, sizeof destrHist_);
@@ -681,6 +712,7 @@ public:
         eyeOk_ = false;
         {
             const GameCamera gc = readGameCamera(ram, 0);
+            cam_ = gc;
             eyeOk_ = gc.ok;
             for (int c = 0; c < 3; ++c) eye_[c] = gc.pos[c];
         }
@@ -700,6 +732,7 @@ public:
         }
         csList(ram, addr::csActiveList);
         csList(ram, addr::csHPActiveList);
+        collectParticles(ram);
         static const bool ds = std::getenv("WOTM_DESTRSTAT") != nullptr;
         if (ds) { std::fprintf(stderr, "[destr] estados:"); for (int i = 0; i < 8; ++i) std::fprintf(stderr, " %u", destrHist_[i]); std::fprintf(stderr, "\n"); }
     }
@@ -710,6 +743,7 @@ public:
         Snapshot sn;
         sn.items = items;
         sn.sky = sky;
+        sn.sprites = sprites;
         sn.cam = readGameCamera(ram, 0);
         sn.t = now;
         sn.g = g;
@@ -769,10 +803,175 @@ public:
         };
         mix(A.items, B.items, items);
         mix(A.sky, B.sky, sky);
+        {   // particulas: mesma (fx, indice) nos dois quadros -> posicao, tamanho e rotacao misturados
+            std::unordered_map<uint32_t, const Sprite *> am;
+            am.reserve(A.sprites.size() * 2);
+            for (const Sprite &a : A.sprites) am[a.key] = &a;
+            sprites.clear();
+            sprites.reserve(B.sprites.size());
+            for (const Sprite &b : B.sprites) {
+                Sprite r = b;
+                const auto f = am.find(b.key);
+                if (f != am.end()) {
+                    const Sprite &a = *f->second;
+                    const float dx = b.pos[0] - a.pos[0], dy = b.pos[1] - a.pos[1], dz = b.pos[2] - a.pos[2];
+                    if (dx * dx + dy * dy + dz * dz < 200.f * 200.f) {
+                        for (int c = 0; c < 3; ++c) r.pos[c] = a.pos[c] + (b.pos[c] - a.pos[c]) * alpha;
+                        r.size = a.size + (b.size - a.size) * alpha;
+                        r.rot = a.rot + (b.rot - a.rot) * alpha;
+                        for (int c = 0; c < 4; ++c) r.rgba[c] = a.rgba[c] + (b.rgba[c] - a.rgba[c]) * alpha;
+                    }
+                }
+                sprites.push_back(r);
+            }
+        }
         const GameCamera c = lerpCamera(A.cam, B.cam, alpha);
+        cam_ = c;
         eyeOk_ = c.ok;
         for (int i = 0; i < 3; ++i) eye_[i] = c.pos[i];
         return c;
+    }
+
+    // ---- Particulas (fx[], 0x5BA280: 98 x 0x2EE0 bytes; o VU1 monta os quadrados, aqui viram sprites voltados para a camera) ----
+    // Por efeito: vis.attribs & 0xFF = tipo (3 sprite, 4 texsprite, 13 destroço, 14 pedestre, 15 poeira...), numParticles +0x2ED0, pos[] (+0x2EB0,
+    // 16 bytes: xyz mundo e w = rotacao nos destroços), age[] (+0x2EB8, int16), info.lifetime (+0x2E4A), tamanho min/max (+0x2E38/+0x2E3C),
+    // texLoad[0] (+0x2C40) = indice em texInfo e TEX0ptr (+0x2EBC) = TEX0 (psm, CBP da paleta). Poeira/fumaça "compostas" (texInfo 0xFFFF) nao
+    // tem pixels no jogo (geradas na VRAM): ficam como circulo suave. Destroços (13) usam o atlas FragTex em celulas de 8x8.
+    void collectParticles(const Ram &ram) {
+        static const bool off = std::getenv("WOTM_NOFX") != nullptr;   // diagnostico: sem particulas
+        if (off) return;
+        constexpr uint32_t kFx = 0x005BA280u, kStride = 12000u;
+        for (uint32_t i = 1; i < 98 && sprites.size() < 6000; ++i) {
+            const uint32_t b = kFx + i * kStride;
+            const uint32_t np = ram.u32(b + 0x2ED0);
+            const uint32_t type = ram.u32(b + 0x2E90) & 0xFF;
+            if (!np || np > 1024 || (type != 13 && type != 3 && type != 4 && type != 15)) continue;
+            const uint32_t pos = ram.u32(b + 0x2EB0), age = ram.u32(b + 0x2EB8);
+            if (!ram.ok(pos, 16 * np) || !ram.ok(age, 2 * np)) continue;
+            const int life = int(int16_t(ram.u16(b + 0x2E30 + 0x1A)));
+            const float minS = ram.f32(b + 0x2E30 + 8), maxS = ram.f32(b + 0x2E30 + 0xC);
+            const uint32_t texLoad = ram.u16(b + 0x2C40);
+            const uint32_t t0p = ram.u32(b + 0x2EBC);
+            uint64_t tex0 = 0;
+            if (ram.ok(t0p, 8)) tex0 = uint64_t(ram.u32(t0p)) | (uint64_t(ram.u32(t0p + 4)) << 32);
+            const bool atlas = type == 13 && texLoad != 0xFFFF && tex0;
+            for (uint32_t k = 0; k < np; ++k) {
+                Sprite s;
+                for (int c = 0; c < 3; ++c) s.pos[c] = ram.f32(pos + 16 * k + 4 * c);
+                if (!std::isfinite(s.pos[0]) || !std::isfinite(s.pos[1]) || !std::isfinite(s.pos[2])) continue;
+                const int a = int(int16_t(ram.u16(age + 2 * k)));
+                if (a < 0 || (life > 0 && a >= life)) continue;
+                const float t = life > 0 ? float(a) / float(life) : 0.f;
+                const uint32_t h = (k * 2654435761u) ^ (i * 40503u);
+                s.key = i * 4096u + k;
+                if (atlas) {   // destroço: celula e tamanho fixos por particula, gira com w, some no fim da vida
+                    s.texId = texLoad; s.tex0 = tex0;
+                    s.cell = (h >> 8) & 0xFFFF;
+                    s.size = minS + (maxS - minS) * float((h >> 4) & 255) / 255.f;
+                    s.rot = ram.f32(pos + 16 * k + 12);
+                    s.rgba[3] = t > 0.85f ? (1.f - t) / 0.15f : 1.f;
+                } else {       // poeira/fumaça: circulo suave que cresce e esvanece
+                    s.size = minS + (maxS > minS ? (maxS - minS) * t : 0.f);
+                    if (s.size < 1.f) s.size = 8.f;
+                    s.rgba[0] = 0.78f; s.rgba[1] = 0.72f; s.rgba[2] = 0.65f;
+                    s.rgba[3] = 0.55f * (1.f - t);
+                }
+                sprites.push_back(s);
+            }
+        }
+    }
+
+    unsigned fxTexture(const Ram &ram, uint32_t texId, uint64_t tex0, int &w, int &h) {
+        static Texture2D soft{};
+        if (!texId || !tex0) {
+            if (!soft.id) {   // circulo suave (alfa radial)
+                std::vector<uint32_t> px(64 * 64);
+                for (int y = 0; y < 64; ++y)
+                    for (int x = 0; x < 64; ++x) {
+                        const float d = std::sqrt(float((x - 32) * (x - 32) + (y - 32) * (y - 32))) / 32.f;
+                        const float al = d >= 1.f ? 0.f : (1.f - d) * (1.f - d);
+                        px[size_t(y) * 64 + x] = 0x00FFFFFFu | (uint32_t(al * 255.f) << 24);
+                    }
+                Image img{px.data(), 64, 64, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+                soft = LoadTextureFromImage(img);
+                SetTextureFilter(soft, TEXTURE_FILTER_BILINEAR);
+                SetTextureWrap(soft, TEXTURE_WRAP_CLAMP);
+            }
+            w = h = 64;
+            return soft.id;
+        }
+        const uint64_t key = (0xF0ull << 56) | (uint64_t(texId) << 32) | uint32_t(gs::Tex0::decode(tex0).cbp);
+        auto it = tex_.find(key);
+        if (it != tex_.end()) { w = it->second.width; h = it->second.height; return it->second.id; }
+        Texture2D t{};
+        std::vector<uint32_t> px;
+        uint32_t tw = 0, th = 0;
+        if (decodeFxTex(ram, texId, tex0, px, tw, th)) {
+            Image img{px.data(), int(tw), int(th), 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+            t = LoadTextureFromImage(img);
+            if (t.id) { SetTextureFilter(t, TEXTURE_FILTER_POINT); SetTextureWrap(t, TEXTURE_WRAP_CLAMP); }
+        }
+        tex_[key] = t;
+        w = t.width; h = t.height;
+        return t.id;
+    }
+
+    // Sprites ordenados do mais longe ao mais perto, sem escrever profundidade; um lote por textura.
+    void drawSprites(const Ram &ram) {
+        if (sprites.empty() || !cam_.ok) return;
+        float R[3] = {cam_.fwd[1] * cam_.up[2] - cam_.fwd[2] * cam_.up[1], cam_.fwd[2] * cam_.up[0] - cam_.fwd[0] * cam_.up[2], cam_.fwd[0] * cam_.up[1] - cam_.fwd[1] * cam_.up[0]};
+        const float rn = std::sqrt(R[0] * R[0] + R[1] * R[1] + R[2] * R[2]);
+        if (rn < 1e-6f) return;
+        for (float &v : R) v /= rn;
+        const float *U = cam_.up;
+        std::vector<std::pair<float, uint32_t>> order;
+        order.reserve(sprites.size());
+        for (uint32_t i = 0; i < sprites.size(); ++i) {
+            const Sprite &s = sprites[i];
+            const float dx = s.pos[0] - cam_.pos[0], dy = s.pos[1] - cam_.pos[1], dz = s.pos[2] - cam_.pos[2];
+            if (dx * cam_.fwd[0] + dy * cam_.fwd[1] + dz * cam_.fwd[2] < 1.f) continue;   // atras da camera
+            order.push_back({-(dx * dx + dy * dy + dz * dz), i});   // mais longe primeiro
+        }
+        std::sort(order.begin(), order.end());
+        rlDisableBackfaceCulling();
+        rlDisableDepthMask();
+        unsigned cur = ~0u;
+        bool open = false;
+        for (const auto &o : order) {
+            const Sprite &s = sprites[o.second];
+            int tw = 0, th = 0;
+            const unsigned id = fxTexture(ram, s.texId, s.tex0, tw, th);
+            if (!id) continue;
+            if (id != cur || !open) {
+                if (open) { rlEnd(); rlDrawRenderBatchActive(); }
+                rlBegin(RL_TRIANGLES);
+                rlSetTexture(id);
+                cur = id; open = true;
+            }
+            float u0 = 0.f, v0 = 0.f, u1 = 1.f, v1 = 1.f;
+            if (s.tex0 && tw >= 8 && th >= 8) {   // atlas de celulas 8x8
+                const uint32_t cols = uint32_t(tw) / 8, rows = uint32_t(th) / 8, c = s.cell % (cols * rows);
+                u0 = float(c % cols) * 8.f / float(tw); u1 = u0 + 8.f / float(tw);
+                v0 = float(c / cols) * 8.f / float(th); v1 = v0 + 8.f / float(th);
+            }
+            const float cs = std::cos(s.rot), sn = std::sin(s.rot), hs = s.size * 0.5f;
+            const float ax[3] = {(R[0] * cs + U[0] * sn) * hs, (R[1] * cs + U[1] * sn) * hs, (R[2] * cs + U[2] * sn) * hs};   // eixo "direita" girado
+            const float ay[3] = {(-R[0] * sn + U[0] * cs) * hs, (-R[1] * sn + U[1] * cs) * hs, (-R[2] * sn + U[2] * cs) * hs};   // eixo "cima" girado
+            const unsigned char cr = uint8_t(255.f * std::min(1.f, s.rgba[0])), cg = uint8_t(255.f * std::min(1.f, s.rgba[1])), cb = uint8_t(255.f * std::min(1.f, s.rgba[2])), ca = uint8_t(255.f * std::max(0.f, std::min(1.f, s.rgba[3])));
+            const float cx[4] = {-1, 1, 1, -1}, cy[4] = {-1, -1, 1, 1};   // cantos (esq-baixo, dir-baixo, dir-cima, esq-cima)
+            const float cu[4] = {u0, u1, u1, u0}, cv[4] = {v1, v1, v0, v0};
+            const int tri[6] = {0, 1, 2, 0, 2, 3};
+            for (int q = 0; q < 6; ++q) {
+                const int k = tri[q];
+                rlColor4ub(cr, cg, cb, ca);
+                rlTexCoord2f(cu[k], cv[k]);
+                rlVertex3f(s.pos[0] + ax[0] * cx[k] + ay[0] * cy[k], s.pos[1] + ax[1] * cx[k] + ay[1] * cy[k], s.pos[2] + ax[2] * cx[k] + ay[2] * cy[k]);
+            }
+        }
+        if (open) { rlEnd(); rlDrawRenderBatchActive(); }
+        rlSetTexture(0);
+        rlEnableDepthMask();
+        rlEnableBackfaceCulling();
     }
 
     // Diagnostico: faixa de UV por item texturizado (agrupada por tamanho da faixa).
@@ -1085,6 +1284,7 @@ public:
             rlDrawRenderBatchActive();
             rlEnableDepthMask();
         }
+        if (!wire) drawSprites(ram);   // particulas (destroços, poeira) por cima do mundo
         if (useShader) EndShaderMode();
     }
 
@@ -1301,6 +1501,7 @@ private:
     bool alphaShaderTried_ = false;
     std::unordered_map<uint64_t, bool> partial_;   // textura (texKey) com alfa semitransparente
     uint32_t resSig_ = 0;   // assinatura dos recursos em fileStatus ja carregados (loadResources)
+    GameCamera cam_;   // camera do ultimo collect/blend (eixos para os sprites)
     bool eyeOk_ = false;
     float eye_[3] = {0, 0, 0};
     uint32_t atMat_ = 0;   // animOutput.atMat do CHAR_INSTANCE que contem o no atual
