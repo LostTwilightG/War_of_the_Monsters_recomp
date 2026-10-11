@@ -107,6 +107,9 @@ class Mesh:
         self.prim = None   # campo PRIM da GIF tag (tipo, IIP, TME, FGE, ABE, ...)
 
 
+TRACE = None   # lista opcional: o decodificador anota (cmd, imm) de cada MSCAL/MSCALF/MSCNT
+
+
 def decode_object(img, node):
     """Decodifica o `polyPkt` de um HierObject e devolve `Mesh` (strips de vertices ja resolvidos).
     Objetos skinned sao uma cadeia de sub-pacotes (cada um com tag propria e ate 190 posicoes)."""
@@ -172,6 +175,8 @@ def _decode_packet(img, pp, mesh):
         num = (w >> 16) & 0xFF
         imm = w & 0xFFFF
         a = base + 4 * (i + 1)
+        if TRACE is not None and cmd in (0x14, 0x15, 0x17):
+            TRACE.append((cmd, imm))   # diagnostico: MSCAL/MSCALF/MSCNT (entrada do microprograma)
         if cmd >= 0x60:
             vn, vl = (cmd >> 2) & 3, cmd & 3
             n = num or 256
