@@ -625,6 +625,18 @@ public:
             fillPal(pal, it->second, psm == gs::T8);
         }
         w = ram.u16(ptr + 0x24); h = ram.u16(ptr + 0x26);
+        static const bool t4swz = std::getenv("WOTM_T4SWZ") != nullptr;   // diagnostico: pixels T4 do pacote como memoria do GS (nibbles embaralhados)
+        if (t4swz && psm == gs::T4 && w && h && w <= 512 && h <= 512) {
+            px.assign(size_t(w) * h, 0);
+            const uint32_t bw = std::max<uint32_t>(1, ram.u8(ptr + 0x2A));
+            for (uint32_t y = 0; y < h; ++y)
+                for (uint32_t x = 0; x < w; ++x) {
+                    const uint32_t n = gs::nibT4(0, bw, x, y);
+                    const uint8_t b = ram.u8(ptr + 0x80 + n / 2);
+                    px[size_t(y) * w + x] = pal[(t0.csa * 16 + ((n & 1) ? (b >> 4) : (b & 15))) & 255];
+                }
+            return true;
+        }
         return gs::decodeUpload(ram.p + ptr + 0x80, ram.size - ptr - 0x80, w, h, psm, t0.csa, pal, px);
     }
 
@@ -1367,6 +1379,7 @@ public:
             const uint32_t smask = (mdi && mdi->slotMask) ? mdi->slotMask : 1u;
             for (uint32_t sl = 0; sl < 5; ++sl) {
             if (!(smask & (1u << sl))) continue;
+            { static const int onlySl = std::getenv("WOTM_ONLYSLOT") ? std::atoi(std::getenv("WOTM_ONLYSLOT")) : -1; if (onlySl >= 0 && int(sl) != onlySl) continue; }   // diagnostico: so este slot de textura
             uint64_t key = wire ? 0 : texKey(ram, list[i].node, sl);
             if (far2near) {
                 const M4 &m = list[i].m;

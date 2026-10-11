@@ -120,19 +120,83 @@ int main(int argc, char **argv) {
 
     if (texdump) {   // depuracao: grava as texturas decodificadas (TEX0 distintos) em <texdump>_<n>.png
         std::unordered_map<uint64_t, int> done;
-        for (const auto &it : scene.items) {
-            const uint64_t key = wotm::Scene::texKey(ram, it.node);
+        for (const auto &it : scene.items) for (uint32_t slot = 0; slot < std::min<uint32_t>(std::max<uint32_t>(1, ram.u16(it.node + 0x5A)), 5); ++slot) {
+            const uint64_t key = wotm::Scene::texKey(ram, it.node, slot);
             if (!key || done.count(key) || done.size() >= 400) continue;
             std::vector<uint32_t> px;
             uint32_t w = 0, h = 0;
-            const bool ok = scene.decodeTex(ram, it.node, px, w, h);
-            const auto t = wotm::gs::Tex0::decode(wotm::Scene::objectTex0(ram, it.node));
+            const bool ok = scene.decodeTex(ram, it.node, px, w, h, slot);
+            const auto t = wotm::gs::Tex0::decode(wotm::Scene::objectTex0(ram, it.node, slot));
             std::fprintf(stderr, "texId=%u psm=%02x %ux%u tw=%u th=%u tbp0=%u tbw=%u cbp=%u cpsm=%u csa=%u -> %s\n", unsigned(key >> 40) & 0xFFFF, t.psm, w, h, 1u << t.tw, 1u << t.th, t.tbp0, t.tbw, t.cbp, t.cpsm, t.csa, ok ? "ok" : "falhou");
             if (ok) {
                 Image img{px.data(), int(w), int(h), 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
                 ExportImage(img, TextFormat("%s_%02d.png", texdump, int(done.size())));
             }
             done[key] = 1;
+        }
+    }
+    if (const char *wt = std::getenv("WOTM_NODETEX")) {   // depuracao: lista os objetos cujo texId[0] e <wt> (texIds, numTextures e TEX0 de cada contexto)
+        const uint32_t want = uint32_t(std::atoi(wt));
+        int shown = 0;
+        for (const auto &it : scene.items) {
+            if (ram.u16(it.node + 0x50) != want || shown++ >= 8) continue;
+            std::fprintf(stderr, "pos(%.0f %.0f %.0f) ", it.m.m[3][0], it.m.m[3][1], it.m.m[3][2]);
+            std::fprintf(stderr, "bits=%08x envW=%.2f ", ram.u32(it.node + 0xC), ram.f32(it.node + 0x5C));
+            std::fprintf(stderr, "no %06x texId=[%u %u %u %u %u] numTex=%u tex0:", it.node, ram.u16(it.node + 0x50), ram.u16(it.node + 0x52), ram.u16(it.node + 0x54), ram.u16(it.node + 0x56), ram.u16(it.node + 0x58), ram.u16(it.node + 0x5A));
+            for (uint32_t k = 0; k < std::min<uint32_t>(ram.u16(it.node + 0x5A), 5); ++k) {
+                const uint64_t v = wotm::Scene::objectTex0(ram, it.node, k);
+                const auto t = wotm::gs::Tex0::decode(v);
+                std::fprintf(stderr, " [psm=%02x tbp0=%u cbp=%u tw=%u th=%u]", t.psm, t.tbp0, t.cbp, 1u << t.tw, 1u << t.th);
+            }
+            if (const auto *md = scene.mesh(ram, it.node)) {
+                uint32_t per[8] = {};
+                for (const auto &v : md->tris) ++per[v.slot & 7];
+                std::fprintf(stderr, "  slotMask=%x verts/slot: %u %u %u %u %u", md->slotMask, per[0], per[1], per[2], per[3], per[4]);
+            }
+            std::fprintf(stderr, "\n");
+        }
+    }
+    if (std::getenv("WOTM_T4SMOOTH")) {   // depuracao: para cada pacote T4 de texInfo, suavidade (diferenca media entre vizinhos) linear x como memoria do GS
+        std::vector<uint32_t> swz;
+        uint32_t nlin = 0;
+        for (uint32_t id = 0; id < 400; ++id) {
+            const uint32_t ptr = ram.u32(wotm::addr::texInfo + 16 * id) & 0x0FFFFFFF;
+            if (!ram.ok(ptr + 0x80) || ram.u8(ptr + 0x2B) != wotm::gs::T4) continue;
+            const uint32_t w = ram.u16(ptr + 0x24), h = ram.u16(ptr + 0x26), bw = std::max<uint32_t>(1, ram.u8(ptr + 0x2A));
+            if (w < 16 || h < 16 || w > 256 || h > 256 || !ram.ok(ptr + 0x80 + w * h / 2)) continue;
+            double lin = 0, sw = 0;
+            uint32_t n = 0;
+            for (uint32_t y = 0; y < h; ++y)
+                for (uint32_t x = 0; x + 1 < w; ++x) {
+                    auto nib = [&](uint32_t idx) { const uint8_t b = ram.u8(ptr + 0x80 + idx / 2); return int((idx & 1) ? (b >> 4) : (b & 15)); };
+                    lin += std::abs(nib(y * w + x) - nib(y * w + x + 1));
+                    sw += std::abs(nib(wotm::gs::nibT4(0, bw, x, y)) - nib(wotm::gs::nibT4(0, bw, x + 1, y)));
+                    ++n;
+                }
+            lin /= n; sw /= n;
+            if (sw < lin * 0.6) swz.push_back(id); else ++nlin;
+        }
+        std::fprintf(stderr, "T4: %u linear(es); %zu mais suaves como memoria do GS:", nlin, swz.size());
+        for (uint32_t id : swz) std::fprintf(stderr, " %u", id);
+        std::fprintf(stderr, "\n");
+    }
+    if (const char *pc = std::getenv("WOTM_PALCMP")) {   // depuracao: paleta do CBP <pc> no .RTX carregado x na VRAM do dump (16 primeiras cores, RGBA)
+        const uint32_t cbp = uint32_t(std::atoi(pc));
+        const auto it = scene.rtxPal.find(cbp);
+        std::fprintf(stderr, "paleta CBP %u: RTX %s\n", cbp, it == scene.rtxPal.end() ? "ausente" : "presente");
+        if (it != scene.rtxPal.end()) {
+            std::fprintf(stderr, "  RTX (%zu entradas):", it->second.size());
+            for (size_t k = 0; k < std::min<size_t>(16, it->second.size()); ++k) std::fprintf(stderr, " %08x", it->second[k]);
+            std::fprintf(stderr, "\n");
+        }
+        if (scene.vram.ok()) {
+            wotm::gs::Tex0 t{};
+            t.psm = wotm::gs::T4; t.cbp = cbp; t.cpsm = 0; t.csm = 0; t.csa = 0;
+            uint32_t pv[256] = {};
+            wotm::gs::readPalette(scene.vram, t, pv);
+            std::fprintf(stderr, "  VRAM:");
+            for (int k = 0; k < 16; ++k) std::fprintf(stderr, " %08x", pv[k]);
+            std::fprintf(stderr, "\n");
         }
     }
     if (const char *fxd = std::getenv("WOTM_FXDUMP")) {   // depuracao: texturas dos efeitos (fx[] em 0x5BA280, 98 x 12000 bytes) decodificadas da VRAM do dump
