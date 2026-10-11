@@ -297,12 +297,73 @@ struct DrawItem {
     uint32_t node;   // HierObject
     uint32_t animPkt = 0;   // CHAR_INSTANCE::animPktPtr (paleta de matrizes dos objetos skinned)
     int lodIdx = 0;         // indice do LOD escolhido (animPktPtr[lodIdx] = cadeia DMA da paleta)
+    std::shared_ptr<std::vector<M4>> pal;   // copia das 31 matrizes da paleta (preenchida por takeSnapshot; vazia = ler da RAM)
 };
 
 struct Camera {
     float pos[3] = {0, 0, 0};
     float yaw = 0, pitch = 0;   // radianos; yaw 0 olha para +X, Z para cima
 };
+
+// ---------------------------------------------------------------- interpolacao entre quadros do jogo
+// O jogo atualiza a 30 quadros/s e a tela desenha a 60: sem interpolar, camera e animacoes ficam "picotadas". A camada ao vivo guarda dois
+// instantaneos (A anterior, B atual) e desenha a mistura; a rotacao usa slerp (lerp elemento a elemento encolhe a malha em giros rapidos).
+struct Quat { float w, x, y, z; };
+
+// Rotacao (linhas = imagens dos eixos) + escala uniforme; falso se a matriz nao for rotacao * escala uniforme (ai o chamador faz lerp simples).
+inline bool decomposeRot(const M4 &m, Quat &q, float &scale) {
+    float rl[3];
+    for (int i = 0; i < 3; ++i) rl[i] = std::sqrt(m.m[i][0] * m.m[i][0] + m.m[i][1] * m.m[i][1] + m.m[i][2] * m.m[i][2]);
+    scale = rl[0];
+    if (!(scale > 1e-4f) || std::fabs(rl[1] - scale) > 0.03f * scale || std::fabs(rl[2] - scale) > 0.03f * scale) return false;
+    float A[3][3];   // matriz-coluna padrao A = (R/escala)^T
+    for (int r = 0; r < 3; ++r)
+        for (int c = 0; c < 3; ++c) A[r][c] = m.m[c][r] / scale;
+    for (int i = 0; i < 3; ++i) {   // ortogonalidade
+        const int j = (i + 1) % 3;
+        const float d = m.m[i][0] * m.m[j][0] + m.m[i][1] * m.m[j][1] + m.m[i][2] * m.m[j][2];
+        if (std::fabs(d) > 0.03f * scale * scale) return false;
+    }
+    const float det = A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+    if (det < 0.9f) return false;   // reflexao: lerp simples
+    const float tr = A[0][0] + A[1][1] + A[2][2];
+    if (tr > 0.f) { const float t = std::sqrt(tr + 1.f) * 2.f; q = {0.25f * t, (A[2][1] - A[1][2]) / t, (A[0][2] - A[2][0]) / t, (A[1][0] - A[0][1]) / t}; }
+    else if (A[0][0] > A[1][1] && A[0][0] > A[2][2]) { const float t = std::sqrt(1.f + A[0][0] - A[1][1] - A[2][2]) * 2.f; q = {(A[2][1] - A[1][2]) / t, 0.25f * t, (A[0][1] + A[1][0]) / t, (A[0][2] + A[2][0]) / t}; }
+    else if (A[1][1] > A[2][2]) { const float t = std::sqrt(1.f + A[1][1] - A[0][0] - A[2][2]) * 2.f; q = {(A[0][2] - A[2][0]) / t, (A[0][1] + A[1][0]) / t, 0.25f * t, (A[1][2] + A[2][1]) / t}; }
+    else { const float t = std::sqrt(1.f + A[2][2] - A[0][0] - A[1][1]) * 2.f; q = {(A[1][0] - A[0][1]) / t, (A[0][2] + A[2][0]) / t, (A[1][2] + A[2][1]) / t, 0.25f * t}; }
+    return true;
+}
+
+inline Quat slerp(Quat a, Quat b, float t) {
+    float d = a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z;
+    if (d < 0.f) { b = {-b.w, -b.x, -b.y, -b.z}; d = -d; }
+    float ka, kb;
+    if (d > 0.9995f) { ka = 1.f - t; kb = t; }
+    else { const float th = std::acos(d), sn = std::sin(th); ka = std::sin((1.f - t) * th) / sn; kb = std::sin(t * th) / sn; }
+    Quat r{ka * a.w + kb * b.w, ka * a.x + kb * b.x, ka * a.y + kb * b.y, ka * a.z + kb * b.z};
+    const float n = std::sqrt(r.w * r.w + r.x * r.x + r.y * r.y + r.z * r.z);
+    if (n > 0.f) { r.w /= n; r.x /= n; r.y /= n; r.z /= n; }
+    return r;
+}
+
+inline M4 lerpM4(const M4 &a, const M4 &b, float t) {
+    M4 r;
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j) r.m[i][j] = a.m[i][j] + (b.m[i][j] - a.m[i][j]) * t;   // translacao e coluna 4 (e fallback da rotacao)
+    Quat qa, qb;
+    float sa, sb;
+    if (decomposeRot(a, qa, sa) && decomposeRot(b, qb, sb)) {
+        const Quat q = slerp(qa, qb, t);
+        const float s = sa + (sb - sa) * t;
+        const float x = q.x, y = q.y, z = q.z, w = q.w;
+        const float A[3][3] = {{1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)},
+                               {2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)},
+                               {2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)}};
+        for (int i = 0; i < 3; ++i)
+            for (int j = 0; j < 3; ++j) r.m[i][j] = A[j][i] * s;   // volta para vetores-linha
+    }
+    return r;
+}
 
 // Camera do jogo para uma vista: o `_cs` de viewInfo[view] (posicao em +0x10, matriz em +0x20: as linhas sao os eixos do
 // olho em coordenadas de mundo = direita, FRENTE, cima). worldToScreenMat tem foco 384 sobre 640 px (HFOV ~79,6 graus) e,
@@ -340,6 +401,35 @@ inline GameCamera readGameCamera(const Ram &ram, int view = 0) {
     if (f0 > 0.5f && fv > 1.f) c.fovy = 2.f * std::atan(224.f / (2.f * fv)) * 180.f / 3.14159265f;
     c.ok = std::isfinite(c.pos[0]) && std::isfinite(c.fwd[0]) && (std::fabs(c.fwd[0]) + std::fabs(c.fwd[1]) + std::fabs(c.fwd[2])) > 0.1f;
     return c;
+}
+
+// Instantaneo da cena em um quadro do jogo (itens ja com a paleta copiada) para interpolar entre dois quadros.
+struct Snapshot {
+    std::vector<DrawItem> items, sky;
+    GameCamera cam;
+    double t = 0.0;     // relogio da apresentacao no momento da captura (segundos)
+    uint32_t g = 0;     // contador de quadros do jogo
+    bool valid = false;
+};
+
+// Mistura de camera: posicao lerp, eixos nlerp, FOV lerp. Corte (teleporte ou giro brusco) = sem mistura.
+inline GameCamera lerpCamera(const GameCamera &a, const GameCamera &b, float t) {
+    GameCamera r = b;
+    if (!a.ok || !b.ok) return r;
+    const float dx = b.pos[0] - a.pos[0], dy = b.pos[1] - a.pos[1], dz = b.pos[2] - a.pos[2];
+    const float dotf = a.fwd[0] * b.fwd[0] + a.fwd[1] * b.fwd[1] + a.fwd[2] * b.fwd[2];
+    if (dx * dx + dy * dy + dz * dz > 400.f * 400.f || dotf < 0.7f) return r;   // corte de camera
+    for (int i = 0; i < 3; ++i) {
+        r.pos[i] = a.pos[i] + (b.pos[i] - a.pos[i]) * t;
+        r.fwd[i] = a.fwd[i] + (b.fwd[i] - a.fwd[i]) * t;
+        r.up[i] = a.up[i] + (b.up[i] - a.up[i]) * t;
+    }
+    for (float *v : {r.fwd, r.up}) {
+        const float n = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        if (n > 1e-6f) { v[0] /= n; v[1] /= n; v[2] /= n; }
+    }
+    r.fovy = a.fovy + (b.fovy - a.fovy) * t;
+    return r;
 }
 
 class Scene {
@@ -609,6 +699,77 @@ public:
         }
         csList(ram, addr::csActiveList);
         csList(ram, addr::csHPActiveList);
+    }
+
+    // Copia o estado atual da cena (depois de collect) para um instantaneo: itens, ceu, camera e as paletas de matrizes dos skinned
+    // (a RAM e reescrita a cada quadro do jogo; o instantaneo precisa guardar os valores).
+    Snapshot takeSnapshot(const Ram &ram, double now, uint32_t g) {
+        Snapshot sn;
+        sn.items = items;
+        sn.sky = sky;
+        sn.cam = readGameCamera(ram, 0);
+        sn.t = now;
+        sn.g = g;
+        sn.valid = true;
+        std::unordered_map<uint32_t, std::shared_ptr<std::vector<M4>>> byBlock;
+        for (std::vector<DrawItem> *list : {&sn.items, &sn.sky})
+            for (DrawItem &it : *list) {
+                if (!it.animPkt) continue;
+                const uint32_t blk = palette(ram, it);
+                if (!blk) continue;
+                auto &sp = byBlock[blk];
+                if (!sp) {
+                    sp = std::make_shared<std::vector<M4>>();
+                    sp->reserve(32);
+                    for (uint32_t k = 0; k < 32; ++k) sp->push_back(readM4(ram, blk + 0x10 + 0x40 * k));
+                }
+                it.pal = sp;
+            }
+        return sn;
+    }
+
+    // Preenche items/sky com a mistura de A (anterior) e B (atual) em alpha (0 = A, 1 = B) e devolve a camera misturada. Itens que
+    // existem so em B entram sem mistura; saltos grandes (teleporte, troca de LOD) tambem. Atualiza o olho usado no desenho.
+    GameCamera blend(const Snapshot &A, const Snapshot &B, float alpha) {
+        alpha = std::min(1.f, std::max(0.f, alpha));
+        auto mix = [&](const std::vector<DrawItem> &la, const std::vector<DrawItem> &lb, std::vector<DrawItem> &out) {
+            out.clear();
+            out.reserve(lb.size());
+            std::unordered_map<uint64_t, const DrawItem *> amap;
+            amap.reserve(la.size() * 2);
+            {
+                std::unordered_map<uint32_t, uint32_t> occ;
+                for (const DrawItem &a : la) amap[(uint64_t(a.node) << 8) | std::min<uint32_t>(occ[a.node]++, 255)] = &a;
+            }
+            std::unordered_map<uint32_t, uint32_t> occ;
+            std::map<std::pair<const void *, const void *>, std::shared_ptr<std::vector<M4>>> palCache;
+            for (const DrawItem &b : lb) {
+                DrawItem r = b;
+                const auto f = amap.find((uint64_t(b.node) << 8) | std::min<uint32_t>(occ[b.node]++, 255));
+                if (f != amap.end()) {
+                    const DrawItem &a = *f->second;
+                    const float dx = b.m.m[3][0] - a.m.m[3][0], dy = b.m.m[3][1] - a.m.m[3][1], dz = b.m.m[3][2] - a.m.m[3][2];
+                    if (dx * dx + dy * dy + dz * dz < 150.f * 150.f && a.lodIdx == b.lodIdx) {
+                        r.m = lerpM4(a.m, b.m, alpha);
+                        if (a.pal && b.pal && a.pal->size() == b.pal->size() && a.pal != b.pal) {
+                            auto &sp = palCache[{a.pal.get(), b.pal.get()}];
+                            if (!sp) {
+                                sp = std::make_shared<std::vector<M4>>(a.pal->size());
+                                for (size_t k = 0; k < sp->size(); ++k) (*sp)[k] = lerpM4((*a.pal)[k], (*b.pal)[k], alpha);
+                            }
+                            r.pal = sp;
+                        }
+                    }
+                }
+                out.push_back(std::move(r));
+            }
+        };
+        mix(A.items, B.items, items);
+        mix(A.sky, B.sky, sky);
+        const GameCamera c = lerpCamera(A.cam, B.cam, alpha);
+        eyeOk_ = c.ok;
+        for (int i = 0; i < 3; ++i) eye_[i] = c.pos[i];
+        return c;
     }
 
     // Diagnostico: faixa de UV por item texturizado (agrupada por tamanho da faixa).
@@ -1082,6 +1243,12 @@ public:
             static const bool noSkin = std::getenv("WOTM_NOSKIN") != nullptr;   // diagnostico: pose de referencia, sem skinning
             static const uint32_t palOverride = std::getenv("WOTM_PALBLOCK") ? uint32_t(std::strtoul(std::getenv("WOTM_PALBLOCK"), nullptr, 16)) : 0;   // diagnostico
             const uint32_t pal = (md->skinned && !noSkin) ? (palOverride ? palOverride : palette(ram, it)) : 0;
+            std::vector<M4> pmTmp;   // paleta lida da RAM (item sem copia: viewer, ou WOTM_PALBLOCK)
+            const M4 *pm = nullptr;
+            if (md->skinned && !noSkin) {
+                if (!palOverride && it.pal && it.pal->size() >= 31) pm = it.pal->data();
+                else if (pal) { for (uint32_t kk = 0; kk < 32; ++kk) pmTmp.push_back(readM4(ram, pal + 0x10 + 0x40 * kk)); pm = pmTmp.data(); }
+            }
             M4 skinM = it.m;
             {   // diagnostico: WOTM_SKINM1=<animPkt hex> usa a matriz do objeto desse item para todos os skinned (isola matriz x paleta)
                 static const uint32_t refPkt = std::getenv("WOTM_SKINM1") ? uint32_t(std::strtoul(std::getenv("WOTM_SKINM1"), nullptr, 16)) : 0;
@@ -1098,7 +1265,7 @@ public:
                 { static const int onlySub = std::getenv("WOTM_SUBPKT") ? std::atoi(std::getenv("WOTM_SUBPKT")) : -1; if (onlySub >= 0 && md->skinned && t[k].sub != onlySub) continue; }
                 float p[3][3];
                 for (int c = 0; c < 3; ++c) {
-                    if (pal) skinVertex(ram, pal, skinM, t[k + c], p[c]);
+                    if (pm) skinVertexPM(pm, skinM, t[k + c], p[c]);
                     else xform(it.m, t[k + c].x, t[k + c].y, t[k + c].z, p[c]);
                     if (fudge) for (int a = 0; a < 3; ++a) p[c][a] = eye_[a] + (p[c][a] - eye_[a]) * fz;
                 }
@@ -1150,6 +1317,23 @@ private:
     // Os codigos de osso (8 bits baixos de x, y, z; & 0x7F = endereco de qword da matriz na paleta) escolhem 3 matrizes e os pesos
     // saem do float w: w1 = w, w2 = frac(w * 2048) (mantissa baixa), w3 = 1 - w1 - w2. pos = w1*Mx*p + w2*My*p + w3*Mz*p.
     // Slot da paleta = (codigo & 0x7F) / 4.
+    static void skinVertexPM(const M4 *pm, const M4 &m, const Vtx &v, float out[3]) {
+        static const bool old2 = std::getenv("WOTM_SKIN2BONE") != nullptr;
+        float w1 = v.w, w2 = 0.f, w3 = 0.f;
+        if (old2) { w1 = std::min(1.f, std::max(0.f, v.w)); w2 = 1.f - w1; }
+        else { const float s = v.w * 2048.f; w2 = s - std::trunc(s); w3 = 1.f - w1 - w2; }
+        const uint8_t codes[3] = {v.cx, v.cy, v.cz};
+        const float ws[3] = {w1, w2, w3};
+        float q[3] = {0, 0, 0};
+        for (int k = 0; k < 3; ++k) {
+            if (ws[k] == 0.f) continue;
+            float a[3];
+            xform(pm[(codes[k] & 0x7F) / 4], v.x, v.y, v.z, a);
+            for (int c = 0; c < 3; ++c) q[c] += a[c] * ws[k];
+        }
+        xform(m, q[0], q[1], q[2], out);
+    }
+
     static void skinVertex(const Ram &ram, uint32_t pal, const M4 &m, const Vtx &v, float out[3]) {
         static const bool old2 = std::getenv("WOTM_SKIN2BONE") != nullptr;   // diagnostico: modelo antigo (2 ossos, w clampado)
         float w1 = v.w, w2 = 0.f, w3 = 0.f;
