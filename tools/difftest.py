@@ -125,6 +125,10 @@ def patch_code(buf, base=0, rec=None):
             w = (0x1C << 26) | (w & 0x03FFFFC0) | 0x02
         elif op == 0x1C and (w & 0x7FF) == ((0x12 << 6) | 0x29):                   # por -> or
             w = (w & 0x03FFF800) | 0x25
+        elif op == 0x11 and ((w >> 21) & 31) == 0x10 and (w & 0x3F) in (0x28, 0x29):  # max.s/min.s -> nop (the hook computes fd)
+            if rec is not None:
+                rec[base + i] = ('max.s' if (w & 0x3F) == 0x28 else 'min.s', (w >> 6) & 31, (w >> 11) & 31, (w >> 16) & 31)
+            w = 0
         else:
             continue
         struct.pack_into('<I', out, i, w)
@@ -343,7 +347,11 @@ class Run:
 
     def _hook_code(self, uc, addr, size, ud):
         q = self.qw.get(addr)
-        if q:
+        if q and q[0] in ('max.s', 'min.s'):
+            kind, fd, fs, ft = q
+            a, b = (struct.unpack('<f', struct.pack('<I', uc.reg_read(UC_MIPS_REG_F0 + r) & 0xFFFFFFFF))[0] for r in (fs, ft))
+            uc.reg_write(UC_MIPS_REG_F0 + fd, struct.unpack('<I', struct.pack('<f', max(a, b) if kind == 'max.s' else min(a, b)))[0])
+        elif q:
             kind, rt, base, off = q
             ea = (uc.reg_read(UC_MIPS_REG_0 + base) + off) & 0xFFFFFFFF
             try:

@@ -370,10 +370,50 @@ public:
     int transitionOK(void);
     void detach(void);
 };
+/* Stunned (Monster+0x10714): after an optional recoil the monster loops animation 0x8E with stars over its head
+ * (starsCs, at owner + 0x3E60) until `hold` reaches 0 or maxTime seconds pass. Like StateImpaled, `hold` starts at 100,
+ * regains regenRate per field and loses struggleCost per fresh press of any PadEntry::face button. */
 class StateStunned : public MonsterState {
 public:
+    float blendIn;      /* 0x14: into the stunned loop (250) */
+    float maxTime;      /* 0x18: seconds (15) */
+    float regenRate;    /* 0x1C: hold regained per field (0.05) */
+    float struggleCost; /* 0x20: hold lost per press (6) */
+    int recoilFirst;    /* 0x24: setRecoilFirst; despite the name, nonzero skips the recoil animation (cleared by transitionOK) */
+    int lastPressed;    /* 0x28 */
+    float hold;         /* 0x2C */
+    _cs *starsCs;       /* 0x30 */
+    int anim;           /* 0x34 */
+
+    int transitionOK(void);
+    void transitionInto(void);
+    void update(void);
+    void handlePreemption(MonsterState *next);
     void handleCollis(_hdResult &r);
+    void setStarsCs(_cs *cs);
+    void updateStars(void);
 };
+typedef char _size_StateStunned[sizeof(StateStunned) == 0x38 ? 1 : -1];
+class StateRecoil : public MonsterState {
+public:
+    int getRecoilAnim(void);
+};
+#define RECOIL_BLEND_TIME(m) (*(float *)((char *)STATE_AT(m, ST_RECOIL) + 0x14))
+void animationResetSpeed(_animHandle h);
+void MonsterState_handleCollis(MonsterState *s, _hdResult &r) __asm__("handleCollis__12MonsterStateR9_hdResult");
+/* What an interactive id resolves to: a Monster or another DbInteractive, both starting with this header. */
+struct InteractiveHead {
+    int type;             /* 0x0: 1 = monster */
+    unsigned short flags; /* 0x4 */
+};
+class Interactives {
+public:
+    static InteractiveHead *getInteractive(int i);
+};
+/* _hdResult (collision result) fields read here; the layout is not declared yet */
+#define HD_BITS(r) (*(unsigned long long *)&(r))  /* bits 32..42: interactive id of what was hit (0 = level) */
+#define HD_SURFACE(r) (((unsigned char *)&(r))[3])
+#define HD_F28(r) (*(float *)((char *)&(r) + 0x28)) /* compared against cos 45 degrees (a contact normal component?) */
 
 /* Blocking (Monster+0x7DA0). The block pose depends on what the monster holds: animations 0x3C (bare), 0x3D (one-handed
  * pickup), 0x3E (two-handed pickup, or a locked target), 0x3F (pickup type 0x10), each only if the monster has it. While
@@ -893,13 +933,155 @@ INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", update__11StateRecoil);
 INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", acceptHit__11StateRecoilR8HitEvent);
 INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", handlePreemption__11StateRecoilP12MonsterState);
 INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", __12StateStunned);
-INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", transitionOK__12StateStunned);
+/* Needs the stunned loop (0x8E); never from state 0x12. */
+int StateStunned::transitionOK(void)
+{
+    if (owner->m_anims[0x8E].a == 0)
+        return 0;
+    recoilFirst = 0;
+    return *owner->m_state != 0x12;
+}
+/* Cancels the throw override and disables attacks; plays the recoil animation first unless recoilFirst is set. In the
+ * first level (m_levelId 1) of mode 1, player 1 gets tutorial text box 0x17. A monster being grappled is released
+ * (back to Idle); otherwise a two-handed pickup is dropped. */
+#ifdef NON_MATCHING
+/* untuned: 28/122 words */
+void StateStunned::transitionInto(void)
+{
+    Monster *g;
+
+    frames = 0;
+    ((StateThrow *)STATE_AT(owner, ST_THROW))->cancelOverride();
+    owner->m_attacksEnabled = 0;
+    if (recoilFirst) {
+        anim = 0x8E;
+        animationLoop(owner->m_anims[0x8E], true);
+        animationTransitionInto(owner->m_anims[anim], blendIn, 1, 1);
+    } else {
+        anim = ((StateRecoil *)STATE_AT(owner, ST_RECOIL))->getRecoilAnim();
+        animationResetSpeed(owner->m_anims[anim]);
+        animationTransitionInto(owner->m_anims[anim], RECOIL_BLEND_TIME(owner), 1, 1);
+    }
+    hold = 100.0f;
+    updateStars();
+    if (game->m_gameMode == 1 && game->m_levelId == 1 && owner->m_playerNum == 1)
+        game->m_huds[0].addTextBoxMessage(0x17);
+    g = (Monster *)owner->m_target;
+    if (g != 0) {
+        g->enterNewState(STATE_AT(g, ST_IDLE));
+        ((StateGrappled *)STATE_AT(g, ST_GRAPPLED))->detach();
+        ((StateGrapple *)STATE_AT(owner, ST_GRAPPLE))->detach();
+    } else if (owner->m_pickup != 0 && (((*(Pickup **)owner->m_pickup)->bits >> 1) & 1)) {
+        LevelPickups::dropPickup(*(PickupIter *)&owner->m_pickup);
+        owner->m_pickup = 0;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", transitionInto__12StateStunned);
+#endif
+/* Once the recoil animation ends the stunned loop starts; in the loop the player mashes to drain `hold`. Leaves to Idle
+ * at hold 0 or after maxTime seconds. */
+#ifdef NON_MATCHING
+/* untuned: 89/170 words */
+void StateStunned::update(void)
+{
+    int pressed;
+
+    MonsterState::update();
+    if (owner->m_unk1E8 < 0.0f)
+        owner->m_unk1B8 = 1.5f;
+    ((MonsterDynamics *)((char *)owner + 0x100))->updateTurn(false);
+    ((MonsterDynamics *)((char *)owner + 0x100))->updateMove(false);
+    updateStars();
+    if (anim == 0x8E) {
+        hold = hold + (float)timerGetFieldsLastFrame() * regenRate;
+        if (hold > 100.0f)
+            hold = 100.0f;
+        pressed = 0;
+        if (owner->m_padFlags[0]->face[2] != 0 || owner->m_padFlags[0]->face[3] != 0 ||
+            owner->m_padFlags[0]->face[0] != 0 || owner->m_padFlags[0]->face[1] != 0)
+            pressed = 1;
+        if (pressed && lastPressed == 0)
+            hold = hold - struggleCost;
+        lastPressed = pressed;
+        if (hold <= 0.0f)
+            owner->enterNewState(STATE_AT(owner, ST_IDLE));
+    } else if (animationGetCurrentPercent(owner->m_anims[anim]) >= 1.0f) {
+        anim = 0x8E;
+        animationLoop(owner->m_anims[0x8E], true);
+        animationTransitionInto(owner->m_anims[anim], blendIn, 1, 1);
+    }
+    if ((float)frames >= maxTime * 60.0f)
+        owner->enterNewState(STATE_AT(owner, ST_IDLE));
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", update__12StateStunned);
-INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", handlePreemption__12StateStunnedP12MonsterState);
+#endif
+void StateStunned::handlePreemption(MonsterState *next)
+{
+    owner->m_attacksEnabled = 1;
+    owner->m_unk1B8 = 1.0f;
+    if (starsCs != 0)
+        starsCs->drawMe = 0;
+}
+/* Landing while falling at 50 or more: an additive recoil along the monster's second matrix row, scaled by the fall
+ * speed / 200 (1 to 5). Surface 7 always counts; others only past the cos 45 test and not surfaces 0xA/0xB. Hitting an
+ * interactive counts only if its flag 8 is set and it is not a monster. */
+#ifdef NON_MATCHING
+/* untuned: 41/79 words */
+void StateStunned::handleCollis(_hdResult &r)
+{
+    int hit;
+    unsigned char surface;
+
+    MonsterState_handleCollis(this, r);
+    if (-50.0f < owner->m_unk1E8)
+        return;
+    if (HD_BITS(r) & 0x7FF00000000ULL) {
+        InteractiveHead *i = Interactives::getInteractive((int)(HD_BITS(r) >> 32) & 0x7FF);
+
+        if (!(i->flags & 8))
+            return;
+        if (i->type == 1)
+            return;
+    }
+    surface = HD_SURFACE(r);
+    hit = 0;
+    if (surface == 7)
+        hit = 1;
+    else if (0.70710677f < HD_F28(r) && surface != 0xA && surface != 0xB)
+        hit = 1;
+    if (hit) {
+        float s = -owner->m_unk1E8 / 200.0f;
+
+        if (s < 1.0f)
+            s = 1.0f;
+        if (s > 5.0f)
+            s = 5.0f;
+        owner->takeAdditiveRecoil(*(_fvector *)owner->m_cs->mat[1], s);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", handleCollis__12StateStunnedR9_hdResult);
-INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", setStarsCs__12StateStunnedP3_cs);
+#endif
+void StateStunned::setStarsCs(_cs *cs)
+{
+    starsCs = cs;
+    cs->drawMe = 0;
+}
+/* The stars follow owner + 0x3E60. */
+#ifdef NON_MATCHING
+/* untuned: 0/12 words (retail reloads starsCs after the quadword copy) */
+void StateStunned::updateStars(void)
+{
+    if (starsCs != 0) {
+        starsCs->trans = *(FVECTOR *)((char *)owner + 0x3E60);
+        starsCs->drawMe = 1;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", updateStars__12StateStunned);
+#endif
 INCLUDE_ASM("asm/nonmatchings/game/MonsterStates", __10StateTaunt);
 /* A taunt starts when one was requested (m_wantsTaunt) and the monster has the taunt animation; plays the taunt sound. */
 int StateTaunt::transitionOK(void)
