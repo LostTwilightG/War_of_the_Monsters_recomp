@@ -133,6 +133,7 @@ struct MeshData {
     bool abe = false;        // PRIM.ABE da tag GIF: so entao o alfa de vertice vale (blend); senao opaco
     uint32_t slotMask = 0;   // slots de textura usados pelas secoes (bit i = gsTexCtx[i])
     uint8_t curSub = 0;   // sub-pacote em decodificacao (diagnostico)
+    uint8_t curSlot = 0;  // textura corrente do GS: seletor 0 na tag = nao troca o contexto (herda o da secao anterior)
     uint32_t posTot = 0, posUsed = 0;   // posicoes carregadas / usadas por algum indice (diagnostico)
     uint32_t dropAdc = 0, dropDegen = 0;   // triangulos descartados por ADC / degenerados (diagnostico)
     uint32_t secTot = 0, secBad = 0, secBadEx = 0;   // secoes de tira / com nloop != indices (diagnostico)
@@ -181,6 +182,7 @@ inline uint32_t decodePacket(const Ram &ram, uint32_t pp, MeshData &md, bool fir
             static const int adcMode = std::getenv("WOTM_ADCMODE") ? std::atoi(std::getenv("WOTM_ADCMODE")) : 0;   // diagnostico: 1 = ignora ADC
             static const int adcShift = std::getenv("WOTM_ADCSHIFT") ? std::atoi(std::getenv("WOTM_ADCSHIFT")) : 0;   // diagnostico
             if (adcMode != 1) for (uint32_t k : adc) { const int kk = int(k) + adcShift; if (kk >= 0 && uint32_t(kk) < n) restart[uint32_t(kk)] = true; }
+            { static const bool hs = std::getenv("WOTM_HDRSEL") != nullptr; if (hs) std::fprintf(stderr, "[hdrsel] tex=%u sel=%u n=%u\n", md.texId, hdrSel, n); }   // diagnostico
             std::vector<Vtx> strip;
             // ADC (bit de GIF no vertice k): o GS NAO desenha o triangulo que termina em k, mas a tira continua (a convencao de
             // "novo strip" e ADC nos dois primeiros vertices). Tratar como reinicio perdia um triangulo por reinicio (furos).
@@ -206,7 +208,9 @@ inline uint32_t decodePacket(const Ram &ram, uint32_t pp, MeshData &md, bool fir
                 const P3 p = j < pos.size() ? pos[j] : P3{0, 0, 0, 1.f, 0, 0, 0};
                 Vtx v{};
                 v.x = p.x; v.y = p.y; v.z = p.z; v.w = p.w; v.cx = p.cx; v.cy = p.cy; v.cz = p.cz;
-                v.slot = uint8_t(hdrSel >= 1 && hdrSel <= 13 ? (hdrSel - 1) / 3 : 0);
+                const uint32_t sel = hdrSel & 0x7FFF;   // bit 15: flag (os predios usam 0x8001, 0x8004...)
+                if (sel >= 1 && sel <= 13) md.curSlot = uint8_t((sel - 1) / 3);   // 0 = mantem a textura anterior
+                v.slot = md.curSlot;
                 v.sub = md.curSub;
                 md.slotMask |= 1u << v.slot;
                 if (k < rgba.size()) { v.r = rgba[k][0]; v.g = rgba[k][1]; v.b = rgba[k][2]; v.a = rgba[k][3]; }
@@ -654,6 +658,13 @@ public:
         }
         w = ram.u16(ptr + 0x24); h = ram.u16(ptr + 0x26);
         return w && h && gs::decodeUpload(ram.p + ptr + 0x80, ram.size - ptr - 0x80, w, h, psm, t0.csa, pal, px);
+    }
+
+    // diagnostico: WOTM_TEXFROM=<de>:<para> desenha os vertices do slot <de> com a textura do slot <para>
+    static uint32_t texRemap(uint32_t slot) {
+        static int from = -1, to = -1; static bool init = false;
+        if (!init) { init = true; if (const char *e = std::getenv("WOTM_TEXFROM")) std::sscanf(e, "%d:%d", &from, &to); }
+        return (from >= 0 && int(slot) == from) ? uint32_t(to) : slot;
     }
 
     unsigned textureId(const Ram &ram, uint32_t node, uint32_t slot = 0) {
@@ -1380,7 +1391,7 @@ public:
             for (uint32_t sl = 0; sl < 5; ++sl) {
             if (!(smask & (1u << sl))) continue;
             { static const int onlySl = std::getenv("WOTM_ONLYSLOT") ? std::atoi(std::getenv("WOTM_ONLYSLOT")) : -1; if (onlySl >= 0 && int(sl) != onlySl) continue; }   // diagnostico: so este slot de textura
-            uint64_t key = wire ? 0 : texKey(ram, list[i].node, sl);
+            uint64_t key = wire ? 0 : texKey(ram, list[i].node, texRemap(sl));
             if (far2near) {
                 const M4 &m = list[i].m;
                 const float dx = m.m[3][0] - eye_[0], dy = m.m[3][1] - eye_[1], dz = m.m[3][2] - eye_[2];
@@ -1444,14 +1455,14 @@ public:
             if (o.key != cur || !open || far2near) {
                 if (open) { rlEnd(); rlDrawRenderBatchActive(); }   // um lote por textura (evita o alinhamento automatico do rlgl)
                 cur = o.key;
-                const unsigned id = wire ? 0 : textureId(ram, it.node, slot);
+                const unsigned id = wire ? 0 : textureId(ram, it.node, texRemap(slot));
                 rlBegin(wire ? RL_LINES : RL_TRIANGLES);   // rlBegin com outro modo reseta a textura do lote: setar depois
                 static const bool idc = std::getenv("WOTM_IDCOLOR") != nullptr;   // diagnostico: cor = texId do objeto (leia o pixel para achar o id)
                 rlSetTexture((id && !idc) ? id : white);
                 open = true;
             }
             static const bool idcMode = std::getenv("WOTM_IDCOLOR") != nullptr;   // uma vez: getenv por vertice e lento no Windows
-            const unsigned tid = (wire || !cur) ? 0 : textureId(ram, it.node, slot);
+            const unsigned tid = (wire || !cur) ? 0 : textureId(ram, it.node, texRemap(slot));
             const auto &t = md->tris;
             static const bool forceOpaqueEnv = std::getenv("WOTM_OPAQUE") != nullptr;   // diagnostico: alfa de vertice ignorado em skinned
             const bool forceOpaque = forceOpaqueEnv && md->skinned;
