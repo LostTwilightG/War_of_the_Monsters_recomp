@@ -1355,6 +1355,80 @@ private:
         xform(m, q[0], q[1], q[2], out);
     }
 
+    // ---- CONTROL (hierCtrlNode, 0x2048F0): predios com versao "transparente" quando bloqueiam a visao do monstro ----
+    // No: +4 child1, +8 child2, +0xC numVolumes, +0xE volType, +0x10 esfera (centro, raio em +0x1C), +0x20 volumes BSP (ponteiros).
+    // volType 0: se o olho NAO esta no ar (folha != 0x200) em algum volume -> child2 (camera dentro do predio). volType != 0: para cada
+    // ponto de visada (g_cameraLosPoints: direcao unitaria da camera ate o monstro + distancia em w) o segmento olho->ponto nao pode
+    // atravessar solido (folha != 0x200) de nenhum volume; se atravessar -> child2 (que pode ser nulo = o predio some).
+    static constexpr uint32_t kLosPoints = 0x0050F020, kLosPerView = 0x0050F0C0;
+
+    static void toLocal(const M4 &m, const float w[3], float out[3]) {
+        for (int c = 0; c < 3; ++c) {
+            const float *r = m.m[c];
+            const float n2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+            out[c] = n2 > 1e-9f ? ((w[0] - m.m[3][0]) * r[0] + (w[1] - m.m[3][1]) * r[1] + (w[2] - m.m[3][2]) * r[2]) / n2 : 0.f;
+        }
+    }
+
+    // Folha onde o ponto cai (0x200 = ar), igual a bspPointTest.
+    static int bspPoint(const Ram &ram, uint32_t b, const float p[3]) {
+        int ret = 0x200;
+        for (int guard = 0; b && ram.ok(b, 32) && guard < 64; ++guard) {
+            const float d = ram.f32(b + 0x10) * p[0] + ram.f32(b + 0x14) * p[1] + ram.f32(b + 0x18) * p[2] - ram.f32(b + 0x1C);
+            const bool neg = d < 0.f;
+            ret = neg ? ram.u16(b + 0xE) : ram.u16(b + 0xC);
+            b = neg ? ram.u32(b + 4) : ram.u32(b);
+        }
+        return ret;
+    }
+
+    // Verdadeiro se o segmento a->c atravessa alguma folha que nao seja ar.
+    static bool bspSegHit(const Ram &ram, uint32_t b, const float a[3], const float c[3], int depth = 0) {
+        if (depth > 64) return false;
+        if (!b || !ram.ok(b, 32)) return false;
+        const float n[3] = {ram.f32(b + 0x10), ram.f32(b + 0x14), ram.f32(b + 0x18)}, dd = ram.f32(b + 0x1C);
+        const float d0 = n[0] * a[0] + n[1] * a[1] + n[2] * a[2] - dd, d1 = n[0] * c[0] + n[1] * c[1] + n[2] * c[2] - dd;
+        const uint32_t front = ram.u32(b), back = ram.u32(b + 4);
+        auto side = [&](bool neg, const float p[3], const float q[3]) -> bool {
+            const uint32_t kid = neg ? back : front;
+            if (kid) return bspSegHit(ram, kid, p, q, depth + 1);
+            return (neg ? ram.u16(b + 0xE) : ram.u16(b + 0xC)) != 0x200;   // folha
+        };
+        if (d0 >= 0.f && d1 >= 0.f) return side(false, a, c);
+        if (d0 < 0.f && d1 < 0.f) return side(true, a, c);
+        const float t = d0 / (d0 - d1);
+        const float mid[3] = {a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t, a[2] + (c[2] - a[2]) * t};
+        return d0 >= 0.f ? (side(false, a, mid) || side(true, mid, c)) : (side(true, a, mid) || side(false, mid, c));
+    }
+
+    uint32_t ctrlChild(const Ram &ram, uint32_t node, const M4 &m) const {
+        static const bool off = std::getenv("WOTM_NOCTRL") != nullptr;   // diagnostico: sempre child1 (comportamento antigo)
+        const uint32_t c1 = ram.u32(node + 4), c2 = ram.u32(node + 8);
+        if (off || !eyeOk_) return c1;
+        const uint32_t nvol = std::min<uint32_t>(ram.u8(node + 0xC), 16), vtype = ram.u8(node + 0xE);
+        if (!nvol || !ram.ok(node, 0x20 + 4 * nvol)) return c1;
+        float eyeL[3];
+        toLocal(m, eye_, eyeL);
+        bool visible = true;
+        if (vtype == 0) {
+            for (uint32_t i = 0; i < nvol && visible; ++i)
+                if (bspPoint(ram, ram.u32(node + 0x20 + 4 * i), eyeL) != 0x200) visible = false;
+        } else {
+            const int nlos = std::min<int>(int(ram.u32(kLosPerView)), 2);   // vista 0
+            for (int k = 0; k < nlos && visible; ++k) {
+                const uint32_t pa = kLosPoints + 0x20 * 0 + 16 * k;
+                const float len = ram.f32(pa + 12);
+                if (!(len > 0.f) || len > 1e6f) continue;
+                const float pw[3] = {eye_[0] + ram.f32(pa) * len, eye_[1] + ram.f32(pa + 4) * len, eye_[2] + ram.f32(pa + 8) * len};
+                float pl[3];
+                toLocal(m, pw, pl);
+                for (uint32_t i = 0; i < nvol && visible; ++i)
+                    if (bspSegHit(ram, ram.u32(node + 0x20 + 4 * i), eyeL, pl)) visible = false;
+            }
+        }
+        return visible ? c1 : c2;
+    }
+
     bool already(uint32_t n) {
         // lista pequena e ordenada por insercao; o jogo tem ate alguns milhares de nos
         for (uint32_t s : seen_) if (s == n) return true;
@@ -1421,7 +1495,11 @@ private:
             if (which < n) { const uint32_t c = ram.u32(node + 0xC + 4 * which); if (ram.ok(c)) walk(ram, c, m, depth + 1); }
             break;
         }
-        case 8: { const uint32_t c = ram.u32(node + 4); if (ram.ok(c)) walk(ram, c, m, depth + 1); break; }   // CONTROL: child1
+        case 8: {   // CONTROL: child1 (predio solido) ou child2 (versao "transparente"/ausente) conforme o volume bloqueia a visao do monstro
+            const uint32_t c = ctrlChild(ram, node, m);
+            if (c && ram.ok(c)) walk(ram, c, m, depth + 1);
+            break;
+        }
         case 23: { const uint32_t c = ram.u32(node + 4); if (ram.ok(c)) walk(ram, c, m, depth + 1); break; } // ACTION_DATA
         case 25: {                                                                          // CHAR_INSTANCE
             // As partes do corpo sao nos ANIM_XFORM (hierarquia rigida, sem skinning). O proprio jogo calcula a matriz local de
